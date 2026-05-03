@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "messages": [
+    "CHECKIN OK",
+    "NEED COMMS CHECK",
+    "MOVING",
+    "HOLD POSITION",
+    "RETURN TO RALLY",
+    "BATTERY LOW",
+    "CONTACT MADE",
+    "ALL CLEAR",
+    "ABORT",
+    "STANDBY"
+  ]
+}
