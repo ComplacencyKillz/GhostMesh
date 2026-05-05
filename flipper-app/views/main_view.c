@@ -18,21 +18,51 @@ struct MainView {
     void* input_ctx;
 };
 
-static void draw_cb(Canvas* canvas, void* ctx) {
-    MainView* mv = ctx;
-    furi_mutex_acquire(mv->mutex, FuriWaitForever);
-    const MainViewState* s = &mv->state;
+// ── Profile selection draw ───────────────────────────────────────────────────
 
-    canvas_clear(canvas);
-
-    // ── Title bar ────────────────────────────────────────────────────
+static void draw_profile_screen(Canvas* canvas, const MainViewState* s) {
     canvas_set_font(canvas, FontPrimary);
     canvas_draw_str(canvas, 2, 9, "GhostMesh");
     canvas_set_font(canvas, FontSecondary);
     canvas_draw_str(canvas, 88, 9, s->uart_active ? "UART:OK" : "UART:ERR");
     canvas_draw_line(canvas, 0, 11, 127, 11);
 
-    // ── Message list ─────────────────────────────────────────────────
+    canvas_set_font(canvas, FontSecondary);
+    uint8_t visible = (s->profile_count < 4) ? s->profile_count : 4;
+
+    for(uint8_t i = 0; i < visible; i++) {
+        uint8_t idx = s->profile_scroll + i;
+        if(idx >= s->profile_count) break;
+
+        uint8_t row_y = LIST_Y + (uint8_t)(i * ROW_H);
+        bool sel = (idx == s->profile_selected);
+
+        if(sel) {
+            canvas_set_color(canvas, ColorBlack);
+            canvas_draw_box(canvas, 0, row_y, 127, ROW_H);
+            canvas_set_color(canvas, ColorWhite);
+            canvas_draw_str(canvas, 4, (uint8_t)(row_y + ROW_H - 2), s->profile_names[idx]);
+            canvas_set_color(canvas, ColorBlack);
+        } else {
+            canvas_draw_str(canvas, 4, (uint8_t)(row_y + ROW_H - 2), s->profile_names[idx]);
+        }
+    }
+
+    uint8_t sep_y = LIST_Y + (uint8_t)(visible * ROW_H) + 1;
+    canvas_draw_line(canvas, 0, sep_y, 127, sep_y);
+    canvas_draw_str(canvas, 2, 63, "OK: Load   BACK: Exit");
+}
+
+// ── Message list draw ────────────────────────────────────────────────────────
+
+static void draw_message_screen(Canvas* canvas, const MainViewState* s) {
+    // Title bar with active profile name
+    canvas_set_font(canvas, FontPrimary);
+    canvas_draw_str(canvas, 2, 9, s->active_profile_name);
+    canvas_set_font(canvas, FontSecondary);
+    canvas_draw_str(canvas, 88, 9, s->uart_active ? "UART:OK" : "UART:ERR");
+    canvas_draw_line(canvas, 0, 11, 127, 11);
+
     canvas_set_font(canvas, FontSecondary);
     uint8_t rows = s->visible_rows;
 
@@ -41,9 +71,9 @@ static void draw_cb(Canvas* canvas, void* ctx) {
         if(idx >= s->message_count) break;
 
         uint8_t row_y = LIST_Y + (uint8_t)(i * ROW_H);
-        bool selected = (idx == s->selected_index);
+        bool sel = (idx == s->selected_index);
 
-        if(selected) {
+        if(sel) {
             canvas_set_color(canvas, ColorBlack);
             canvas_draw_box(canvas, 0, row_y, 125, ROW_H);
             canvas_set_color(canvas, ColorWhite);
@@ -54,18 +84,17 @@ static void draw_cb(Canvas* canvas, void* ctx) {
         }
     }
 
-    // ── Scrollbar ────────────────────────────────────────────────────
+    // Scrollbar
     if(s->message_count > rows) {
         uint8_t track_h = (uint8_t)(rows * ROW_H);
         uint8_t thumb_h = (uint8_t)((track_h * rows) / s->message_count);
         if(thumb_h < 3) thumb_h = 3;
-        uint8_t thumb_y = LIST_Y +
-            (uint8_t)((track_h * s->scroll_offset) / s->message_count);
+        uint8_t thumb_y = LIST_Y + (uint8_t)((track_h * s->scroll_offset) / s->message_count);
         canvas_draw_line(canvas, 127, LIST_Y, 127, (uint8_t)(LIST_Y + track_h));
         canvas_draw_box(canvas, 126, thumb_y, 2, thumb_h);
     }
 
-    // ── Separator + status bar ───────────────────────────────────────
+    // Status bar
     uint8_t sep_y = LIST_Y + (uint8_t)(rows * ROW_H) + 1;
     canvas_draw_line(canvas, 0, sep_y, 127, sep_y);
 
@@ -76,11 +105,22 @@ static void draw_cb(Canvas* canvas, void* ctx) {
         snprintf(status, sizeof(status), "RX: %.34s", s->last_rx);
     } else {
         snprintf(status, sizeof(status), "TX:%lu  RX:%lu",
-                 (unsigned long)s->tx_bytes,
-                 (unsigned long)s->rx_bytes);
+                 (unsigned long)s->tx_bytes, (unsigned long)s->rx_bytes);
     }
     canvas_draw_str(canvas, 2, 63, status);
+}
 
+// ── ViewPort callbacks ───────────────────────────────────────────────────────
+
+static void draw_cb(Canvas* canvas, void* ctx) {
+    MainView* mv = ctx;
+    furi_mutex_acquire(mv->mutex, FuriWaitForever);
+    canvas_clear(canvas);
+    if(mv->state.screen == GhostMeshScreenProfile) {
+        draw_profile_screen(canvas, &mv->state);
+    } else {
+        draw_message_screen(canvas, &mv->state);
+    }
     furi_mutex_release(mv->mutex);
 }
 
@@ -90,6 +130,8 @@ static void input_cb(InputEvent* event, void* ctx) {
         mv->input_cb(event->key, event->type, mv->input_ctx);
     }
 }
+
+// ── Public API ───────────────────────────────────────────────────────────────
 
 MainView* main_view_alloc(void) {
     MainView* mv = malloc(sizeof(MainView));
