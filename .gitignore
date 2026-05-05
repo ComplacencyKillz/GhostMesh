@@ -1,0 +1,5 @@
+flipper-app/dist/
+flipper-app/.vscode/
+flipper-app/.cache/
+__pycache__/
+*.pyc

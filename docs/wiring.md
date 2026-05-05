@@ -10,12 +10,16 @@ The Flipper Zero connects to the Heltec ESP32 LoRa V3 board over **3 wires only*
 
 | Signal | Flipper Proto Board | Heltec ESP32 LoRa V3 |
 |--------|--------------------|-----------------------|
-| UART TX (Flipper → Heltec) | **U_TX / GPIO pin 13** | **RX pin** |
-| UART RX (Heltec → Flipper) | **U_RX / GPIO pin 14** | **TX pin** |
+| UART TX (Flipper → Heltec) | **U_TX / GPIO pin 13** | **GPIO7** (top row, labeled "7") |
+| UART RX (Heltec → Flipper) | **U_RX / GPIO pin 14** | **TX pad** (bottom row, labeled "TX" = GPIO43) |
 | Ground reference | **GND** | **GND** |
 | Power | — NOT CONNECTED — | — NOT CONNECTED — |
 
-> **TX/RX cross:** Flipper TX goes to Heltec RX. Flipper RX comes from Heltec TX. This is standard UART crossover and is correct.
+> **Why GPIO7 for RX and not the pad labeled "RX" (GPIO44)?**
+> GPIO44 is UART0 RX on the ESP32-S3 and is owned by the ESP32 boot ROM and Meshtastic console.
+> GPIO41/42 are claimed by Meshtastic's I2C bus 2 at boot. GPIO7 is confirmed free — not used
+> by UART0, I2C, SPI (LoRa), USB, or ADC. UART1 can use it cleanly for RX. The pad labeled "TX"
+> (GPIO43) works fine for UART1 transmit because output can be routed to that pin without conflict.
 
 ---
 
@@ -26,8 +30,8 @@ The Flipper Zero connects to the Heltec ESP32 LoRa V3 board over **3 wires only*
 │       Flipper Zero           │         │   Heltec WiFi LoRa 32 V3     │
 │    (via Prototype Board)     │         │     (Meshtastic firmware)     │
 │                              │         │                              │
-│  U_TX / GPIO 13  ───────────────────►  RX                            │
-│  U_RX / GPIO 14  ◄───────────────────  TX                            │
+│  U_TX / GPIO 13  ───────────────────►  GPIO7  (top row, "7" pad)    │
+│  U_RX / GPIO 14  ◄───────────────────  GPIO43  (bottom row, "TX" pad)│
 │  GND             ───────────────────── GND                           │
 │                              │         │                              │
 │  [5V  → NOT connected]       │         │  [VCC → own battery]        │
@@ -68,9 +72,49 @@ Flipper GPIO Header (top view, pin 1 on left):
   1   0   3   0   9   10  2   3   8
 ```
 
-- **Pin 13 = PA9 = USART1_TX** → connect to Heltec RX
-- **Pin 14 = PA10 = USART1_RX** → connect to Heltec TX
+- **Pin 13 = PA9 = USART1_TX** → connect to Heltec **GPIO7** (top row "7" pad)
+- **Pin 14 = PA10 = USART1_RX** → connect to Heltec **GPIO43** (bottom row "TX" pad)
 - **Pin 8 or 18 = GND** → connect to Heltec GND
+
+---
+
+## Confirmed GPIO Pin Status (Heltec V3, Meshtastic 2.7.x)
+
+Determined from Meshtastic 2.7.15 boot log analysis:
+
+| GPIO | Status | Claimed by |
+|------|--------|-----------|
+| 43 | USED — safe for UART1 TX output | UART0 TX (shared output works) |
+| 44 | UNAVAILABLE for UART1 RX | UART0 RX — conflict kills receive |
+| 41 | UNAVAILABLE | I2C bus 2 SDA (`i2cInit: sda=41 scl=42`) |
+| 42 | UNAVAILABLE | I2C bus 2 SCL |
+| 17 | UNAVAILABLE | I2C bus 1 SDA (OLED) |
+| 18 | UNAVAILABLE | I2C bus 1 SCL (OLED) |
+| 8–14 | UNAVAILABLE | SX1262 LoRa SPI + IRQ/RST/BUSY |
+| 19 | UNAVAILABLE | USB D- (ESP32-S3 native USB) |
+| 20 | UNAVAILABLE | USB D+ |
+| 1 | UNAVAILABLE | Battery ADC |
+| **7** | **FREE — confirmed working** | Nothing — UART1 RX works cleanly |
+
+---
+
+## End-to-End Verification
+
+Verified 2026-05-03 using Python `pyserial` on Windows:
+
+```python
+import serial, time
+s = serial.Serial('COM3', 115200, timeout=2)
+time.sleep(1)
+s.write(b'CHECKIN OK\n')
+s.close()
+```
+
+- Heltec OLED **ChUtil** increased from 0% → 6% confirming LoRa radio transmitted
+- Echo bytes returned confirming GPIO7 RX → Meshtastic serial module → GPIO43 TX path alive
+- Flipper TX loopback (pin 13 → pin 14) confirmed Flipper UART bridge works in both directions
+
+**To fully verify mesh delivery end-to-end**, a second Meshtastic node (any Heltec V3 + battery + 915 MHz antenna + phone) will receive "CHECKIN OK" in the Meshtastic app Messages view when the Python script or FAP sends it.
 
 ---
 

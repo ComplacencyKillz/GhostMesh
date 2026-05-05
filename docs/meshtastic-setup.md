@@ -30,23 +30,29 @@
 | Setting | Value |
 |---------|-------|
 | Enabled | On |
-| Echo | Off (unless debugging) |
+| Echo | Off |
 | Mode | **TEXTMSG** |
 | Baud Rate | **115200** |
 | Timeout | 0 (default) |
-| RX | Leave default (or set to your Heltec RX GPIO) |
-| TX | Leave default (or set to your Heltec TX GPIO) |
+| RX | **7** (Flipper TX wire — GPIO7 on top row) |
+| TX | **43** (Flipper RX wire — GPIO43 "TX" pad on bottom row) |
+| Override console serial port | Off |
 
 4. Tap **Save**
 5. The node will reboot. Reconnect via Bluetooth and confirm the Serial module shows Enabled.
 
-### Verify via Serial Terminal (optional)
+### Verify via Python (recommended over PuTTY)
 
-With the Heltec connected to your computer via USB and PuTTY open on the Flipper COM port:
+On Windows with the Flipper USB-UART Bridge running:
 
-1. Send a message from the Meshtastic app (phone → mesh)
-2. If TEXTMSG mode is working, you should see the message appear as a plain text line in PuTTY
-3. If you type a line in PuTTY and press Enter, it should appear as a mesh message in the Meshtastic app
+```python
+python -c "import serial,time; s=serial.Serial('COM3',115200,timeout=2); time.sleep(1); s.write(b'CHECKIN OK\n'); print('sent'); print(s.read(64)); s.close()"
+```
+
+Watch the Heltec OLED — **ChUtil should increase from 0% to ~6%** confirming the LoRa radio transmitted. With a second Meshtastic node in range, "CHECKIN OK" will appear in the Meshtastic app on the receiving device.
+
+> Note: Messages sent via the serial module may not appear in the sending node's own Meshtastic
+> app. ChUtil increasing is the correct single-node confirmation of a successful transmission.
 
 ---
 
@@ -68,8 +74,12 @@ The 915 MHz antenna included with the MakerHawk/Heltec V3 is tuned for the US IS
 
 ---
 
-## Known Issue: Unreadable PuTTY Output
+## Known Hardware Notes (Heltec V3 + Meshtastic 2.7.x)
 
-Before configuring TEXTMSG mode, PuTTY connected to the Flipper USB-UART bridge will show unreadable binary output. This is normal — the Meshtastic node outputs protobuf data in DEFAULT mode. Switching to TEXTMSG makes the output human-readable plain text.
+**Do not use the pad labeled "RX" (GPIO44) for the Meshtastic serial RX pin.** GPIO44 is UART0 RX on the ESP32-S3 and is claimed at boot. Meshtastic's serial module (UART1) cannot receive on it — bytes arrive at the GPIO but the interrupt never fires. Use **GPIO7** instead.
 
-Byte counters increasing = physical UART path is alive. Unreadable bytes = wrong serial mode. This is an expected state before TEXTMSG is configured.
+**Do not use GPIO41 or GPIO42.** These are claimed by Meshtastic's I2C bus 2 (`sda=41, scl=42`) at firmware init.
+
+**"Override console serial port"** is only available in NMEA and CalTopo modes. It is not an option for TEXTMSG.
+
+**LOGTEXT boot output** only streams on power-on. After the node has finished booting, LOGTEXT goes quiet unless events occur. Connect PuTTY before powering the node to capture boot logs.

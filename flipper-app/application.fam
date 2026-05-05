@@ -7,7 +7,6 @@ App(
         "gui",
     ],
     stack_size=2 * 1024,
-    fap_name="GhostMesh",
     fap_description="Flipper Zero companion for offline Meshtastic field comms",
     fap_version=(0, 1),
     fap_category="Tools",
