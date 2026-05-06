@@ -1,155 +1,156 @@
-# UART Test Plan
+# GhostMesh Test Plan
 
 ## Purpose
 
-Validate the physical UART connection between the Flipper Zero and the Heltec ESP32 LoRa V3 before and after deploying the GhostMesh FAP.
+Validate the hardware path and PROTO protocol connection between the Flipper Zero and the Heltec ESP32 LoRa V3 before deploying or troubleshooting the GhostMesh FAP.
 
 ---
 
 ## Confirmed Working Configuration
 
-Verified 2026-05-03. Use these exact settings:
+Verified 2026-05-05.
 
 | Parameter | Value |
 |-----------|-------|
-| Flipper TX wire | Pin 13 (U_TX) → Heltec **GPIO7** (top row, "7" pad) |
-| Flipper RX wire | Pin 14 (U_RX) → Heltec **GPIO43** (bottom row, "TX" pad) |
+| Flipper TX wire | Pin 13 (U_TX) → Heltec **GPIO44** (bottom row, "RX" labeled pad) |
+| Flipper RX wire | Pin 14 (U_RX) → Heltec **GPIO43** (bottom row, "TX" labeled pad) |
 | GND | Flipper GND → Heltec GND |
-| Meshtastic serial RX pin | **7** |
-| Meshtastic serial TX pin | **43** |
+| Protocol | Meshtastic PROTO via PhoneAPI on UART0 |
 | Baud | 115200 |
-| Mode | TEXTMSG |
-| Echo | Off |
+| Meshtastic serial module | Not used — leave at defaults or disabled |
 
-> Do NOT use the Heltec pad labeled "RX" (GPIO44) — it conflicts with UART0 and serial receive
-> silently fails. Do NOT use GPIO41/42 — claimed by I2C at boot. GPIO7 is confirmed free.
+> GhostMesh uses the PhoneAPI on UART0, not the Meshtastic serial module. No serial module configuration is required or relevant.
 
 ---
 
 ## Pre-Test Checklist
 
-- [ ] Flipper U_TX (pin 13) → Heltec **GPIO7** (top row "7" pad)
-- [ ] Flipper U_RX (pin 14) → Heltec **GPIO43** (bottom row "TX" pad)
+- [ ] Flipper U_TX (pin 13) → Heltec **GPIO44** ("RX" labeled pad, UART0 RX)
+- [ ] Flipper U_RX (pin 14) → Heltec **GPIO43** ("TX" labeled pad, UART0 TX)
 - [ ] GND connected between both boards
 - [ ] No 5V or 3.3V shared between boards
 - [ ] Heltec powered from its own battery
 - [ ] Flipper powered from its own battery
-- [ ] Meshtastic: Serial enabled, RX=7, TX=43, Mode=TEXTMSG, Baud=115200, Echo=Off
-- [ ] Heltec not connected to USB during UART testing
+- [ ] Meshtastic running on Heltec (visible in phone app with battery %)
+- [ ] Second Meshtastic node powered and in range (for full end-to-end tests)
 
 ---
 
 ## Test 1: Flipper TX Loopback
 
-**Goal:** Confirm Flipper UART bridge transmits on pin 13 before involving the Heltec.
+**Goal:** Confirm Flipper USART1 transmits on pin 13 before involving the Heltec.
 
 **Steps:**
 1. Disconnect TX/RX wires from Heltec
 2. Jumper Flipper pin 13 directly to Flipper pin 14
-3. Open USB-UART Bridge on Flipper at 115200
-4. Open PuTTY, set local echo OFF (Terminal → Local echo → Force off)
+3. Open Flipper: **Apps → GPIO → USB-UART Bridge** at 115200
+4. Open PuTTY — **Terminal → Local echo → Force off**
 5. Type any character
 
-**Pass criteria:** Character appears on PuTTY screen (traveled out pin 13, back in pin 14).
+**Pass criteria:** Character appears on PuTTY screen (looped from pin 13 back in on pin 14). Flipper TX hardware confirmed working.
 
 ---
 
 ## Test 2: Heltec TX → Flipper RX (boot log)
 
-**Goal:** Confirm Heltec GPIO43 TX → Flipper RX → PuTTY path is alive.
+**Goal:** Confirm the GPIO43 → Flipper RX → PuTTY path is alive.
 
 **Steps:**
-1. Reconnect wires (GPIO7 and GPIO43)
-2. Set Meshtastic serial mode to **LOGTEXT**, enable PuTTY session logging to file
-3. Unplug and replug Heltec battery while PuTTY is connected
-4. Open the log file
+1. Reconnect wires (GPIO44 and GPIO43)
+2. Enable PuTTY session logging: **Session → Logging → All session output → `log.txt`**
+3. Connect PuTTY to the Flipper COM port at 115200
+4. Unplug and replug the Heltec battery while PuTTY is connected
+5. Open `log.txt`
 
-**Pass criteria:** ESP32 boot ROM messages and Meshtastic startup log appear in the file.
+**Pass criteria:** ESP32 boot ROM messages and Meshtastic startup log appear in the file. This confirms the GPIO43 → Flipper RX direction is working.
 
 ---
 
-## Test 3: Flipper TX → Heltec GPIO7 RX (echo)
+## Test 3: End-to-End PROTO Send (Python)
 
-**Goal:** Confirm bytes from Flipper actually reach Meshtastic's serial module on GPIO7.
+**Goal:** Confirm the full handshake and text send chain without the FAP.
+
+**Requirements:** `pip install pyserial` on Windows. Flipper USB-UART Bridge running on Flipper.
 
 **Steps:**
-1. Set Meshtastic serial mode to **LOGTEXT**, echo **ON**
-2. Enable PuTTY session logging to file
-3. Power cycle Heltec, wait for boot to finish (~5 seconds)
-4. Type `HELLO` + Enter in PuTTY
-5. Open the log file
+1. From Windows, run:
+   ```
+   python S:\path\to\ghostmesh\tests\proto_send_test.py COM3
+   ```
+2. Watch the Heltec OLED for ChUtil change
+3. Check the second node's Meshtastic app
 
-**Pass criteria:** `HELLO` appears in the log file (echoed back via GPIO43). Boot log present confirms GPIO43 TX works. HELLO present confirms GPIO7 RX works.
+**Pass criteria:**
+- Script prints `config_complete_id received — ready!` (PROTO handshake complete)
+- ChUtil ticks up (LoRa transmitted)
+- "TEST FROM PYTHON" appears on second node
 
 ---
 
-## Test 4: End-to-End TEXTMSG Send (Python)
+## Test 4: GhostMesh FAP — Startup and Handshake
 
-**Goal:** Confirm serial → Meshtastic → LoRa mesh transmission chain.
-
-**Steps:**
-1. Set Meshtastic mode back to **TEXTMSG**, echo Off
-2. On Windows PC: `python -c "import serial,time; s=serial.Serial('COM3',115200,timeout=2); time.sleep(1); s.write(b'CHECKIN OK\n'); print('sent'); print(s.read(64)); s.close()"`
-3. Watch Heltec OLED display
-
-**Pass criteria:** **ChUtil percentage increases** (0% → any non-zero value) confirming LoRa radio transmitted the mesh packet.
-
-> Note: The message may not appear in the Meshtastic phone app when only one node is present
-> (no other node to receive and display it). ChUtil increase is the single-node confirmation.
-> For full end-to-end receipt confirmation, use a second Meshtastic node — see Test 5.
-
----
-
-## Test 5: Second Node Receipt Confirmation (optional but recommended)
-
-**Goal:** Confirm the transmitted mesh packet is correctly received by another node.
-
-**Requirements:** Second Meshtastic node (any board) + 915 MHz antenna + battery, within ~50 feet.
+**Goal:** Confirm the FAP connects via PROTO on startup.
 
 **Steps:**
-1. Flash second node with Meshtastic, set region US, default LongFast channel
-2. Power it on near the first Heltec
-3. Run the Python send script or press OK on the GhostMesh FAP
-4. Open Meshtastic app connected to (or watching) the second node
-
-**Pass criteria:** "CHECKIN OK" appears as a received message on the second node's app.
-
-**Status: PASSED 2026-05-05** — two Heltec V3 nodes confirmed communicating. Send from PuTTY via node 1, received on node 2 app. Receive direction also confirmed (node 2 → node 1 serial output visible in PuTTY).
-
----
-
-## Test 6: GhostMesh FAP — UART ACTIVE
-
-**Goal:** Confirm the FAP acquires UART on startup.
-
-**Steps:**
-1. Exit USB-UART Bridge (releases USART1)
+1. Close USB-UART Bridge if running (releases USART1)
 2. Launch GhostMesh: **Apps → Tools → GhostMesh**
+3. Watch top-right of screen for a few seconds
 
-**Pass criteria:** Display shows `UART: ACTIVE` within 1 second.
+**Pass criteria:** Screen shows `PROTO:...` briefly then changes to `PROTO:RDY`. Profile selection screen appears.
 
 ---
 
-## Test 7: GhostMesh FAP — Send via OK Button
+## Test 5: GhostMesh FAP — Send via OK Button
 
-**Goal:** Confirm pressing OK sends CHECKIN OK over the mesh.
+**Goal:** Confirm pressing OK broadcasts a canned message over the mesh.
 
 **Steps:**
-1. GhostMesh FAP running, UART: ACTIVE confirmed
-2. Press OK on the Flipper
-3. Watch Heltec OLED ChUtil
+1. FAP running, `PROTO:RDY` confirmed
+2. Press OK to select a profile
+3. Navigate to a message with UP/DOWN
+4. Press OK to send
+5. Watch Heltec OLED ChUtil and second node's Meshtastic app
 
-**Pass criteria:** TX byte counter increments by 11, ChUtil increases on Heltec.
+**Pass criteria:**
+- `Sent: <message>` banner appears briefly on Flipper screen
+- ChUtil ticks up on Heltec OLED
+- Message appears on second node's Meshtastic app
+
+---
+
+## Test 6: GhostMesh FAP — Receive
+
+**Goal:** Confirm incoming mesh messages appear on the Flipper.
+
+**Steps:**
+1. FAP running, `PROTO:RDY` confirmed
+2. From the second node, send a text message via the Meshtastic phone app
+3. Watch the bottom status bar of the GhostMesh FAP
+
+**Pass criteria:** Status bar shows `<node_id>: <message>` (e.g., `2f74: Hello`).
+
+---
+
+## Test 7: Custom YAML Profile Load
+
+**Goal:** Confirm custom profiles are loaded from SD card.
+
+**Steps:**
+1. Copy `examples/profiles.yaml` from the repo to `SD:/apps_data/ghostmesh/profiles.yaml` on the Flipper
+2. Launch GhostMesh
+3. On the profile selection screen, scroll past the 3 built-ins
+
+**Pass criteria:** Custom profile names from the YAML file appear in the profile list.
 
 ---
 
 ## Known Failure Modes
 
-| Symptom | Cause | Resolution |
-|---------|-------|-----------|
-| UART: ERROR on FAP startup | USB-UART Bridge still running | Exit bridge before launching FAP |
-| Boot log appears but HELLO not echoed | GPIO7 solder joint bad | Reflow GPIO7 pad |
-| Nothing at all from Heltec | Wrong TX pin or GND missing | Verify GPIO43 wire and GND |
-| ChUtil does not increase | Serial module not initialized | Check RX=7, TX=43 saved in Meshtastic |
-| PuTTY loopback fails | Flipper UART Bridge not transmitting | Restart bridge app, check pin 13 wire |
-| Second node doesn't receive | Nodes too far apart or wrong channel | Bring nodes within 10 feet, confirm same channel/region |
+| Symptom | Likely Cause | Resolution |
+|---------|-------------|-----------|
+| `PROTO:...` never becomes `PROTO:RDY` | Meshtastic phone app connected via BLE and consuming PhoneAPI | Close Meshtastic app on phone, restart FAP |
+| `PROTO:...` stuck — no handshake | Wire not connected to GPIO44, or bad solder joint | Check Flipper TX → GPIO44 connection |
+| Boot log appears (Test 2) but nothing received in FAP | Flipper TX → GPIO44 path broken | Verify GPIO44 wire; try Test 1 loopback first |
+| `PROTO:RDY` shows but OK does nothing | Profile screen still selected (need to pick a profile first, then OK sends from message screen) | Select profile with OK, then navigate messages |
+| Message not appearing on second node | Nodes out of range, wrong channel, or ChUtil at airtime limit | Bring nodes closer, confirm LongFast channel |
+| Custom YAML profiles not showing | File missing, wrong path, or parse error | Confirm path `SD:/apps_data/ghostmesh/profiles.yaml`; check file has valid `name:` and `- ` lines |
