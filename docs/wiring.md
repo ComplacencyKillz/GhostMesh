@@ -133,6 +133,10 @@ This matches the Meshtastic serial module default. If you change it on either si
 All sensor connections are independent of the Flipper–Heltec UART link.
 Wire sensors after the base UART connection is confirmed working.
 
+**Architecture:** The Heltec backpack operates fully unattended. Sensors that must
+function without the Flipper present are wired to the Heltec and driven by custom
+Meshtastic modules. The Flipper ProtoBoard carries only operator controls.
+
 ### Heltec I2C Sensor Bus (GPIO41 SDA / GPIO42 SCL)
 
 Connect the STEMMA QT 5-port passive hub to the Heltec GPIO41/42 header pins.
@@ -199,27 +203,43 @@ IR module GND        ──► Heltec GND
 
 Standard NEC protocol receiver (3-pin module from Elegoo kit). Active-low output.
 
-### Flipper ProtoBoard — Sensors and Actuators
+### Heltec — Tamper & Control Sensors
 
 ```
-Slide switch (SPDT):
+SW-520D tilt switch (tamper — backpack moved/disturbed):
+  Pin 1 ──► Heltec GPIO2
+  Pin 2 ──► Heltec 3.3V
+  Add 10kΩ pull-down from GPIO2 to GND.
+
+Slide switch (physical arm/disarm on deployment):
+  Common ──► Heltec GPIO4
+  NO     ──► Heltec 3.3V
+  NC     ──► GND (or leave open)
+  Add 10kΩ pull-down from GPIO4 to GND.
+
+IR receiver module (remote arm/disarm ~10m via NEC remote):
+  Signal ──► Heltec GPIO48
+  VCC    ──► Heltec 3.3V
+  GND    ──► Heltec GND
+  Active-low output; module includes internal pull-up.
+```
+
+### Flipper ProtoBoard — Operator Controls
+
+```
+Slide switch (operator arming gate — gates nuke and destructive actions):
   Common ──► Flipper pin 15 (PB2)
   NO     ──► Flipper 3.3V (pin 2)
   NC     ──► GND (or leave open)
   Add 10kΩ pull-down from pin 15 to GND.
 
-SW-520D tilt switch:
-  Pin 1 ──► Flipper pin 16 (PB3)
-  Pin 2 ──► Flipper 3.3V (pin 2)
-  Add 10kΩ pull-down from pin 16 to GND.
-
-Active buzzer (via PN2222):
+Active buzzer (audible alert — incoming messages, relayed tamper events):
   Flipper pin 5 (PA7) ──► 1kΩ ──► PN2222 base
   PN2222 collector    ──► Buzzer negative terminal
   PN2222 emitter      ──► GND
   Buzzer positive     ──► Flipper 3.3V (pin 2)
 
-Coin vibration motor (via AO3400 MOSFET + 1N4007 flyback):
+Coin vibration motor (haptic alert — incoming messages):
   Flipper pin 6 (PA6) ──► 100Ω ──► AO3400 gate
   AO3400 drain        ──► Motor negative terminal
   AO3400 source       ──► GND

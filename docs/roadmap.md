@@ -169,41 +169,43 @@ BME280 (0x76) or OLED (0x3C on bus 1). Requires a small custom Meshtastic module
 
 ## Phase 10 — Physical Controls & Alerting ⏳
 
-**New hardware (Flipper ProtoBoard):** slide switch, SW-520D tilt switch, active buzzer,
-vibration motor (via AO3400 MOSFET + 1N4007 flyback diode), PN2222 transistor for buzzer.
+The backpack must operate fully unattended. All tamper and proximity sensors live on the
+Heltec and are handled by custom Meshtastic modules — they broadcast alerts over LoRa
+autonomously with no Flipper present. The Flipper ProtoBoard carries only the
+**operator-facing** controls: the arming gate and alert feedback.
 
-**New hardware (Heltec side):** photoresistor on GPIO5 ADC, IR receiver on GPIO48.
+### Heltec (backpack — unattended operation)
 
-Heltec-side sensors communicate to Flipper via simple ASCII sentinel strings over the
-existing UART connection (hybrid architecture: PROTO for mesh data, ASCII for local
-sensor events). Requires custom Meshtastic module on Heltec.
+**New hardware:** SW-520D tilt switch (GPIO2), slide switch arm/disarm (GPIO4),
+photoresistor (GPIO5 ADC), IR receiver (GPIO48). Requires custom Meshtastic modules.
 
-### Flipper ProtoBoard GPIO assignments
+| Heltec GPIO | Component | Behavior |
+|-------------|-----------|----------|
+| 2 | SW-520D tilt switch | Trigger → broadcast TAMPER over LoRa; if armed → nuke |
+| 4 | Slide switch | Physical arm/disarm on deployment |
+| 5 (ADC) | Photoresistor | Below threshold → broadcast TAMPER_LIGHT over LoRa |
+| 48 | IR receiver (NEC) | Decoded remote code → arm/disarm backpack from ~10m |
 
-| Flipper Pin | Component | Notes |
-|-------------|-----------|-------|
-| 15 (PB2) | Slide switch | Physical arming gate |
-| 16 (PB3) | SW-520D tilt switch | Tamper detection |
-| 5 (PA7) | Buzzer via PN2222 | Audible alerts |
-| 6 (PA6) | Vibration motor via AO3400 + 1N4007 | Haptic alerts |
+- [ ] Custom module: tilt switch GPIO2 interrupt → `AdminMessage`-based nuke if armed, else TAMPER mesh packet
+- [ ] Custom module: photoresistor ADC polling → threshold crossing → TAMPER_LIGHT mesh packet
+- [ ] Custom module: IR receiver NEC decode on GPIO48 → arm/disarm state toggle, confirm via OLED
+- [ ] Custom module: slide switch GPIO4 state → sets armed/disarmed on boot and on toggle
 
-### Heltec GPIO assignments
+### Flipper ProtoBoard (operator — carried in the field)
 
-| Heltec GPIO | Component | Notes |
-|-------------|-----------|-------|
-| 5 (ADC) | Photoresistor | Case-open / light tamper |
-| 48 | IR receiver (NEC protocol) | Covert remote arm/disarm |
+**New hardware:** slide switch (pin 15), active buzzer via PN2222 (pin 5), vibration
+motor via AO3400 + 1N4007 (pin 6). FAP changes only — no Heltec firmware needed.
 
-### Implementation
+| Flipper Pin | Component | Behavior |
+|-------------|-----------|----------|
+| 15 (PB2) | Slide switch | Arming gate — nuke and destructive actions only fire when HIGH |
+| 5 (PA7) | Buzzer via PN2222 | Audible alert on incoming message or relayed tamper event |
+| 6 (PA6) | Vibration motor via AO3400 + 1N4007 | Haptic alert on incoming message |
 
-- [ ] FAP: read slide switch (pin 15) — arming gate for nuke and all destructive actions
-- [ ] FAP: read tilt switch (pin 16) — on trigger: buzzer immediate; if armed → nuke
-- [ ] FAP: drive buzzer (pin 5) on RX message, tamper event, and send confirmation
+- [ ] FAP: read slide switch (pin 15) as arming gate — gate on all destructive actions
+- [ ] FAP: drive buzzer (pin 5) on RX message received, tamper alert received, send confirmation
 - [ ] FAP: drive vibration motor (pin 6) on RX message and send confirmation
-- [ ] Heltec custom module: photoresistor ADC threshold → send `TAMPER_LIGHT\n` over UART
-- [ ] Heltec custom module: IR receiver decode NEC → send `IR_ARM\n` / `IR_DISARM\n` / `IR_SEND_n\n` over UART
-- [ ] FAP: parse ASCII sentinels from UART alongside PROTO frames
-- [ ] Elegoo kit buzzer is also usable as a secondary audible alert if wired on Heltec side
+- [ ] FAP: parse incoming TAMPER / TAMPER_LIGHT / PERSON_DETECTED mesh packets and trigger alerts
 
 ---
 
@@ -320,6 +322,14 @@ UART link using ChaCha20-Poly1305 (AEAD: encrypts + authenticates each frame).
   (`TAMPER_LIGHT\n`, `PROX\n`, `JAMMER\n`, `IR_ARM\n`, `IR_SEND_n\n`)
 - Flipper FAP handles both on the same UART stream; distinguishes by frame header (0x94 0xC3 = PROTO, anything else = sentinel)
 
+### Design Principle
+
+The **Heltec backpack operates fully unattended**. All sensors that need to function
+without the Flipper present live on the Heltec and are driven by custom Meshtastic modules.
+The Flipper ProtoBoard carries only operator-facing controls (arming gate, haptic/audio
+feedback). The Flipper is not required for the backpack to detect intrusion, send alerts
+over LoRa, or protect itself.
+
 ### What Requires Custom Heltec Firmware
 
 | Feature | Stock Meshtastic | Requires Custom Module |
@@ -329,16 +339,16 @@ UART link using ChaCha20-Poly1305 (AEAD: encrypts + authenticates each frame).
 | Private channel config | ✅ via PhoneAPI | — |
 | Factory reset (nuke) | ✅ AdminMessage | — |
 | Disable beaconing | ✅ via config | — |
-| MAX17048 SOC | ❌ | Custom module |
-| Photoresistor threshold | ❌ | Custom module |
-| IR receiver decode | ❌ | Custom module |
-| HC-SR04 proximity | ❌ | Custom module |
+| Tilt switch tamper alert | ❌ | Custom module |
+| Photoresistor tamper alert | ❌ | Custom module |
+| IR receiver arm/disarm | ❌ | Custom module |
+| HC-SR04 proximity alert | ❌ | Custom module |
+| MAX17048 accurate SOC | ❌ | Custom module |
 | Jammer detection | ❌ | Custom module |
-| Vibration motor (Heltec) | ❌ | Custom module |
 | UART encryption | ❌ | Full custom firmware layer |
 
-Slide switch, tilt switch, buzzer, and vibration motor are on the **Flipper ProtoBoard** —
-no Heltec firmware needed for those.
+Slide switch (operator gate), buzzer, and vibration motor are on the **Flipper ProtoBoard**
+and require only FAP changes — no Heltec firmware.
 
 ---
 

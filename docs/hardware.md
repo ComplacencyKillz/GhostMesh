@@ -50,10 +50,16 @@ source the 200–500mA an ESP32-S3 draws under load. Only TX, RX, and GND are wi
 
 ### Heltec GPIO Allocation
 
+The Heltec is the **backpack brain** — it operates fully unattended. All sensors
+that need to function without the Flipper present are wired here and handled by
+custom Meshtastic modules.
+
 | GPIO | Status | Assigned to |
 |------|--------|-------------|
 | 1 | ❌ Battery ADC | Do not use for other analog inputs |
-| 5 | ✅ Free (ADC1_CH4) | Photoresistor (light tamper sensor) |
+| 2 | ✅ Free | SW-520D tilt switch (tamper — backpack moved/disturbed) |
+| 4 | ✅ Free | Slide switch (physical arm/disarm when deploying backpack) |
+| 5 | ✅ Free (ADC1_CH4) | Photoresistor (light tamper — case opened) |
 | 7 | ✅ Confirmed free | Reserve / available |
 | 8–14 | ❌ SX1262 LoRa SPI | NSS, SCK, MOSI, MISO, RST, BUSY, DIO1 |
 | 17 | ❌ I2C bus 1 SDA | OLED display (hardwired) |
@@ -69,13 +75,15 @@ source the 200–500mA an ESP32-S3 draws under load. Only TX, RX, and GND are wi
 | 43 | ❌ UART0 TX | Meshtastic PhoneAPI → Flipper |
 | 44 | ❌ UART0 RX | Meshtastic PhoneAPI ← Flipper |
 | 47 | ✅ Free | HC-SR04 Echo |
-| 48 | ✅ Free | IR receiver module |
+| 48 | ✅ Free | IR receiver (NEC decode — remote arm/disarm ~10m) |
 
 ---
 
 ## Sensor Bill of Materials
 
 ### Already Ordered / Confirmed
+
+**Heltec backpack sensors** — operate unattended, handled by custom Meshtastic modules:
 
 | Component | Interface | I2C Addr | Heltec GPIO | Phase |
 |-----------|-----------|----------|-------------|-------|
@@ -84,26 +92,34 @@ source the 200–500mA an ESP32-S3 draws under load. Only TX, RX, and GND are wi
 | BN-220 GPS module | UART1, 9600 baud | — | GPIO35 (RX), GPIO36 (TX) | 8 |
 | STEMMA QT 5-port passive hub | — | — | GPIO41/42 | 7 |
 | HC-SR04 ultrasonic sensor | Digital GPIO | — | GPIO21 (trig), GPIO47 (echo) | 11 |
-| SW-520D tilt switch | Digital GPIO | — | Flipper pin 16 | 10 |
-| Active buzzer | Digital GPIO | — | Flipper pin 5 (via PN2222) | 10 |
-| Coin vibration motor (3V) | Digital GPIO PWM | — | Flipper pin 6 (via AO3400) | 10 |
-| Slide switch (SPDT) | Digital GPIO | — | Flipper pin 15 | 10 |
-| AO3400 N-MOSFET (SOT-23) | — | — | Gate from Flipper pin 6 | 10 |
-| 1N4007 diode | — | — | Across vibration motor | 10 |
-| PN2222 NPN transistor | — | — | Base from Flipper pin 5 | 10 |
+| SW-520D tilt switch | Digital GPIO | — | GPIO2 | 10 |
+| Slide switch — backpack arm/disarm | Digital GPIO | — | GPIO4 | 10 |
+| Photoresistor (light tamper) | ADC | — | GPIO5 | 10 |
+| IR receiver (remote arm/disarm) | Digital GPIO | — | GPIO48 | 10 |
+
+**Flipper ProtoBoard** — operator-carried, handled by the FAP:
+
+| Component | Interface | Flipper Pin | Phase |
+|-----------|-----------|-------------|-------|
+| Slide switch — operator arming gate | Digital GPIO | 15 (PB2) | 10 |
+| Active buzzer | Digital GPIO via PN2222 | 5 (PA7) | 10 |
+| Coin vibration motor (3V) | Digital GPIO via AO3400 | 6 (PA6) | 10 |
+| AO3400 N-MOSFET (SOT-23) | — | Gate: pin 6 | 10 |
+| 1N4007 diode | — | Across motor | 10 |
+| PN2222 NPN transistor | — | Base: pin 5 | 10 |
 
 ### From Elegoo Super Starter Kit (relevant components)
 
-| Component | Use in GhostMesh | Phase |
-|-----------|-----------------|-------|
-| Photoresistor | Case-open / light tamper on Heltec GPIO5 | 10 |
-| IR receiver module | Covert remote arm/disarm on Heltec GPIO48 | 10 |
-| 1N4007 diode rectifier (2pcs) | Flyback protection for vibration motor | 10 |
-| PN2222 NPN transistor (2pcs) | Buzzer driver | 10 |
-| Active + passive buzzer (2pcs) | Audible alerts | 10 |
+| Component | Use in GhostMesh | Where | Phase |
+|-----------|-----------------|-------|-------|
+| Photoresistor | Light tamper — case opened | Heltec GPIO5 | 10 |
+| IR receiver module | Remote arm/disarm | Heltec GPIO48 | 10 |
+| 1N4007 diode rectifier (2pcs) | Flyback protection for vibration motor | Across motor | 10 |
+| PN2222 NPN transistor (2pcs) | Buzzer driver | Flipper ProtoBoard | 10 |
+| Active + passive buzzer (2pcs) | Audible operator alert | Flipper ProtoBoard | 10 |
 
-**Not used:** DHT11 (redundant — BME280 is strictly better), LCD 1602 (both devices have displays),
-stepper motor, servo, joystick, potentiometer, UNO R3, 7-segment displays.
+**Not used:** DHT11 (redundant — BME280 is strictly better), LCD 1602 (both devices have
+displays), stepper motor, servo, joystick, potentiometer, UNO R3, 7-segment displays.
 
 ### Connectivity Hardware
 
@@ -151,23 +167,52 @@ UART1 (GPIO35 RX / GPIO36 TX):
 
 ---
 
-## Communication Chain
+## System Architecture
 
 ```
-[Flipper Zero]
-      │
-      │ UART 115200 (PROTO + ASCII sentinels)
-      │
-[Heltec ESP32-S3]
-      ├── [SX1262 LoRa] ── 915 MHz mesh ── [Other Meshtastic nodes]
-      ├── [OLED] — Meshtastic display
-      ├── [BME280] — env telemetry via Meshtastic
-      ├── [MAX17048] — battery SOC via custom module
-      ├── [BN-220 GPS] — position via Meshtastic
-      ├── [HC-SR04] — proximity → PROX sentinel to Flipper
-      ├── [Photoresistor] — tamper → TAMPER_LIGHT sentinel to Flipper
-      └── [IR receiver] — covert remote → IR_ARM/IR_DISARM to Flipper
+┌─────────────────────────────────────────────────────────────────┐
+│  BACKPACK (left unattended at dead drop)                        │
+│                                                                 │
+│  [Heltec ESP32-S3 + Meshtastic]                                 │
+│    ├── [SX1262 LoRa] ──── 915 MHz mesh ──── [Other nodes]      │
+│    ├── [OLED]             Meshtastic display                    │
+│    ├── [BME280]           env telemetry — stock Meshtastic      │
+│    ├── [MAX17048]         battery SOC — custom module           │
+│    ├── [BN-220 GPS]       position — stock Meshtastic           │
+│    ├── [HC-SR04]          proximity → PERSON_DETECTED over LoRa │
+│    ├── [SW-520D tilt]     tamper → TAMPER alert over LoRa       │
+│    ├── [Photoresistor]    case-open tamper → alert over LoRa    │
+│    ├── [Slide switch]     physical arm/disarm on deployment     │
+│    └── [IR receiver]      remote arm/disarm ~10m (NEC remote)   │
+└─────────────────────────────────────────────────────────────────┘
+                              │ (when Flipper is connected)
+                              │ UART 115200
+                              │ PROTO frames + ASCII sentinels
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  OPERATOR (carried in the field)                                │
+│                                                                 │
+│  [Flipper Zero + GhostMesh FAP]                                 │
+│    ├── [Slide switch]     operator arming gate (nuke, etc.)     │
+│    ├── [Buzzer]           audible alert — incoming messages      │
+│    └── [Vibration motor]  haptic alert — incoming messages      │
+└─────────────────────────────────────────────────────────────────┘
 ```
+
+### What Requires Custom Meshtastic Firmware
+
+| Feature | Stock Meshtastic | Custom module needed |
+|---------|-----------------|---------------------|
+| BME280 env telemetry | ✅ built-in | — |
+| BN-220 GPS | ✅ built-in | — |
+| Private channels, nuke, stealth | ✅ AdminMessage | — |
+| HC-SR04 → LoRa alert | ❌ | Custom module |
+| Tilt switch → LoRa alert | ❌ | Custom module |
+| Photoresistor → LoRa alert | ❌ | Custom module |
+| IR receiver arm/disarm | ❌ | Custom module |
+| MAX17048 accurate SOC | ❌ | Custom module |
+| Jammer detection | ❌ | Custom module |
+| UART encryption | ❌ | Full custom firmware layer |
 
 ---
 
