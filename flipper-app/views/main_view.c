@@ -24,7 +24,7 @@ static void draw_profile_screen(Canvas* canvas, const MainViewState* s) {
     canvas_set_font(canvas, FontPrimary);
     canvas_draw_str(canvas, 2, 9, "GhostMesh");
     canvas_set_font(canvas, FontSecondary);
-    canvas_draw_str(canvas, 88, 9, s->uart_active ? "UART:OK" : "UART:ERR");
+    canvas_draw_str(canvas, 82, 9, s->uart_active ? "PROTO:RDY" : "PROTO:...");
     canvas_draw_line(canvas, 0, 11, 127, 11);
 
     canvas_set_font(canvas, FontSecondary);
@@ -60,7 +60,7 @@ static void draw_message_screen(Canvas* canvas, const MainViewState* s) {
     canvas_set_font(canvas, FontPrimary);
     canvas_draw_str(canvas, 2, 9, s->active_profile_name);
     canvas_set_font(canvas, FontSecondary);
-    canvas_draw_str(canvas, 88, 9, s->uart_active ? "UART:OK" : "UART:ERR");
+    canvas_draw_str(canvas, 82, 9, s->uart_active ? "PROTO:RDY" : "PROTO:...");
     canvas_draw_line(canvas, 0, 11, 127, 11);
 
     canvas_set_font(canvas, FontSecondary);

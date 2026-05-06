@@ -86,10 +86,22 @@ static bool skip_field(const uint8_t* buf, size_t len, size_t* pos, uint32_t wir
 
 // ── ToRadio encoder ───────────────────────────────────────────────────────────
 //
-// Encodes:
-//   ToRadio { packet: MeshPacket { to: 0xFFFFFFFF, decoded: Data {
-//     portnum: TEXT_MESSAGE_APP, payload: <text>
-//   }}}
+// Field numbers confirmed from meshtastic Python library serialization:
+//   MeshPacket.to        = field 2, fixed32 (wire type 5) — NOT field 3 varint
+//   MeshPacket.decoded   = field 4, bytes
+//   MeshPacket.hop_limit = field 9, varint               — NOT field 13
+
+static size_t write_fixed32_field(uint8_t* out, uint32_t field, uint32_t value) {
+    size_t n = 0;
+    // Wire type 5 = 32-bit fixed
+    n += write_varint(PB_TAG(field, 5), out + n);
+    // Little-endian 4 bytes
+    out[n++] = (uint8_t)(value);
+    out[n++] = (uint8_t)(value >> 8);
+    out[n++] = (uint8_t)(value >> 16);
+    out[n++] = (uint8_t)(value >> 24);
+    return n;
+}
 
 size_t proto_encode_text(const char* text, uint8_t* out, size_t out_max) {
     uint8_t data_buf[96];
@@ -105,9 +117,10 @@ size_t proto_encode_text(const char* text, uint8_t* out, size_t out_max) {
     dl += write_varint_field(data_buf + dl, 1, PORTNUM_TEXT_MESSAGE);
     dl += write_bytes_field(data_buf + dl, 2, (const uint8_t*)text, text_len);
 
-    // MeshPacket { to=0xFFFFFFFF, decoded=Data }
-    ml += write_varint_field(mesh_buf + ml, 3, MESH_BROADCAST_ADDR);
+    // MeshPacket { to=0xFFFFFFFF (field 2, fixed32), decoded=Data, hop_limit=3 }
+    ml += write_fixed32_field(mesh_buf + ml, 2, MESH_BROADCAST_ADDR);
     ml += write_bytes_field(mesh_buf + ml, 4, data_buf, dl);
+    ml += write_varint_field(mesh_buf + ml, 9, 3);  // hop_limit = 3
 
     // ToRadio { packet=MeshPacket }
     rl += write_bytes_field(radio_buf, 1, mesh_buf, ml);
@@ -167,10 +180,19 @@ static void decode_mesh_packet(const uint8_t* buf, size_t len,
         uint32_t field = (uint32_t)(tag >> 3);
         uint32_t wire  = (uint32_t)(tag & 0x7);
 
-        if(wire == PB_WIRE_VARINT) {
+        if(wire == 5) {  // fixed32 — from (field 1) and to (field 2) are fixed32
+            if(pos + 4 > len) break;
+            if(field == 1) {  // MeshPacket.from = field 1, fixed32
+                *from_out = (uint32_t)buf[pos]
+                          | ((uint32_t)buf[pos+1] << 8)
+                          | ((uint32_t)buf[pos+2] << 16)
+                          | ((uint32_t)buf[pos+3] << 24);
+            }
+            pos += 4;
+        } else if(wire == PB_WIRE_VARINT) {
             uint64_t val;
             if(!read_varint(buf, len, &pos, &val)) break;
-            if(field == 2) *from_out = (uint32_t)val;  // from
+            UNUSED(val);
         } else if(wire == PB_WIRE_BYTES) {
             uint64_t blen;
             if(!read_varint(buf, len, &pos, &blen)) break;
@@ -202,10 +224,16 @@ typedef enum {
     PROTO_RX_PAYLOAD,
 } ProtoRxState;
 
+// want_config_id nonce — any non-zero uint32; we match it in config_complete_id
+#define PROTO_NONCE 42u
+
 struct ProtoMode {
     UartHelper*    uart;
     ProtoRxCallback rx_cb;
     void*          rx_ctx;
+
+    // True once config_complete_id is received — only then will we send packets
+    bool           connected;
 
     // Framing state machine
     ProtoRxState   rx_state;
@@ -257,12 +285,18 @@ static void on_rx_byte(uint8_t byte, void* ctx) {
                 uint32_t field = (uint32_t)(tag >> 3);
                 uint32_t wire  = (uint32_t)(tag & 0x7);
 
-                if(wire == PB_WIRE_BYTES) {
+                if(wire == PB_WIRE_VARINT) {
+                    uint64_t val;
+                    if(!read_varint(buf, len, &pos, &val)) break;
+                    // FromRadio.config_complete_id = field 7
+                    if(field == 7 && (uint32_t)val == PROTO_NONCE)
+                        p->connected = true;
+                } else if(wire == PB_WIRE_BYTES) {
                     uint64_t blen;
                     if(!read_varint(buf, len, &pos, &blen)) break;
                     if(pos + blen > len) break;
 
-                    if(field == 3 && p->rx_cb) {  // FromRadio.packet = MeshPacket
+                    if(field == 2 && p->rx_cb) {  // FromRadio.packet = MeshPacket (field 2)
                         uint32_t from_node = 0;
                         const uint8_t* text = NULL;
                         size_t text_len = 0;
@@ -293,6 +327,26 @@ static void on_rx_byte(uint8_t byte, void* ctx) {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
+// Send ToRadio { want_config_id: PROTO_NONCE } — field 3, uint32.
+// Confirmed field number from meshtastic Python library:
+//   ToRadio(want_config_id=42).SerializeToString() == b'\x18\x2a'
+//   -> tag 0x18 = (3<<3)|0 = field 3, varint
+static void send_want_config_id(ProtoMode* p) {
+    // Payload: field 3 varint tag (0x18) + varint(PROTO_NONCE)
+    uint8_t payload[8];
+    size_t pl = 0;
+    pl += write_varint(PB_TAG(3, PB_WIRE_VARINT), payload + pl);
+    pl += write_varint(PROTO_NONCE, payload + pl);
+
+    uint8_t pkt[12];
+    pkt[0] = 0x94;
+    pkt[1] = 0xC3;
+    pkt[2] = (pl >> 8) & 0xFF;
+    pkt[3] = pl & 0xFF;
+    memcpy(pkt + 4, payload, pl);
+    uart_helper_send_bytes(p->uart, pkt, 4 + pl);
+}
+
 ProtoMode* proto_mode_alloc(uint32_t baud, ProtoRxCallback rx_cb, void* context) {
     ProtoMode* p = malloc(sizeof(ProtoMode));
     if(!p) return NULL;
@@ -306,6 +360,11 @@ ProtoMode* proto_mode_alloc(uint32_t baud, ProtoRxCallback rx_cb, void* context)
         free(p);
         return NULL;
     }
+
+    // Trigger the config handshake immediately. The node will respond with
+    // its full config and finally config_complete_id, after which
+    // proto_mode_send_text() will be unblocked.
+    send_want_config_id(p);
     return p;
 }
 
@@ -319,8 +378,12 @@ bool proto_mode_is_active(const ProtoMode* p) {
     return p && uart_helper_is_active(p->uart);
 }
 
+bool proto_mode_is_connected(const ProtoMode* p) {
+    return p && p->connected;
+}
+
 size_t proto_mode_send_text(ProtoMode* p, const char* text) {
-    if(!p || !text) return 0;
+    if(!p || !text || !p->connected) return 0;
     uint8_t buf[300];
     size_t len = proto_encode_text(text, buf, sizeof(buf));
     if(len == 0) return 0;

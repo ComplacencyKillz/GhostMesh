@@ -192,7 +192,8 @@ int32_t ghostmesh_app(void* p) {
 
     while(app->running) {
         state.screen           = app->screen;
-        state.uart_active      = proto_mode_is_active(app->proto);
+        // Show PROTO:RDY once handshake completes, PROTO:... while connecting
+        state.uart_active      = proto_mode_is_connected(app->proto);
         state.profile_selected = app->profile_sel;
         state.profile_scroll   = app->profile_scroll;
 

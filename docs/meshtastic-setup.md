@@ -31,7 +31,7 @@
 |---------|-------|
 | Enabled | On |
 | Echo | Off |
-| Mode | **DEFAULT** (this is PROTO mode) |
+| Mode | **PROTO** |
 | Baud Rate | **115200** |
 | Timeout | 0 (default) |
 | RX | **7** (Flipper TX wire — GPIO7 on top row) |

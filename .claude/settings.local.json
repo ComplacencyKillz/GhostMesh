@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s https://raw.githubusercontent.com/meshtastic/firmware/master/src/modules/SerialModule.cpp)",
+      "Read(//tmp/**)",
+      "Bash(curl -s \"https://api.github.com/repos/meshtastic/firmware/git/trees/master?recursive=1\")",
+      "Bash(curl -s https://raw.githubusercontent.com/meshtastic/firmware/master/src/mesh/api/StreamAPI.h)",
+      "Bash(curl -s https://raw.githubusercontent.com/meshtastic/firmware/master/src/mesh/api/StreamAPI.cpp)",
+      "Bash(curl -s https://raw.githubusercontent.com/meshtastic/firmware/master/src/mesh/StreamAPI.h)",
+      "Bash(curl -s https://raw.githubusercontent.com/meshtastic/firmware/master/src/mesh/StreamAPI.cpp)",
+      "Bash(curl -s https://raw.githubusercontent.com/meshtastic/firmware/master/src/mesh/PhoneAPI.h)",
+      "Bash(curl -s https://raw.githubusercontent.com/meshtastic/firmware/master/src/mesh/PhoneAPI.cpp)",
+      "Bash(curl -s \"https://raw.githubusercontent.com/meshtastic/firmware/master/src/mesh/PhoneAPI.cpp\")",
+      "WebFetch(domain:raw.githubusercontent.com)"
+    ]
+  }
+}
