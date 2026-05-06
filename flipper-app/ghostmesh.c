@@ -31,7 +31,7 @@ typedef struct {
     volatile bool rx_updated;
 
     // RX history ring buffer — newest entry at index 0; only written from main loop
-    char rx_history_lines[RX_HISTORY_MAX][48];
+    char rx_history_lines[RX_HISTORY_MAX][84];
     uint8_t rx_history_count;
     uint8_t rx_history_scroll;
 
@@ -263,27 +263,26 @@ int32_t ghostmesh_app(void* p) {
             DateTime dt;
             furi_hal_rtc_get_datetime(&dt);
 
-            // Pre-truncate to a fixed-size local so GCC can prove no overflow.
-            char disp[28];
-            strncpy(disp, app->rx_text_buf, sizeof(disp) - 1);
-            disp[sizeof(disp) - 1] = '\0';
-
-            // Status bar: simple sender: message (no RSSI — see history screen)
+            // Status bar: sender + full message text (marquee scrolls it)
+            // rx_text_buf is char[64], max strlen 63; %.68s is capped by source.
             snprintf(state.last_rx, sizeof(state.last_rx),
-                     "%.7s: %s", app->rx_sender, disp);
+                     "%.7s: %.68s", app->rx_sender, app->rx_text_buf);
             state.last_rx[sizeof(state.last_rx) - 1] = '\0';
 
-            // History entry: full detail — sender, RSSI, message
+            // History entry: full sender + RSSI + full message, no pre-truncation.
+            // rssi_str[7] covers all int16_t values ("-32768" = 6 chars + null).
             if(app->rx_history_count < RX_HISTORY_MAX)
                 app->rx_history_count++;
             memmove(&app->rx_history_lines[1], &app->rx_history_lines[0],
                     (app->rx_history_count - 1) * sizeof(app->rx_history_lines[0]));
             if(app->rx_rssi != 0) {
+                char rssi_str[7];
+                snprintf(rssi_str, sizeof(rssi_str), "%d", (int)app->rx_rssi);
                 snprintf(app->rx_history_lines[0], sizeof(app->rx_history_lines[0]),
-                         "%.7s %ddBm: %s", app->rx_sender, (int)app->rx_rssi, disp);
+                         "%.7s %sdBm: %.62s", app->rx_sender, rssi_str, app->rx_text_buf);
             } else {
                 snprintf(app->rx_history_lines[0], sizeof(app->rx_history_lines[0]),
-                         "%.7s: %s", app->rx_sender, disp);
+                         "%.7s: %.73s", app->rx_sender, app->rx_text_buf);
             }
 
             log_rx_message(app->rx_sender, app->rx_text_buf, app->rx_rssi, app->rx_snr, &dt);

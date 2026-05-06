@@ -34,7 +34,7 @@ typedef struct {
     uint8_t selected_index;
     uint8_t scroll_offset;
     char active_profile_name[GHOSTMESH_PROFILE_NAME_LEN];
-    char last_rx[48];
+    char last_rx[80];
     bool show_feedback;
     char sent_message[24];
 

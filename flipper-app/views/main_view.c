@@ -10,12 +10,29 @@
 #define ROW_H         10
 #define LIST_Y        12
 
-// Marquee parameters (all times in 200 ms ticks)
-#define SCROLL_SPEED  3   // advance 1 char every 3 ticks (~600 ms per char)
-#define SCROLL_PAUSE  5   // hold at start for 5 positions before scrolling
-#define TITLE_CHARS  10   // chars that fit in the FontPrimary title area
-#define LIST_CHARS   20   // chars that fit in a FontSecondary list row
-#define STATUS_CHARS 20   // chars that fit in the FontSecondary status bar
+// ── Marquee constants ─────────────────────────────────────────────────────────
+//
+// TITLE_CHARS: visible chars in the FontPrimary title region (x=2 to x=~99).
+//   FontPrimary averages ~9 px/char; 11 chars × 9 px = 99 px, safely before
+//   the status label that starts at x=107.
+//
+// LIST_CHARS / STATUS_CHARS: conservative visible-char estimate for FontSecondary
+//   list rows and the status bar.  Erring small ensures scrolling goes far
+//   enough to reveal the full string even with wide characters.
+//
+// SCROLL_SPEED: ticks per character advance (1 tick ≈ 200 ms → ~400 ms/char).
+// SCROLL_PAUSE: ticks to hold at the start before the slide begins.
+
+#define TITLE_CHARS   11   // hard clip: prevents title spilling into status label
+#define LIST_CHARS    20   // scroll window for list rows — canvas clips the rest naturally
+#define STATUS_CHARS  20   // scroll window for status bar — same
+#define SCROLL_SPEED   2
+#define SCROLL_PAUSE   4
+
+// Short status labels that leave room for the title on the same line.
+#define STATUS_RDY  "RDY"
+#define STATUS_WAIT "..."
+#define STATUS_X    107u   // x position of the status label
 
 struct MainView {
     ViewPort* view_port;
@@ -27,20 +44,31 @@ struct MainView {
 
 // ── Marquee helper ────────────────────────────────────────────────────────────
 //
-// Returns a pointer into s offset so that at most max_chars are needed to fill
-// the display area. When the string fits, returns s unchanged. When it's too
-// long, cycles through: pause at start → slide left one char at a time → wrap.
+// Returns a pointer into s offset so that the window [ptr, ptr+max_chars)
+// slides from the beginning to the end of s.  When the string fits, s is
+// returned unchanged.
+//
+// Cycle: SCROLL_PAUSE ticks at offset 0 → advance one char every SCROLL_SPEED
+// ticks until the last max_chars are visible → wrap.
 
-static const char* scrolled(const char* s, uint8_t tick, uint8_t max_chars) {
+static const char* marquee(const char* s, uint8_t tick, uint8_t max_chars) {
     if(!s || !*s) return "";
     size_t len = strlen(s);
     if(len <= (size_t)max_chars) return s;
-    // over: how many chars need to slide past the left edge before the end is visible
     uint8_t over   = (uint8_t)(len - (size_t)max_chars);
     uint8_t period = (uint8_t)(over + SCROLL_PAUSE + 1);
     uint8_t phase  = (uint8_t)((tick / SCROLL_SPEED) % period);
     uint8_t offset = (phase < SCROLL_PAUSE) ? 0 : (uint8_t)(phase - SCROLL_PAUSE);
     return s + offset;
+}
+
+// Copy at most max_chars chars from src into dst (dst must be max_chars+1 bytes).
+// Always null-terminates.  Used so canvas_draw_str never renders past the clip
+// boundary we intend — canvas has no clip-rect primitive.
+
+static void copy_window(char* dst, const char* src, uint8_t max_chars) {
+    strncpy(dst, src, max_chars);
+    dst[max_chars] = '\0';
 }
 
 // ── Profile selection draw ───────────────────────────────────────────────────
@@ -49,7 +77,7 @@ static void draw_profile_screen(Canvas* canvas, const MainViewState* s) {
     canvas_set_font(canvas, FontPrimary);
     canvas_draw_str(canvas, 2, 9, "GhostMesh");
     canvas_set_font(canvas, FontSecondary);
-    canvas_draw_str(canvas, 82, 9, s->uart_active ? "PROTO:RDY" : "PROTO:...");
+    canvas_draw_str(canvas, STATUS_X, 9, s->uart_active ? STATUS_RDY : STATUS_WAIT);
     canvas_draw_line(canvas, 0, 11, 127, 11);
 
     canvas_set_font(canvas, FontSecondary);
@@ -61,7 +89,8 @@ static void draw_profile_screen(Canvas* canvas, const MainViewState* s) {
 
         uint8_t row_y = LIST_Y + (uint8_t)(i * ROW_H);
         bool sel = (idx == s->profile_selected);
-        const char* name = scrolled(s->profile_names[idx], s->scroll_tick, LIST_CHARS);
+
+        const char* name = marquee(s->profile_names[idx], s->scroll_tick, LIST_CHARS);
 
         if(sel) {
             canvas_set_color(canvas, ColorBlack);
@@ -82,11 +111,14 @@ static void draw_profile_screen(Canvas* canvas, const MainViewState* s) {
 // ── Message list draw ────────────────────────────────────────────────────────
 
 static void draw_message_screen(Canvas* canvas, const MainViewState* s) {
+    // Title: profile name (scrolling, hard-clipped) + compact status label
+    char title[TITLE_CHARS + 1];
+    copy_window(title, marquee(s->active_profile_name, s->scroll_tick, TITLE_CHARS),
+                TITLE_CHARS);
     canvas_set_font(canvas, FontPrimary);
-    canvas_draw_str(canvas, 2, 9,
-                    scrolled(s->active_profile_name, s->scroll_tick, TITLE_CHARS));
+    canvas_draw_str(canvas, 2, 9, title);
     canvas_set_font(canvas, FontSecondary);
-    canvas_draw_str(canvas, 82, 9, s->uart_active ? "PROTO:RDY" : "PROTO:...");
+    canvas_draw_str(canvas, STATUS_X, 9, s->uart_active ? STATUS_RDY : STATUS_WAIT);
     canvas_draw_line(canvas, 0, 11, 127, 11);
 
     canvas_set_font(canvas, FontSecondary);
@@ -98,7 +130,8 @@ static void draw_message_screen(Canvas* canvas, const MainViewState* s) {
 
         uint8_t row_y = LIST_Y + (uint8_t)(i * ROW_H);
         bool sel = (idx == s->selected_index);
-        const char* msg = scrolled(s->messages[idx], s->scroll_tick, LIST_CHARS);
+
+        const char* msg = marquee(s->messages[idx], s->scroll_tick, LIST_CHARS);
 
         if(sel) {
             canvas_set_color(canvas, ColorBlack);
@@ -126,18 +159,16 @@ static void draw_message_screen(Canvas* canvas, const MainViewState* s) {
     canvas_draw_line(canvas, 0, sep_y, 127, sep_y);
 
     if(s->show_feedback) {
-        char status[48];
-        snprintf(status, sizeof(status), "Sent: %.22s", s->sent_message);
-        canvas_draw_str(canvas, 2, 63, status);
+        char fb[24];
+        snprintf(fb, sizeof(fb), "Sent: %.17s", s->sent_message);
+        canvas_draw_str(canvas, 2, 63, fb);
     } else if(s->last_rx[0]) {
-        canvas_draw_str(canvas, 2, 63,
-                        scrolled(s->last_rx, s->scroll_tick, STATUS_CHARS));
+        canvas_draw_str(canvas, 2, 63, marquee(s->last_rx, s->scroll_tick, STATUS_CHARS));
     } else {
-        char status[48];
-        // LOW-3: rx_bytes was always 0 in PROTO mode; show TX + send hint instead.
-        snprintf(status, sizeof(status), "TX:%lu  [OK] Send",
-                 (unsigned long)s->tx_bytes);
-        canvas_draw_str(canvas, 2, 63, status);
+        char hint[32];
+        // LOW-3: rx_bytes always 0 in PROTO mode; show TX count + send hint.
+        snprintf(hint, sizeof(hint), "TX:%lu  [OK] Send", (unsigned long)s->tx_bytes);
+        canvas_draw_str(canvas, 2, 63, hint);
     }
 }
 
@@ -147,7 +178,7 @@ static void draw_rx_history_screen(Canvas* canvas, const MainViewState* s) {
     canvas_set_font(canvas, FontPrimary);
     canvas_draw_str(canvas, 2, 9, "RX History");
     canvas_set_font(canvas, FontSecondary);
-    canvas_draw_str(canvas, 82, 9, s->uart_active ? "PROTO:RDY" : "PROTO:...");
+    canvas_draw_str(canvas, STATUS_X, 9, s->uart_active ? STATUS_RDY : STATUS_WAIT);
     canvas_draw_line(canvas, 0, 11, 127, 11);
 
     canvas_set_font(canvas, FontSecondary);
@@ -160,8 +191,9 @@ static void draw_rx_history_screen(Canvas* canvas, const MainViewState* s) {
             uint8_t idx = s->history_scroll + i;
             if(idx >= s->history_count) break;
             uint8_t row_y = LIST_Y + (uint8_t)(i * ROW_H);
+
             canvas_draw_str(canvas, 4, (uint8_t)(row_y + ROW_H - 2),
-                            scrolled(s->history_lines[idx], s->scroll_tick, LIST_CHARS));
+                            marquee(s->history_lines[idx], s->scroll_tick, LIST_CHARS));
         }
 
         if(s->history_count > rows) {
