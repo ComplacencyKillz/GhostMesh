@@ -70,6 +70,16 @@ print(mp.SerializeToString().hex())   # → 15 ff ff ff ff (field 2, fixed32)
 
 ---
 
+## UART Callback Context
+
+`furi_hal_serial_async_rx_start` fires its callback from the UART ISR, not from a worker thread. This means the RX callback chain (`uart_internal_rx_cb` → `on_rx_byte` → `on_rx_text`) runs in interrupt context. Consequences:
+
+- **Do not call `furi_mutex_acquire` from `on_rx_text`.** FuriMutex is backed by FreeRTOS mutexes, which cannot be taken from ISR context. Attempting this causes every receive to silently fail.
+- `rx_updated` in `GhostMeshApp` is declared `volatile bool` so the main loop sees writes from the ISR without the compiler caching the value in a register. This is the correct ISR-safe signaling primitive for a single-producer/single-consumer flag on Cortex-M4.
+- The `rx_display` char array is written from ISR and read from the main loop. A torn read is theoretically possible but harmless for a display string; the next update overwrites it.
+
+---
+
 ## Known Limitations
 
 - Only `TEXT_MESSAGE_APP` packets are decoded on receive. Other portnums (telemetry, position, admin) are decoded but not surfaced to the UI yet.
