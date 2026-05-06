@@ -128,6 +128,110 @@ This matches the Meshtastic serial module default. If you change it on either si
 
 ---
 
+## Sensor Wiring (Phases 7–11)
+
+All sensor connections are independent of the Flipper–Heltec UART link.
+Wire sensors after the base UART connection is confirmed working.
+
+### Heltec I2C Sensor Bus (GPIO41 SDA / GPIO42 SCL)
+
+Connect the STEMMA QT 5-port passive hub to the Heltec GPIO41/42 header pins.
+Then daisy-chain sensors via Qwiic cables from the hub.
+
+```
+Heltec GPIO41 (SDA) ──► STEMMA QT hub port 1 (any port)
+Heltec GPIO42 (SCL) ──► STEMMA QT hub port 1
+
+Hub port 2 ──► BME280 Qwiic in
+Hub port 3 ──► MAX17048 Qwiic in
+
+MAX17048 JST-PH 2-pin ──► Heltec battery JST-PH 2-pin
+                           (T-junction or dedicated tap — do not disconnect Heltec battery)
+```
+
+**I2C addresses:** BME280=0x76, MAX17048=0x36, OLED=0x3C (bus 1 only). No conflicts.
+
+Do NOT connect sensors to GPIO17/18 — that is the OLED bus and is hardwired to the board.
+
+### BN-220 GPS (Heltec UART1 — GPIO35/36)
+
+```
+BN-220 TX  ──► Heltec GPIO35   (UART1 RX)
+BN-220 RX  ──► Heltec GPIO36   (UART1 TX — optional, only needed to reconfigure GPS)
+BN-220 VCC ──► Heltec 3.3V rail via GPIO26 Vext enable
+BN-220 GND ──► Heltec GND
+```
+
+GPIO26 (Vext) controls the Heltec's external 3.3V rail. Drive GPIO26 HIGH in firmware to
+power the GPS. Leave LOW when GPS is not needed to save battery. Cold-start acquisition:
+30–90 seconds. Always-on draws 20–40mA.
+
+### HC-SR04 Ultrasonic (Heltec GPIO21/47)
+
+```
+HC-SR04 Trig ──► Heltec GPIO21
+HC-SR04 Echo ──► Heltec GPIO47
+HC-SR04 VCC  ──► 5V (from USB pin when USB-powered) or 3.3V (verify your module)
+HC-SR04 GND  ──► Heltec GND
+```
+
+**Voltage note:** Standard HC-SR04 requires 5V for full 4m range. The Heltec 5V pin is
+only live when USB is connected. If operating on battery only, use a 3.3V-tolerant clone
+(verify the data sheet for your specific module) or add a small boost converter.
+Verify GPIO21 is free on your board revision before soldering.
+
+### Photoresistor / Light Tamper (Heltec GPIO5 ADC)
+
+```
+Photoresistor leg 1 ──► Heltec 3.3V
+Photoresistor leg 2 ──► Heltec GPIO5  AND  10kΩ resistor to GND (voltage divider)
+```
+
+GPIO5 is ADC1_CH4 on ESP32-S3. Do not use GPIO1 — it is reserved for the battery ADC.
+
+### IR Receiver (Heltec GPIO48)
+
+```
+IR module signal pin ──► Heltec GPIO48
+IR module VCC        ──► Heltec 3.3V
+IR module GND        ──► Heltec GND
+```
+
+Standard NEC protocol receiver (3-pin module from Elegoo kit). Active-low output.
+
+### Flipper ProtoBoard — Sensors and Actuators
+
+```
+Slide switch (SPDT):
+  Common ──► Flipper pin 15 (PB2)
+  NO     ──► Flipper 3.3V (pin 2)
+  NC     ──► GND (or leave open)
+  Add 10kΩ pull-down from pin 15 to GND.
+
+SW-520D tilt switch:
+  Pin 1 ──► Flipper pin 16 (PB3)
+  Pin 2 ──► Flipper 3.3V (pin 2)
+  Add 10kΩ pull-down from pin 16 to GND.
+
+Active buzzer (via PN2222):
+  Flipper pin 5 (PA7) ──► 1kΩ ──► PN2222 base
+  PN2222 collector    ──► Buzzer negative terminal
+  PN2222 emitter      ──► GND
+  Buzzer positive     ──► Flipper 3.3V (pin 2)
+
+Coin vibration motor (via AO3400 MOSFET + 1N4007 flyback):
+  Flipper pin 6 (PA6) ──► 100Ω ──► AO3400 gate
+  AO3400 drain        ──► Motor negative terminal
+  AO3400 source       ──► GND
+  Motor positive      ──► Flipper 3.3V (pin 2)
+  1N4007 anode        ──► Motor negative (drain side)
+  1N4007 cathode      ──► Motor positive (3.3V side)
+  The 1N4007 flyback diode is mandatory — without it the motor's back-EMF
+  spike will damage the MOSFET and potentially the Flipper GPIO.
+```
+
+---
+
 ## Troubleshooting
 
 | Symptom | Likely Cause | Fix |

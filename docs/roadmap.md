@@ -22,7 +22,7 @@ Compilable FAP proving the UART communication path.
 
 Scrollable menu of canned messages replacing the byte-counter display.
 
-- UP/DOWN navigates 10 messages, hold for repeat scroll
+- UP/DOWN navigates messages, hold for repeat scroll
 - OK sends selected message
 - 2-second "Sent:" feedback banner
 - Incoming mesh text displayed in status bar
@@ -48,9 +48,10 @@ Capture received message metadata for post-session analysis.
 - [x] Log received messages to `SD:/apps_data/ghostmesh/log_YYYYMMDD.csv`
 - [x] CSV fields: timestamp, node_id, message, rssi, snr
 - [x] `tools/log_to_kml.py` converts CSV with lat/lon fields to KML
-- [x] RSSI and SNR decoded from `MeshPacket` (fields 12 and 8) and shown in status bar
-- [x] Last-seen info in status bar: `sender rssi: message` on each receive
-- [ ] Optional: Flipper GPS module integration for lat/lon columns (hardware dependent)
+- [x] RSSI and SNR decoded from `MeshPacket` (fields 12 and 8) and shown in history screen
+- [x] RX history screen (long-press Down): last 16 messages with full sender/RSSI/text
+- [x] Marquee scrolling on all text regions that exceed display width
+- [ ] Optional: Flipper GPS module integration for lat/lon columns (superseded by Phase 8)
 
 ---
 
@@ -71,15 +72,273 @@ Full Meshtastic PROTO protocol — hand-coded protobuf encoder/decoder, no exter
 
 ---
 
-## Phase 6 — Red Team Lab Features (Future)
+## Phase 6 — Security Baseline ⏳
 
-Authorized lab use cases documented in `docs/red-team-lab-use-cases.md`.
+Software-only phase. No new hardware required. Establishes the burn-proof protocol.
 
-- Remote action trigger framework (lab-only, benign payloads, local arming required)
-- Dead-drop health monitor (node ping, battery status, last-seen via PROTO telemetry)
-- Quiet field diagnostics mode (reduced display, SD logging)
+### 6.1 Nuke Button
+Send `AdminMessage { factory_reset: true }` via the existing PROTO PhoneAPI connection.
+Meshtastic processes this natively — wipes all AES channel keys and reboots. No custom
+Heltec firmware needed.
 
-These require Phase 4 completion and a stable hardware platform.
+- [ ] New protobuf encode path in `proto_mode.c` for AdminMessage
+- [ ] Dedicated Nuke screen in FAP (long-press OK + confirm, or dedicated key combo)
+- [ ] Gate: nuke only executes if slide switch pin reads HIGH (implement check now even before hardware arrives — pin reads LOW by default, safe)
+- [ ] Single red LED blink on the Heltec's onboard LED confirms wipe from a distance
+
+### 6.2 Private Channel Key Generation
+Use Flipper's hardware RNG to generate a cryptographically secure 256-bit channel key and
+configure it on the Heltec without ever typing it manually.
+
+- [ ] `furi_hal_random_fill_buf(key, 32)` → Base64 encode
+- [ ] Send `AdminMessage { set_channel }` with generated key via PROTO
+- [ ] Display key fingerprint (first 8 chars) for out-of-band verification with squad
+
+### 6.3 Stealth Mode
+Single FAP toggle sends a sequence of config packets to minimize the node's RF footprint.
+
+- [ ] Set device role to ROUTER (node relays but does not initiate NodeInfo beacons)
+- [ ] Disable GPS position broadcasting
+- [ ] Disable device metrics telemetry beaconing
+- [ ] Disable Heltec OLED and status LEDs (node goes dark)
+- [ ] Stealth indicator in FAP title bar
+
+### 6.4 Private Channel Setup Documentation
+- [ ] `docs/opsec.md`: default channel warning (AQ== key = public), channel setup workflow,
+  recommended device role configurations for different operational scenarios
+
+---
+
+## Phase 7 — Environmental Telemetry ⏳
+
+**New hardware:** BME280 (I2C) + STEMMA QT 5-port passive hub
+
+Wire BME280 to Heltec I2C bus 2 (SDA=GPIO41, SCL=GPIO42) via the Adafruit hub. Enable
+"Environment Telemetry" in Meshtastic Module Config. No custom Heltec firmware needed —
+BME280 support is built into Meshtastic 2.7.x.
+
+- [ ] Hardware: solder Qwiic cables BME280 → hub → Heltec GPIO41/42 header pins
+- [ ] FAP: decode `Telemetry` FromRadio packet type (new in `proto_mode.c`)
+  - Fields: temperature (float), relative_humidity (float), barometric_pressure (float)
+- [ ] Display: sensor row in RX history or dedicated Sensor screen (new GhostMeshScreen)
+- [ ] CSV log: add temp_c, humidity_pct, pressure_hpa columns
+- [ ] RF ducting prediction: if humidity > 80% and ΔP trending positive → "DUCTING" indicator
+  in status bar (exceptional LoRa propagation conditions)
+
+---
+
+## Phase 8 — GPS + Wardriving ⏳
+
+**New hardware:** BN-220 GPS module
+
+Wire BN-220 to Heltec UART1 (GPIO35=RX, GPIO36=TX). Power GPS via Heltec GPIO26 (Vext
+enable pin — software power gating for GPS-on-demand to save battery). Configure
+"External GPS" in Meshtastic Module Config. No custom Heltec firmware needed.
+
+**GPS power note:** The BN-220 draws 20–40mA continuously. Use GPIO26 (Vext) as a
+software-controlled power switch. Enable GPS only when wardriving or when position logging
+is explicitly armed. Cold-start fix time: 30–90 seconds. Hot-start: ~1 second.
+
+- [ ] Hardware: BN-220 TX → GPIO35, BN-220 VCC → Heltec 3.3V rail via Vext
+- [ ] Meshtastic config: UART1, pins 35/36, 9600 baud, GPS module enabled
+- [ ] FAP: decode `Position` FromRadio packet (lat/lon/alt/timestamp)
+- [ ] FAP: decode `NodeInfo` FromRadio packet (node ID, long name, short name)
+- [ ] CSV: lat_deg, lon_deg, alt_m columns now populated → `log_to_kml.py` gets real positions
+- [ ] Wardriving mode: dedicated FAP screen, captures NodeInfo from all reachable nodes
+  (default channel), logs [timestamp, node_id, user, lat, lon, rssi, snr] to separate
+  `wardrive_YYYYMMDD.csv`; KML export shows signal heatmap
+
+---
+
+## Phase 9 — Battery Intelligence ⏳
+
+**New hardware:** Adafruit MAX17048 fuel gauge (I2C, Qwiic)
+
+Wire MAX17048 to the same Qwiic hub as BME280. I2C address 0x36 — no conflict with
+BME280 (0x76) or OLED (0x3C on bus 1). Requires a small custom Meshtastic module
+(one .cpp file) that reads SOC from MAX17048 and injects it into the existing
+`device_metrics.battery_level` field in the telemetry stream.
+
+- [ ] Hardware: MAX17048 Qwiic → hub → GPIO41/42; JST-PH 2-pin → Heltec battery connector
+- [ ] Custom Meshtastic module: `MAX17048Module.cpp` reads I2C SOC %, writes to device_metrics
+- [ ] FAP: parse battery_level from device_metrics telemetry (Phase 7 infra handles the rest)
+- [ ] UI: persistent battery % indicator next to RDY/... in title bar
+- [ ] Fallback: standard Meshtastic ADC battery level works until custom module is built
+
+---
+
+## Phase 10 — Physical Controls & Alerting ⏳
+
+**New hardware (Flipper ProtoBoard):** slide switch, SW-520D tilt switch, active buzzer,
+vibration motor (via AO3400 MOSFET + 1N4007 flyback diode), PN2222 transistor for buzzer.
+
+**New hardware (Heltec side):** photoresistor on GPIO5 ADC, IR receiver on GPIO48.
+
+Heltec-side sensors communicate to Flipper via simple ASCII sentinel strings over the
+existing UART connection (hybrid architecture: PROTO for mesh data, ASCII for local
+sensor events). Requires custom Meshtastic module on Heltec.
+
+### Flipper ProtoBoard GPIO assignments
+
+| Flipper Pin | Component | Notes |
+|-------------|-----------|-------|
+| 15 (PB2) | Slide switch | Physical arming gate |
+| 16 (PB3) | SW-520D tilt switch | Tamper detection |
+| 5 (PA7) | Buzzer via PN2222 | Audible alerts |
+| 6 (PA6) | Vibration motor via AO3400 + 1N4007 | Haptic alerts |
+
+### Heltec GPIO assignments
+
+| Heltec GPIO | Component | Notes |
+|-------------|-----------|-------|
+| 5 (ADC) | Photoresistor | Case-open / light tamper |
+| 48 | IR receiver (NEC protocol) | Covert remote arm/disarm |
+
+### Implementation
+
+- [ ] FAP: read slide switch (pin 15) — arming gate for nuke and all destructive actions
+- [ ] FAP: read tilt switch (pin 16) — on trigger: buzzer immediate; if armed → nuke
+- [ ] FAP: drive buzzer (pin 5) on RX message, tamper event, and send confirmation
+- [ ] FAP: drive vibration motor (pin 6) on RX message and send confirmation
+- [ ] Heltec custom module: photoresistor ADC threshold → send `TAMPER_LIGHT\n` over UART
+- [ ] Heltec custom module: IR receiver decode NEC → send `IR_ARM\n` / `IR_DISARM\n` / `IR_SEND_n\n` over UART
+- [ ] FAP: parse ASCII sentinels from UART alongside PROTO frames
+- [ ] Elegoo kit buzzer is also usable as a secondary audible alert if wired on Heltec side
+
+---
+
+## Phase 11 — Dead-Drop Surveillance ⏳
+
+**New hardware:** HC-SR04 ultrasonic sensor (Heltec GPIO21 trigger, GPIO47 echo)
+
+**Voltage note:** Standard HC-SR04 requires 5V. Verify your specific module's data sheet —
+some 3.3V-compatible clones exist. If 5V required and Heltec USB is not connected, you
+need a small boost converter or swap for a JSN-SR04T (3.3V tolerant). Heltec's 5V pin
+is only live when USB-powered.
+
+- [ ] Hardware: Trigger → GPIO21, Echo → GPIO47; power from appropriate rail
+- [ ] Custom Heltec module: poll HC-SR04 at 1Hz; threshold 200cm; on trigger →
+  broadcast `PERSON_DETECTED` mesh packet + send `PROX\n` ASCII sentinel to Flipper
+- [ ] FAP: receive `PERSON_DETECTED` packet from mesh; log to CSV with timestamp;
+  trigger buzzer + vibration; if armed → initiate nuke
+- [ ] FAP: dead-drop arm/disarm from IR remote (Phase 10 IR infra)
+- [ ] CSV log: add person_detected_at column
+- [ ] Unattended mode: FAP enters low-power display-off state, only wakes on PROX event
+
+---
+
+## Phase 12 — SIGINT & Advanced Sensing ⏳
+
+Leverages all installed hardware for intelligence gathering.
+
+### 12.1 Jammer Detection
+- [ ] Custom Heltec module: continuously read SX1262 RSSI register; detect sustained noise
+  floor spike without valid LoRa preambles → broadcast `JAMMER_DETECTED` mesh packet
+  + `JAMMER\n` ASCII sentinel to Flipper
+- [ ] FAP: display `SIGNAL INTERFERENCE` alert; log to CSV with timestamp and RSSI reading
+
+### 12.2 RF Ducting Display
+- [ ] Phase 7 BME280 data feeds a live ducting likelihood score (humidity + ΔP algorithm)
+- [ ] FAP: persistent indicator when ducting conditions favor exceptional propagation
+
+### 12.3 Advanced Wardriving
+- [ ] Wardriving mode captures NodeInfo from all channels the node can hear
+- [ ] KML export shows color-coded signal strength heatmap per node
+- [ ] Optional: Heltec Vext (GPIO26) power cycles the GPS to force position refresh on demand
+
+---
+
+## Phase 13 — Remote Payload Execution ⏳
+
+Transforms GhostMesh from a communications tool into a remote hardware orchestrator.
+All features require slide switch in the ARMED position before execution.
+
+### 13.1 BadUSB over Mesh
+- [ ] FAP listens for `PAYLOAD_n` mesh packet (on private channel only)
+- [ ] On receipt with switch armed: invoke Flipper BadUSB service with pre-staged
+  DuckyScript `.txt` from SD card `SD:/apps_data/ghostmesh/payloads/`
+- [ ] Confirm execution via mesh ACK packet
+
+### 13.2 NFC Orchestration over Mesh
+- [ ] `NFC_EMU:filename.nfc` packet → FAP loads NFC file and starts emulation
+  (Flipper taped to reader, triggered remotely from miles away)
+- [ ] `NFC_HARVEST` packet → FAP reads badge UID and broadcasts `NFC_UID:xxxxxxxx`
+  back over mesh
+- [ ] NFC coil experiment: wind copper wire from Elegoo stepper motor coil as extended
+  antenna (experimental — not tuned for 13.56MHz, results vary)
+
+### 13.3 Sub-GHz Relay
+- [ ] Flipper A captures 433MHz fixed-code signal
+- [ ] Size gate: only relay if raw capture ≤ 200 bytes (LoRa max payload ~255 bytes;
+  header overhead ~50 bytes). Reject and warn user if too large.
+- [ ] Encapsulate into Meshtastic text packet with `SUBGHZ:` prefix + hex-encoded payload
+- [ ] Flipper B receives, strips prefix, replays 433MHz signal locally
+- [ ] Limitation: rolling codes, frequency-hopping, and long-preamble signals will not fit
+
+---
+
+## Phase 14 — UART Encryption ⏳
+
+Last phase — touches everything. Full authenticated encryption of the Flipper ↔ Heltec
+UART link using ChaCha20-Poly1305 (AEAD: encrypts + authenticates each frame).
+
+### Why ChaCha20-Poly1305 (not XOR, not AES-CBC)
+- XOR with static key: trivially broken with one known-plaintext pair. Not worth implementing.
+- AES-CBC: no authentication, vulnerable to padding oracle, more code.
+- ChaCha20-Poly1305: fast on Cortex-M4 without hardware AES acceleration, authenticated
+  (detects tampering and corruption), well-audited, fits in ~2KB of code.
+
+### Key Management
+- [ ] Key generated on Flipper via `furi_hal_random_fill_buf()` (32 bytes)
+- [ ] Key stored in Flipper secure storage (encrypted flash region)
+- [ ] One-time provisioning: before encryption is enabled, Flipper sends key to Heltec
+  over the plaintext UART; after confirmation, both sides enable encryption simultaneously
+- [ ] Key rotation: new key generated, exchanged, confirmed, old key wiped
+
+### Implementation
+- [ ] FAP: ChaCha20-Poly1305 encrypt every UART TX frame; decrypt + authenticate every RX
+- [ ] Heltec custom firmware: decrypt incoming frames → pass to Meshtastic PhoneAPI;
+  encrypt outgoing PhoneAPI frames → send over UART
+- [ ] Frame format: `[nonce 12B][ciphertext][poly1305 tag 16B]`
+- [ ] Counter-based nonce: 64-bit monotonic counter prevents nonce reuse across reboots
+
+---
+
+## Architecture Notes
+
+### Dual UART Architecture (Heltec)
+- UART0 (GPIO43/44): Meshtastic PhoneAPI — Flipper connection, PROTO frames
+- UART1 (GPIO35/36): GPS — NMEA input from BN-220
+
+### I2C Bus Architecture (Heltec)
+- Bus 1 (GPIO17/18): OLED display — hardwired to board, do not attach hub here
+- Bus 2 (GPIO41/42): Sensor bus — BME280 (0x76) + MAX17048 (0x36) via STEMMA QT hub
+
+### UART Communication Architecture (Flipper ↔ Heltec)
+- PROTO frames: all Meshtastic PhoneAPI traffic (ToRadio / FromRadio protobuf)
+- ASCII sentinels: local Heltec sensor events that don't go through Meshtastic
+  (`TAMPER_LIGHT\n`, `PROX\n`, `JAMMER\n`, `IR_ARM\n`, `IR_SEND_n\n`)
+- Flipper FAP handles both on the same UART stream; distinguishes by frame header (0x94 0xC3 = PROTO, anything else = sentinel)
+
+### What Requires Custom Heltec Firmware
+
+| Feature | Stock Meshtastic | Requires Custom Module |
+|---------|-----------------|----------------------|
+| BME280 telemetry | ✅ built-in | — |
+| BN-220 GPS | ✅ built-in | — |
+| Private channel config | ✅ via PhoneAPI | — |
+| Factory reset (nuke) | ✅ AdminMessage | — |
+| Disable beaconing | ✅ via config | — |
+| MAX17048 SOC | ❌ | Custom module |
+| Photoresistor threshold | ❌ | Custom module |
+| IR receiver decode | ❌ | Custom module |
+| HC-SR04 proximity | ❌ | Custom module |
+| Jammer detection | ❌ | Custom module |
+| Vibration motor (Heltec) | ❌ | Custom module |
+| UART encryption | ❌ | Full custom firmware layer |
+
+Slide switch, tilt switch, buzzer, and vibration motor are on the **Flipper ProtoBoard** —
+no Heltec firmware needed for those.
 
 ---
 
@@ -90,6 +349,14 @@ These require Phase 4 completion and a stable hardware platform.
 | v0.1 | 1 | UART byte counter, compilable FAP |
 | v0.2 | 2 | Canned message menu, TEXTMSG send/receive |
 | v0.3 | 3 | Field profiles, SD card YAML loader |
-| v0.4 | 4 | Message logging, KML export, RSSI/SNR decode — **current** |
-| v0.5 | 5 | PROTO mode full client |
-| v0.6 | 6 | Red team lab features |
+| v0.4 | 4 | Message logging, KML export, RSSI/SNR decode |
+| v0.5 | 5 | PROTO mode full client — **current stable** |
+| v0.6 | 6 | Security baseline, nuke button, stealth mode |
+| v0.7 | 7 | Environmental telemetry (BME280) |
+| v0.8 | 8 | GPS + wardriving |
+| v0.9 | 9 | Battery intelligence (MAX17048) |
+| v1.0 | 10 | Physical controls, alerting, tamper detection |
+| v1.1 | 11 | Dead-drop surveillance (HC-SR04) |
+| v1.2 | 12 | SIGINT, jammer detection, advanced wardriving |
+| v1.3 | 13 | Remote payload execution (BadUSB, NFC, Sub-GHz relay) |
+| v1.4 | 14 | UART encryption (ChaCha20-Poly1305) |
