@@ -9,16 +9,16 @@
 #define GHOSTMESH_PROFILE_NAME_LEN 20
 
 typedef enum {
-    GhostMeshScreenProfile,
-    GhostMeshScreenMessages,
-    GhostMeshScreenRxHistory,
+    GhostMeshScreenProfile,    // profile picker on launch
+    GhostMeshScreenMessages,   // canned message list; long-press Down → history
+    GhostMeshScreenRxHistory,  // last 16 received messages; BACK returns
 } GhostMeshScreen;
 
 typedef struct {
     GhostMeshScreen screen;
 
     // ── Always relevant ──────────────────────────────────────────────
-    bool uart_active;
+    bool uart_active;  // true = handshake complete; title bar shows "RDY" vs "..."
 
     // ── Profile selection (GhostMeshScreenProfile) ───────────────────
     const char** profile_names;  // array of profile name strings

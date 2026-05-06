@@ -26,7 +26,7 @@ All packets use Meshtastic's binary framing:
 
 On startup the FAP sends a `ToRadio { want_config_id: 42 }` packet. The node responds with ~47 `FromRadio` configuration frames (node info, channels, config, module config, known nodes, file manifest) followed by `FromRadio { config_complete_id: 42 }`. Once that is received the connection is ready and text messages can be sent.
 
-The Flipper screen shows `PROTO:...` during the handshake and `PROTO:RDY` once connected.
+The Flipper title bar shows `...` during the handshake and `RDY` once connected.
 
 ---
 
@@ -57,6 +57,15 @@ Determined from the meshtastic Python library (v2.7.8) by serializing known mess
 | `to` | 2 | fixed32 | `0xFFFFFFFF` = broadcast |
 | `decoded` (Data) | 4 | bytes | contains portnum + payload |
 | `hop_limit` | 9 | varint | set to 3 |
+
+### MeshPacket (receive — decoded by GhostMesh)
+
+| Field | Number | Wire type | Notes |
+|-------|--------|-----------|-------|
+| `from` | 1 | fixed32 | source node ID; last 4 hex digits shown as sender |
+| `decoded` (Data) | 4 | bytes | text payload |
+| `rx_snr` | 8 | fixed32 (float) | SNR in dB; 0.0 if not a radio packet |
+| `rx_rssi` | 12 | varint (int32) | RSSI in dBm; 0 if not a radio packet |
 
 ### Data
 

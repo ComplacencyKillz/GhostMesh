@@ -10,8 +10,10 @@ GhostMesh turns your Flipper Zero into a handheld controller for a Meshtastic-en
 
 - Connects the Flipper Zero to a Heltec LoRa node over UART using Meshtastic's full PROTO protocol
 - Profile selector on launch — built-in profiles for Grid Down, Hiking/SAR, and Red Team
-- Scrollable canned message menu — UP/DOWN to select, OK to send
-- Receives incoming mesh text messages and displays them in the status bar
+- Scrollable canned message menu — UP/DOWN to select, OK to send; long text marquee-scrolls across the display
+- Receives incoming mesh text messages; sender + message shown in the status bar, RSSI shown in history
+- Long-press Down on the message screen opens the RX history screen — last 16 messages with full sender/RSSI/text, scrollable
+- Logs every received message to a dated CSV on the SD card (`SD:/apps_data/ghostmesh/log_YYYYMMDD.csv`) with timestamp, node ID, message, RSSI, and SNR
 - Upload your own message profiles via a `profiles.yaml` file on the Flipper SD card
 - RF noise immune — PROTO framing rejects spurious bytes from the nearby LoRa antenna
 
@@ -64,7 +66,7 @@ Copy `dist/ghostmesh.fap` to `SD:/apps/Tools/` on your Flipper. See [docs/flippe
 
 **Apps → Tools → GhostMesh**
 
-The screen shows `PROTO:...` for a few seconds while the connection handshake completes, then `PROTO:RDY`. Select a profile with UP/DOWN/OK, then navigate the message list and press OK to send.
+The title bar shows `...` for a few seconds while the connection handshake completes, then `RDY`. Select a profile with UP/DOWN/OK, then navigate the message list and press OK to send. Long-press Down to open the RX history screen.
 
 ---
 
@@ -105,21 +107,22 @@ ghostmesh/
 │   └── red-team-lab-use-cases.md  Authorized lab use cases (docs only)
 ├── flipper-app/
 │   ├── application.fam
-│   ├── ghostmesh.c           App entry point, profile/message/screen state
+│   ├── ghostmesh.c           App entry point, profile/message/screen/history state
 │   ├── helpers/
 │   │   ├── proto_mode.h/.c   PROTO encoder/decoder, handshake, UART state machine
 │   │   ├── profile_manager.h/.c  Built-in profiles + YAML loader
+│   │   ├── log_manager.h/.c  SD card CSV logger (one file per day)
 │   │   ├── uart_helper.h/.c  USART1 init and async RX/TX
 │   │   └── proto_notes.md    Protocol implementation reference
 │   └── views/
-│       └── main_view.h/.c    Two-screen UI (profile list + message list)
+│       └── main_view.h/.c    Three-screen UI (profile list, message list, RX history)
 ├── examples/
 │   └── profiles.yaml         Documented YAML template for custom profiles
 ├── tests/
 │   ├── uart-test-plan.md     Manual hardware validation checklist
 │   └── proto_send_test.py    Python PROTO test script (bypasses Flipper)
 └── tools/
-    └── log_to_kml.py         Phase 4 scaffold: CSV → KML node log export
+    └── log_to_kml.py         Convert SD card CSV log to KML for Google Earth / QGIS
 ```
 
 ---

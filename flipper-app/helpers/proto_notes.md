@@ -26,7 +26,7 @@ Node sends  → FromRadio { config_complete_id: 42 }  ← FAP sets connected=tru
 FAP ready   → ToRadio { packet: MeshPacket { ... } } can now be sent
 ```
 
-The Flipper shows `PROTO:...` during handshake and `PROTO:RDY` when connected.
+The Flipper title bar shows `...` during handshake and `RDY` when connected.
 
 ---
 
@@ -78,7 +78,7 @@ print(mp.SerializeToString().hex())   # → 15 ff ff ff ff (field 2, fixed32)
 
 - **Do not call `furi_mutex_acquire` from `on_rx_text`.** FuriMutex is backed by FreeRTOS mutexes, which cannot be taken from ISR context. Attempting this causes every receive to silently fail.
 - `rx_updated` in `GhostMeshApp` is declared `volatile bool` so the main loop sees writes from the ISR without the compiler caching the value in a register. This is the correct ISR-safe signaling primitive for a single-producer/single-consumer flag on Cortex-M4.
-- The `rx_display` char array is written from ISR and read from the main loop. A torn read is theoretically possible but harmless for a display string; the next update overwrites it.
+- `rx_sender`, `rx_text_buf`, `rx_rssi`, and `rx_snr` are written from the ISR and read from the main loop. A torn read on these fields is theoretically possible but harmless — the display just shows a stale frame; the next message overwrites everything.
 
 ---
 
