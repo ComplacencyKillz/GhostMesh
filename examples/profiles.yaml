@@ -1,0 +1,52 @@
+# GhostMesh custom profiles
+# Upload this file to: SD:/apps_data/ghostmesh/profiles.yaml
+#
+# FORMAT RULES:
+#   name: <Profile Name>   starts a new profile (required before messages)
+#   - <message>            adds a message to the current profile
+#   # <anything>           comment, ignored
+#   Blank lines            ignored
+#   Unknown keys           silently ignored
+#
+# LIMITS:
+#   Max 5 profiles from this file (plus 3 built-ins = 8 total)
+#   Max 12 messages per profile
+#   Max 22 characters per message
+#   Max 19 characters for profile name
+#   Messages are truncated to 22 chars if longer
+#   Only printable ASCII (0x20-0x7E) — accented chars and emoji are stripped
+#
+# Profiles with no messages are silently discarded.
+# Quotes around names and messages are optional but supported.
+
+name: Grid Down Custom
+- CHECKIN OK
+- NEED ASSISTANCE
+- MOVING TO RALLY
+- HOLD POSITION
+- ALL CLEAR
+- BATTERY CRITICAL
+- MEDICAL NEEDED
+- SHELTER IN PLACE
+
+name: Red Team Custom
+- CHECKIN OK
+- IN POSITION
+- MOVING
+- ABORT
+- PHASE START
+- PHASE COMPLETE
+- HOLD
+- EXFIL NOW
+- ALL CLEAR
+- STANDBY
+
+name: CERT / SAR
+- CHECKIN OK
+- ON SCENE
+- SECTOR CLEAR
+- VICTIM FOUND
+- NEED MED TEAM
+- EXTRACTION NEEDED
+- RETURNING TO STAGING
+- AWAITING ASSIGNMENT

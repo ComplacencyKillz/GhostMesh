@@ -28,7 +28,8 @@ typedef struct {
     // Profiles
     Profile profiles[PROFILE_MAX_COUNT];
     uint8_t profile_count;
-    char sd_buf[PROFILE_MAX_MESSAGES][PROFILE_MSG_LEN + 1];
+    // Storage backing for SD-loaded profile messages (heap-allocated with the struct)
+    char sd_buf[SD_MAX_PROFILES][PROFILE_MAX_MESSAGES][PROFILE_MSG_LEN + 1];
 
     // Profile selector state
     uint8_t profile_sel;
@@ -147,10 +148,10 @@ static GhostMeshApp* ghostmesh_alloc(void) {
     app->proto = proto_mode_alloc(GHOSTMESH_UART_BAUD, on_rx_text, app);
 
     app->profile_count = profile_load_builtins(app->profiles);
-    if(app->profile_count < PROFILE_MAX_COUNT) {
-        if(profile_load_sd(&app->profiles[app->profile_count], app->sd_buf))
-            app->profile_count++;
-    }
+    app->profile_count += profile_load_yaml(
+        app->profiles + BUILTIN_PROFILE_COUNT,
+        SD_MAX_PROFILES,
+        app->sd_buf);
 
     app->main_view = main_view_alloc();
     main_view_set_input_callback(app->main_view, on_input, app);

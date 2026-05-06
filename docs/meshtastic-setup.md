@@ -5,7 +5,7 @@
 - Heltec WiFi LoRa 32 V3 (or MakerHawk ESP32 LoRa V3 compatible) flashed with Meshtastic firmware
 - Meshtastic mobile app (iOS or Android) connected to the node via Bluetooth
 - Antenna attached before powering the radio
-- Node confirmed working (visible in the app, able to send/receive messages)
+- Node confirmed working — visible in the app and able to send/receive messages
 
 ---
 
@@ -15,71 +15,91 @@
 2. Connect the Heltec board via USB-C
 3. Select **Heltec WiFi LoRa 32 V3** as the target device
 4. Flash the latest stable firmware
-5. After flash: open the Meshtastic app, connect via Bluetooth, complete initial setup (region, name)
+5. Open the Meshtastic app, connect via Bluetooth, complete initial setup (region, name)
 
 ---
 
-## Configure Serial Module for GhostMesh
+## Serial Module — No Configuration Required
 
-### In the Meshtastic App
+GhostMesh connects directly to Meshtastic's **PhoneAPI on UART0** (the same path used by the official Meshtastic Python library and the phone app over USB). This is always active and requires no special configuration.
 
-1. Connect to your node via Bluetooth in the Meshtastic app
-2. Go to: **Settings (gear icon) → Module Config → Serial**
-3. Set the following:
-
-| Setting | Value |
-|---------|-------|
-| Enabled | On |
-| Echo | Off |
-| Mode | **PROTO** |
-| Baud Rate | **115200** |
-| Timeout | 0 (default) |
-| RX | **7** (Flipper TX wire — GPIO7 on top row) |
-| TX | **43** (Flipper RX wire — GPIO43 "TX" pad on bottom row) |
-| Override console serial port | Off |
-
-4. Tap **Save**
-5. The node will reboot. Reconnect via Bluetooth and confirm the Serial module shows Enabled.
-
-### Verify via Python (recommended over PuTTY)
-
-On Windows with the Flipper USB-UART Bridge running:
-
-```python
-python -c "import serial,time; s=serial.Serial('COM3',115200,timeout=2); time.sleep(1); s.write(b'CHECKIN OK\n'); print('sent'); print(s.read(64)); s.close()"
-```
-
-Watch the Heltec OLED — **ChUtil should increase from 0% to ~6%** confirming the LoRa radio transmitted. With a second Meshtastic node in range, "CHECKIN OK" will appear in the Meshtastic app on the receiving device.
-
-> Note: Messages sent via the serial module may not appear in the sending node's own Meshtastic
-> app. ChUtil increasing is the correct single-node confirmation of a successful transmission.
+The **Module Config → Serial** settings in the Meshtastic app configure a separate GPIO-based serial module that GhostMesh does not use. You can leave these at defaults or disable the serial module — it has no effect on GhostMesh.
 
 ---
 
-## Region Setting
+## Required Settings
 
-Confirm your region is set to **US** (or appropriate for your country) under:
-**Settings → Radio Config → LoRa → Region**
+### Region
 
-The 915 MHz antenna included with the MakerHawk/Heltec V3 is tuned for the US ISM band (902–928 MHz). Using a mismatched region risks poor RF performance.
+Set your region under **Settings → Radio Config → LoRa → Region**. The 915 MHz antenna is tuned for the US ISM band (902–928 MHz).
+
+| Region | Frequency band |
+|--------|---------------|
+| US | 902–928 MHz |
+| EU_868 | 863–870 MHz |
+| AU_915 | 915–928 MHz |
+
+Using the wrong region with a mismatched antenna risks poor RF performance.
+
+### Channel (default is fine)
+
+The default **LongFast** channel on channel index 0 is what GhostMesh targets for broadcast messages. No changes needed unless you have a custom channel setup.
 
 ---
 
-## Confirming the Node is Ready
+## Verifying the Node is Ready
 
 - Node appears in Meshtastic app with name and battery level
-- Node can receive a test message sent from the app
-- Serial module shows Enabled: On in Module Config
-- When you send a message from the app, PuTTY (or the GhostMesh FAP) should show bytes incrementing
+- Node can send a test message from the phone app (cloud icon confirms transmission)
+- Heltec OLED shows node name, battery %, and ChUtil
+
+When GhostMesh connects:
+1. The Flipper screen shows `PROTO:...` for a few seconds (config handshake in progress)
+2. It changes to `PROTO:RDY` when the ~47-frame config exchange completes
+3. The OK button becomes active
+
+---
+
+## Uploading Custom Profiles
+
+Place a `profiles.yaml` file at:
+```
+SD:/apps_data/ghostmesh/profiles.yaml
+```
+
+Example format:
+```yaml
+# GhostMesh custom profiles
+
+name: My Red Team Profile
+- CHECKIN OK
+- IN POSITION
+- ABORT
+- EXFIL NOW
+
+name: Grid Down Custom
+- CHECKIN OK
+- NEED ASSISTANCE
+- MOVING
+```
+
+See `examples/profiles.yaml` in the GhostMesh repo for a fully commented template.
+
+Up to 5 custom profiles are loaded alongside the 3 built-ins (8 total). Profiles with no messages are silently discarded.
 
 ---
 
 ## Known Hardware Notes (Heltec V3 + Meshtastic 2.7.x)
 
-**Do not use the pad labeled "RX" (GPIO44) for the Meshtastic serial RX pin.** GPIO44 is UART0 RX on the ESP32-S3 and is claimed at boot. Meshtastic's serial module (UART1) cannot receive on it — bytes arrive at the GPIO but the interrupt never fires. Use **GPIO7** instead.
+**GPIO pin conflicts discovered during development:**
 
-**Do not use GPIO41 or GPIO42.** These are claimed by Meshtastic's I2C bus 2 (`sda=41, scl=42`) at firmware init.
+| GPIO | Status | Reason |
+|------|--------|--------|
+| 44 | ✓ Used by GhostMesh (UART0 RX) | PhoneAPI RX — connect Flipper TX here |
+| 43 | ✓ Used by GhostMesh (UART0 TX) | PhoneAPI TX — connect Flipper RX here |
+| 41/42 | Unavailable | Claimed by I2C bus 2 (`sda=41 scl=42`) at Meshtastic boot |
+| 19/20 | Unavailable | ESP32-S3 USB D-/D+ |
+| 8–14 | Unavailable | SX1262 LoRa SPI + IRQ/RST/BUSY |
+| 1 | Unavailable | Battery ADC |
 
-**"Override console serial port"** is only available in NMEA and CalTopo modes. It is not an option for TEXTMSG.
-
-**LOGTEXT boot output** only streams on power-on. After the node has finished booting, LOGTEXT goes quiet unless events occur. Connect PuTTY before powering the node to capture boot logs.
+**The Meshtastic SerialModule PROTO mode via GPIO does not work reliably in Meshtastic 2.7.x.** GhostMesh bypasses the SerialModule entirely by connecting to UART0 (GPIO43/44), which is where the PhoneAPI lives permanently.

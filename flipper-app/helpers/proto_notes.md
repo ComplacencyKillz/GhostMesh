@@ -1,97 +1,83 @@
 # PROTO Mode — Implementation Notes
 
-## Overview
+## What Is Implemented
 
-Meshtastic PROTO (and DEFAULT) serial mode wraps protobuf payloads in a 4-byte framing header:
-
-```
-Byte 0:  0x94  (start magic)
-Byte 1:  0xC3  (start magic)
-Byte 2:  length MSB
-Byte 3:  length LSB
-Byte 4+: protobuf payload (ToRadio or FromRadio message)
-```
-
-The payload is a serialized `ToRadio` protobuf for host→node, and a `FromRadio` protobuf for node→host. Protobuf definitions are at https://github.com/meshtastic/protobufs.
+GhostMesh uses a hand-coded minimal protobuf encoder/decoder in `proto_mode.c/.h`. No external libraries (no nanopb). All field numbers were confirmed by serializing known messages with the official meshtastic Python library (v2.7.8) and reading the wire encoding.
 
 ---
 
-## Why Not v0.1
+## Protocol Path
 
-Implementing PROTO mode requires:
+```
+Flipper USART1 TX (pin 13)  →  Heltec GPIO44 (UART0 RX)  →  PhoneAPI
+Heltec GPIO43 (UART0 TX)    →  Flipper USART1 RX (pin 14) →  proto_mode decoder
+```
 
-1. **Protobuf codec** — nanopb is the standard choice for embedded C. It requires running `nanopb_generator.py` against the Meshtastic `.proto` files to produce `.pb.c` / `.pb.h` sources.
-2. **Serial framing** — byte-by-byte state machine to detect start bytes, read the 2-byte length, buffer the payload, then decode.
-3. **DMA-buffered UART receive** — TEXTMSG works fine with per-byte async callbacks. PROTO packets are multi-byte and require a buffer to accumulate before decoding.
-4. **Test tooling** — validating protobuf encode/decode on the Flipper requires either a connected node in PROTO mode or a mock byte stream.
-
-None of these are insurmountable, but they add meaningful complexity for a first commit. TEXTMSG gives 80% of the canned-message value with 10% of the code.
+GhostMesh connects to the **PhoneAPI on UART0**, not to the Meshtastic SerialModule. This is the same interface used by the Meshtastic phone app and Python library over USB. No Meshtastic serial module configuration is required.
 
 ---
 
-## Migration Plan (when ready for PROTO)
+## Handshake Flow
 
-### Step 1: Get nanopb and meshtastic protobufs
-
-```bash
-pip install nanopb
-git clone https://github.com/meshtastic/protobufs.git
-python -m grpc_tools.protoc -I protobufs --nanopb_out=flipper-app/lib/nanopb/ \
-    protobufs/meshtastic/mesh.proto \
-    protobufs/meshtastic/portnums.proto \
-    protobufs/meshtastic/telemetry.proto
+```
+FAP startup → send ToRadio { want_config_id: 42 }
+Node sends  → ~47 FromRadio config frames
+Node sends  → FromRadio { config_complete_id: 42 }  ← FAP sets connected=true
+FAP ready   → ToRadio { packet: MeshPacket { ... } } can now be sent
 ```
 
-Place the generated `.pb.c` / `.pb.h` files in `flipper-app/lib/nanopb/`.
-
-### Step 2: Implement serial framing
-
-Create `helpers/proto_mode.c` with a state machine:
-
-```c
-typedef enum {
-    PROTO_FRAME_IDLE,
-    PROTO_FRAME_START1,   // saw 0x94
-    PROTO_FRAME_START2,   // saw 0xC3
-    PROTO_FRAME_LEN_HI,
-    PROTO_FRAME_LEN_LO,
-    PROTO_FRAME_PAYLOAD,
-} ProtoFrameState;
-```
-
-Each byte from the UART callback advances the state machine. When a full packet is buffered, post a `FuriMessageQueue` event to the main thread for decode.
-
-### Step 3: Encode ToRadio messages
-
-```c
-ToRadio to_radio = ToRadio_init_zero;
-to_radio.which_payload_variant = ToRadio_packet_tag;
-to_radio.payload_variant.packet.decoded.portnum = PortNum_TEXT_MESSAGE_APP;
-// ... fill payload ...
-
-uint8_t buf[256];
-pb_ostream_t stream = pb_ostream_from_buffer(buf, sizeof(buf));
-pb_encode(&stream, ToRadio_fields, &to_radio);
-
-uint16_t len = stream.bytes_written;
-uint8_t header[4] = {0x94, 0xC3, (len >> 8) & 0xFF, len & 0xFF};
-uart_helper_send_bytes(helper, header, 4);
-uart_helper_send_bytes(helper, buf, len);
-```
-
-### Step 4: Switch Meshtastic serial mode
-
-In the Meshtastic app: **Settings → Module Config → Serial → Mode → PROTO**
-
-### Step 5: Update `uart_helper` for buffered receive
-
-The current per-byte callback approach works but is inefficient for PROTO. Consider switching to `furi_hal_serial_dma_rx_start` (if available in SDK) or accumulating bytes into a `FuriStreamBuffer` for batch processing.
+The Flipper shows `PROTO:...` during handshake and `PROTO:RDY` when connected.
 
 ---
 
-## Reference
+## Confirmed Field Numbers (Meshtastic 2.7.x)
 
-- Meshtastic serial API: https://meshtastic.org/docs/development/firmware/serial-module/
-- Meshtastic protobuf definitions: https://github.com/meshtastic/protobufs
-- nanopb documentation: https://jpa.kapsi.fi/nanopb/
-- Flipper Zero SDK UART: `furi_hal_serial.h` in the Flipper firmware repo
+All field numbers confirmed from meshtastic Python library 2.7.8 via:
+```python
+mp = mesh_pb2.MeshPacket()
+mp.to = 0xFFFFFFFF
+print(mp.SerializeToString().hex())   # → 15 ff ff ff ff (field 2, fixed32)
+```
+
+### ToRadio
+| Field | Number | Wire |
+|-------|--------|------|
+| `want_config_id` | 3 | varint |
+| `packet` (MeshPacket) | 1 | bytes |
+
+### FromRadio
+| Field | Number | Wire |
+|-------|--------|------|
+| `packet` (MeshPacket) | **2** | bytes |
+| `config_complete_id` | **7** | varint |
+| `rebooted` | 8 | varint (bool) |
+
+### MeshPacket
+| Field | Number | Wire |
+|-------|--------|------|
+| `from` | **1** | **fixed32** |
+| `to` | **2** | **fixed32** |
+| `decoded` (Data) | 4 | bytes |
+| `hop_limit` | **9** | varint |
+
+### Data
+| Field | Number | Wire |
+|-------|--------|------|
+| `portnum` | 1 | varint (`TEXT_MESSAGE_APP = 1`) |
+| `payload` | 2 | bytes |
+
+> **Note:** `to` and `from` use `fixed32` wire type (type 7 in the descriptor, wire type 5), NOT varint. Using the wrong wire type causes the firmware to silently drop the packet.
+
+---
+
+## Known Limitations
+
+- Only `TEXT_MESSAGE_APP` packets are decoded on receive. Other portnums (telemetry, position, admin) are decoded but not surfaced to the UI yet.
+- Sender display uses the last 4 hex digits of the node ID (`from & 0xFFFF`), e.g. `f69c: Hello`. Long names would require parsing a `NodeInfo` FromRadio frame, which arrives during the config exchange but is currently not stored.
+- The config exchange (~47 frames, ~1 KB) is received and processed by the UART callback state machine. The first 46 frames are decoded and discarded; only `config_complete_id` matters.
+
+---
+
+## Why Not the SerialModule PROTO Mode?
+
+The Meshtastic SerialModule PROTO mode (configured via Module Config → Serial in the app) was tested and does not work reliably in Meshtastic 2.7.15 via GPIO UART. Even the official meshtastic Python library times out when connecting through the SerialModule path. The PhoneAPI on UART0 (GPIO43/44) is reliable and is the correct path for full-featured PROTO clients.

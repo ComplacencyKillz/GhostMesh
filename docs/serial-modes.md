@@ -1,122 +1,84 @@
-# Meshtastic Serial Modes
+# Meshtastic Serial Protocol — GhostMesh Implementation
 
-## Available Modes
+## What GhostMesh Uses
 
-Meshtastic exposes a serial module that can be configured to one of these modes:
+GhostMesh communicates with the Heltec node using Meshtastic's **PROTO serial protocol** via the **PhoneAPI on UART0 (GPIO43/44)**. This is the same interface used by the official Meshtastic Python library and the Meshtastic phone app over USB.
 
-| Mode | Description |
-|------|-------------|
-| DEFAULT | Protobuf framing — same as PROTO |
-| SIMPLE | Raw byte echo / passthrough |
-| PROTO | Full protobuf serial framing (recommended long-term) |
-| TEXTMSG | Plain UTF-8 text lines → broadcast as mesh text messages |
-| NMEA | NMEA GPS sentence output |
-| CALTOPO | CalTopo mapping format output |
-| WS85 | Weather station sensor format |
-| VE_DIRECT | Victron Energy battery monitor format |
-| MS_CONFIG | Internal config format |
-| LOG | Raw firmware log output |
-| LOGTEXT | Firmware log as plain text |
+No special Meshtastic serial module configuration is required. The PhoneAPI is permanently available on UART0 regardless of the serial module settings in the Meshtastic app.
 
 ---
 
-## MVP Recommendation: TEXTMSG
+## Protocol Overview
 
-### Why TEXTMSG for v0.1/v0.2
+### Framing
 
-**TEXTMSG is the correct mode for the GhostMesh MVP.** Here is why:
+All packets use Meshtastic's binary framing:
 
-- **Send:** Write a UTF-8 string terminated with `\n` to the UART. The Meshtastic node broadcasts it as a text message on the mesh. No framing, no protobuf, no header.
-- **Receive:** Incoming mesh text messages are output to the UART as plain UTF-8 lines. Easy to parse.
-- **No library dependencies:** Works with raw `furi_hal_serial_tx` — no additional parsing code needed on the Flipper.
-- **Human-readable:** Easy to debug with PuTTY or any serial terminal.
-
-**TEXTMSG limitations:**
-- Only handles text messages. Cannot read node info, telemetry, routing data, or position updates.
-- No access to mesh metadata (RSSI, SNR, hop count, sender node ID) unless Meshtastic serializes them into the text line (it does not in TEXTMSG mode).
-- Not suitable for full mesh client control.
-
-### TEXTMSG message format
-
-Sending:
 ```
-CHECKIN OK\n
+[0x94] [0xC3] [len_hi] [len_lo] [protobuf payload]
 ```
-The Meshtastic node broadcasts `CHECKIN OK` as a mesh text message.
 
-Receiving (from UART, one message per line):
-```
-NodeName: Hello from the mesh\n
-```
-Exact format depends on Meshtastic firmware version. Test with your setup.
+- `0x94 0xC3` — magic start bytes
+- `len_hi len_lo` — 16-bit big-endian payload length
+- payload — a serialized `ToRadio` (host→node) or `FromRadio` (node→host) protobuf message
+
+### Connection Handshake
+
+On startup the FAP sends a `ToRadio { want_config_id: 42 }` packet. The node responds with ~47 `FromRadio` configuration frames (node info, channels, config, module config, known nodes, file manifest) followed by `FromRadio { config_complete_id: 42 }`. Once that is received the connection is ready and text messages can be sent.
+
+The Flipper screen shows `PROTO:...` during the handshake and `PROTO:RDY` once connected.
 
 ---
 
-## SIMPLE mode
+## Confirmed Field Numbers
 
-SIMPLE mode provides a minimal passthrough. It echoes bytes received on UART out to mesh and vice versa. Less structured than TEXTMSG. Documentation is thinner and behavior has varied between Meshtastic firmware versions.
+Determined from the meshtastic Python library (v2.7.8) by serializing known messages and reading the wire encoding.
 
-**Not recommended for GhostMesh.** TEXTMSG is better documented and more predictable.
+### ToRadio
 
----
+| Field | Number | Wire type | Notes |
+|-------|--------|-----------|-------|
+| `want_config_id` | 3 | varint | sent on startup to trigger config exchange |
+| `packet` (MeshPacket) | 1 | bytes | used to send text messages |
 
-## Long-term Recommendation: PROTO
+### FromRadio
 
-### Why PROTO for v0.3+
+| Field | Number | Wire type | Notes |
+|-------|--------|-----------|-------|
+| `packet` (MeshPacket) | 2 | bytes | incoming mesh message |
+| `config_complete_id` | 7 | varint | signals handshake complete |
+| `rebooted` | 8 | varint (bool) | node just rebooted |
 
-PROTO mode is Meshtastic's full serial API. It transmits and receives protobuf-encoded `ToRadio` and `FromRadio` packets framed with a 4-byte header:
+### MeshPacket (send)
 
-```
-[0x94 0xC3] [length_MSB length_LSB] [protobuf payload...]
-```
+| Field | Number | Wire type | Notes |
+|-------|--------|-----------|-------|
+| `from` | 1 | fixed32 | filled by node, not sent by host |
+| `to` | 2 | fixed32 | `0xFFFFFFFF` = broadcast |
+| `decoded` (Data) | 4 | bytes | contains portnum + payload |
+| `hop_limit` | 9 | varint | set to 3 |
 
-With PROTO mode you can:
-- Read and send text messages with full metadata (sender, RSSI, SNR, hop count)
-- Query node info (node ID, name, hardware, battery)
-- Read telemetry (temperature, battery voltage, GPS position)
-- Send admin commands
-- Subscribe to mesh events
+### Data
 
-**PROTO limitations for v0.1:**
-- Requires protobuf encoding/decoding on the Flipper (nanopb or a hand-rolled minimal parser)
-- Requires serial framing (start bytes + length prefix + CRC)
-- Non-trivial to implement correctly without a full test rig
-- Adds a dependency (nanopb .c/.h generated files for meshtastic.proto)
-
-### PROTO upgrade path
-
-When GhostMesh is ready for PROTO mode:
-
-1. Generate nanopb sources from the [Meshtastic protobufs](https://github.com/meshtastic/protobufs)
-2. Add nanopb to `flipper-app/lib/nanopb/`
-3. Replace `textmsg_mode.c` with `proto_mode.c` implementing `ToRadio`/`FromRadio` framing
-4. Update `uart_helper` to support DMA-buffered receive for multi-byte packets
-5. Set Meshtastic serial mode to `PROTO` (DEFAULT also works)
-
-See `helpers/proto_notes.md` for more detail.
+| Field | Number | Wire type | Notes |
+|-------|--------|-----------|-------|
+| `portnum` | 1 | varint | `1` = `TEXT_MESSAGE_APP` |
+| `payload` | 2 | bytes | UTF-8 message text |
 
 ---
 
-## Configuration Summary
+## What the Meshtastic App Serial Module Setting Does
 
-| Goal | Mode | Flipper code |
-|------|------|--------------|
-| MVP canned messages | TEXTMSG | `textmsg_send(helper, "msg")` |
-| Debug / byte counting | Any | `uart_helper_send` raw bytes |
-| Full mesh client | PROTO | nanopb + framing (future) |
-| GPS passthrough | NMEA | Raw parse — not planned |
+The Meshtastic app's **Module Config → Serial** settings configure a separate *SerialModule* UART on the GPIO pins you specify. GhostMesh does **not** use the SerialModule. GhostMesh connects directly to UART0 (GPIO43/44), bypassing the SerialModule entirely.
+
+You can leave the serial module at its default settings or disable it — it has no effect on GhostMesh operation.
 
 ---
 
-## Setting the Mode in Meshtastic
+## Why Not TEXTMSG Mode?
 
-1. Open the Meshtastic mobile app
-2. Connect to your Heltec node via Bluetooth
-3. Navigate to: **Settings → Module Config → Serial**
-4. Set **Enabled: On**
-5. Set **Mode: TEXTMSG**
-6. Set **Baud Rate: 115200**
-7. Set **RX pin** and **TX pin** to the GPIO numbers on your Heltec board (defaults are usually correct)
-8. Save and reboot the node
+TEXTMSG serial mode was evaluated as an MVP option and briefly implemented. It was replaced by PROTO for two reasons:
 
-After reboot, confirm the serial module is active by checking Settings → Module Config → Serial — the Enabled toggle should remain on.
+1. **RF noise** — TEXTMSG broadcasts any bytes that arrive on the serial RX pin. Electromagnetic interference from the nearby SX1262 LoRa antenna occasionally induced false UART frames, which Meshtastic broadcast as garbage mesh messages. PROTO's `0x94 0xC3` framing means random noise almost never produces a valid packet.
+
+2. **No metadata** — TEXTMSG provides only raw text. PROTO delivers sender node ID, RSSI, SNR, hop count, and access to the full Meshtastic packet graph.

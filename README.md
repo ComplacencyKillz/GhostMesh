@@ -8,15 +8,16 @@ GhostMesh turns your Flipper Zero into a handheld controller for a Meshtastic-en
 
 ## What It Does
 
-- Connects the Flipper Zero to a Meshtastic node over UART (pins 13/14)
-- Displays live UART status and RX/TX byte counters (v0.1)
-- Sends canned field messages over the Meshtastic mesh network (v0.2)
-- Field profiles for grid-down, hiking, and red-team lab scenarios (v0.3)
-- Designed for authorized offline comms, field diagnostics, and lab-controlled red-team support
+- Connects the Flipper Zero to a Heltec LoRa node over UART using Meshtastic's full PROTO protocol
+- Profile selector on launch — built-in profiles for Grid Down, Hiking/SAR, and Red Team
+- Scrollable canned message menu — UP/DOWN to select, OK to send
+- Receives incoming mesh text messages and displays them in the status bar
+- Upload your own message profiles via a `profiles.yaml` file on the Flipper SD card
+- RF noise immune — PROTO framing rejects spurious bytes from the nearby LoRa antenna
 
 ---
 
-## Hardware
+## Hardware Required
 
 | Component | Details |
 |-----------|---------|
@@ -28,8 +29,6 @@ GhostMesh turns your Flipper Zero into a handheld controller for a Meshtastic-en
 
 The Heltec board must be pre-flashed with [Meshtastic firmware](https://meshtastic.org/).
 
-See [docs/hardware.md](docs/hardware.md) and [docs/wiring.md](docs/wiring.md) for full details.
-
 ---
 
 ## Quick Start
@@ -37,46 +36,57 @@ See [docs/hardware.md](docs/hardware.md) and [docs/wiring.md](docs/wiring.md) fo
 ### 1. Wire the hardware
 
 ```
-Flipper U_TX (pin 13)  →  Heltec RX
-Flipper U_RX (pin 14)  →  Heltec TX
+Flipper U_TX (pin 13)  →  Heltec GPIO44  (bottom row, pad labeled "RX")
+Flipper U_RX (pin 14)  →  Heltec GPIO43  (bottom row, pad labeled "TX")
 Flipper GND            →  Heltec GND
 NO shared power        —  each device runs from its own battery
 ```
 
-See [docs/wiring.md](docs/wiring.md) for the full pinout table and safety notes.
+See [docs/wiring.md](docs/wiring.md) for the full pinout and safety notes.
 
-### 2. Configure Meshtastic serial mode
+### 2. No Meshtastic serial module config needed
 
-In the Meshtastic mobile app: **Settings → Module Config → Serial → Mode → TEXTMSG**
+GhostMesh connects directly to Meshtastic's PhoneAPI on UART0 (the same path as the phone app and Python library over USB). No special serial module settings are required.
 
-Baud rate: **115200**, enabled: **true**
+Set your region under **Settings → Radio Config → LoRa → Region** and ensure the node is on the default **LongFast** channel. See [docs/meshtastic-setup.md](docs/meshtastic-setup.md).
 
-See [docs/meshtastic-setup.md](docs/meshtastic-setup.md) for step-by-step instructions.
-
-### 3. Install ufbt and build the FAP
+### 3. Build and install the FAP
 
 ```bash
-python -m pip install --upgrade ufbt
+pip install ufbt
 cd flipper-app
 ufbt
 ```
 
-The compiled `.fap` will appear in `flipper-app/dist/`. Copy it to `SD:/apps/Tools/GhostMesh.fap` on your Flipper.
+Copy `dist/ghostmesh.fap` to `SD:/apps/Tools/` on your Flipper. See [docs/flipper-setup.md](docs/flipper-setup.md).
 
 ### 4. Run the app
 
-On the Flipper: **Apps → Tools → GhostMesh**
+**Apps → Tools → GhostMesh**
 
-The app opens UART at 115200 baud and shows RX/TX byte counters. Press **OK** to send a test message over the mesh.
+The screen shows `PROTO:...` for a few seconds while the connection handshake completes, then `PROTO:RDY`. Select a profile with UP/DOWN/OK, then navigate the message list and press OK to send.
 
 ---
 
-## Serial Mode
+## Custom Profiles via SD Card
 
-GhostMesh v0.1 targets **TEXTMSG** mode: plain UTF-8 lines over UART, no framing required.  
-Full PROTO mode (protobuf serial framing) is the long-term upgrade path.
+Create `SD:/apps_data/ghostmesh/profiles.yaml` on your Flipper:
 
-See [docs/serial-modes.md](docs/serial-modes.md) for a full comparison and migration plan.
+```yaml
+# GhostMesh custom profiles
+
+name: My Profile
+- CHECKIN OK
+- IN POSITION
+- ABORT
+- EXFIL NOW
+
+name: Another Profile
+- MESSAGE ONE
+- MESSAGE TWO
+```
+
+Up to 5 custom profiles are loaded alongside the 3 built-ins. See `examples/profiles.yaml` for the full documented template.
 
 ---
 
@@ -85,47 +95,38 @@ See [docs/serial-modes.md](docs/serial-modes.md) for a full comparison and migra
 ```
 ghostmesh/
 ├── README.md
-├── LICENSE
 ├── docs/
-│   ├── hardware.md           Hardware specs and compatibility
-│   ├── wiring.md             Exact pinout for this hardware setup
-│   ├── meshtastic-setup.md   Meshtastic serial mode configuration
-│   ├── flipper-setup.md      ufbt build and install instructions
-│   ├── serial-modes.md       TEXTMSG vs SIMPLE vs PROTO analysis
+│   ├── hardware.md           Hardware specs
+│   ├── wiring.md             Exact pinout and GPIO conflict notes
+│   ├── meshtastic-setup.md   Meshtastic config (minimal — no serial module needed)
+│   ├── flipper-setup.md      ufbt build and install
+│   ├── serial-modes.md       PROTO protocol field numbers and implementation notes
 │   ├── roadmap.md            Phased development plan
 │   └── red-team-lab-use-cases.md  Authorized lab use cases (docs only)
 ├── flipper-app/
-│   ├── application.fam       FAP metadata
-│   ├── ghostmesh.c           App entry point and main loop
+│   ├── application.fam
+│   ├── ghostmesh.c           App entry point, profile/message/screen state
 │   ├── helpers/
-│   │   ├── uart_helper.h/.c  UART init, TX, RX abstraction
-│   │   ├── textmsg_mode.h/.c TEXTMSG message formatting
-│   │   └── proto_notes.md    Notes on future PROTO support
+│   │   ├── proto_mode.h/.c   PROTO encoder/decoder, handshake, UART state machine
+│   │   ├── profile_manager.h/.c  Built-in profiles + YAML loader
+│   │   ├── uart_helper.h/.c  USART1 init and async RX/TX
+│   │   └── proto_notes.md    Protocol implementation reference
 │   └── views/
-│       └── main_view.h/.c    Primary status/counter UI view
+│       └── main_view.h/.c    Two-screen UI (profile list + message list)
 ├── examples/
-│   ├── canned-messages.json  Default canned message list
-│   └── field-profiles.json   Field deployment profiles
-├── tools/
-│   └── log_to_kml.py         Convert node/RSSI logs to KML
-└── tests/
-    └── uart-test-plan.md     Manual UART validation procedures
+│   └── profiles.yaml         Documented YAML template for custom profiles
+├── tests/
+│   ├── uart-test-plan.md     Manual hardware validation checklist
+│   └── proto_send_test.py    Python PROTO test script (bypasses Flipper)
+└── tools/
+    └── log_to_kml.py         Phase 4 scaffold: CSV → KML node log export
 ```
 
 ---
 
-## Roadmap
+## Protocol
 
-| Phase | Goal | Status |
-|-------|------|--------|
-| 0 | Documentation and hardware sanity checks | Done |
-| 1 | UART byte-counter FAP (compilable v0.1) | Done |
-| 2 | Canned message menu + TEXTMSG send/receive | Planned |
-| 3 | Field profiles from SD card | Planned |
-| 4 | Node log + KML export | Planned |
-| 5 | PROTO mode client (nanopb) | Future |
-
-See [docs/roadmap.md](docs/roadmap.md) for full milestone details.
+GhostMesh uses Meshtastic's binary PROTO protocol with a `0x94 0xC3` framing header. The full connection handshake (~47 config frames) completes in a few seconds on startup. All protobuf field numbers were confirmed against the meshtastic Python library (v2.7.8) — see [docs/serial-modes.md](docs/serial-modes.md) for the complete reference.
 
 ---
 
@@ -133,9 +134,7 @@ See [docs/roadmap.md](docs/roadmap.md) for full milestone details.
 
 This project is for **authorized security work, personal lab testing, grid-down comms experimentation, and open-source learning only.**
 
-No malware, unauthorized remote execution, credential theft, or destructive payloads are implemented or will be accepted. Any red-team-adjacent features require explicit local arming, use only benign/lab-safe payloads, and are scoped to owned/authorized systems.
-
-See [docs/red-team-lab-use-cases.md](docs/red-team-lab-use-cases.md) for the full scope statement.
+No malware, unauthorized remote execution, credential theft, or destructive payloads are implemented or will be accepted. Red-team-adjacent features require explicit local arming, use only benign/lab-safe payloads, and are scoped to owned/authorized systems. See [docs/red-team-lab-use-cases.md](docs/red-team-lab-use-cases.md).
 
 ---
 
