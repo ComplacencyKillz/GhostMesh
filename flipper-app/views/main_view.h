@@ -11,6 +11,7 @@
 typedef enum {
     GhostMeshScreenProfile,
     GhostMeshScreenMessages,
+    GhostMeshScreenRxHistory,
 } GhostMeshScreen;
 
 typedef struct {
@@ -36,6 +37,14 @@ typedef struct {
     char last_rx[48];
     bool show_feedback;
     char sent_message[24];
+
+    // ── RX history (GhostMeshScreenRxHistory) ────────────────────────
+    const char** history_lines;  // formatted entries, newest first
+    uint8_t history_count;
+    uint8_t history_scroll;
+
+    // ── Marquee scroll ────────────────────────────────────────────────
+    uint8_t scroll_tick;  // incremented each main-loop iteration (~200 ms)
 } MainViewState;
 
 typedef struct MainView MainView;

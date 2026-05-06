@@ -184,7 +184,8 @@ static void decode_data(const uint8_t* buf, size_t len,
 
 static void decode_mesh_packet(const uint8_t* buf, size_t len,
                                 uint32_t* from_out,
-                                const uint8_t** text_out, size_t* text_len_out) {
+                                const uint8_t** text_out, size_t* text_len_out,
+                                int16_t* rssi_out, float* snr_out) {
     size_t pos = 0;
     while(pos < len) {
         uint64_t tag;
@@ -192,19 +193,24 @@ static void decode_mesh_packet(const uint8_t* buf, size_t len,
         uint32_t field = (uint32_t)(tag >> 3);
         uint32_t wire  = (uint32_t)(tag & 0x7);
 
-        if(wire == 5) {  // fixed32 — from (field 1) and to (field 2) are fixed32
+        if(wire == 5) {  // fixed32 — from/to (fields 1,2) and rx_snr (field 8)
             if(pos + 4 > len) break;
+            uint32_t raw = (uint32_t)buf[pos]
+                         | ((uint32_t)buf[pos+1] << 8)
+                         | ((uint32_t)buf[pos+2] << 16)
+                         | ((uint32_t)buf[pos+3] << 24);
             if(field == 1) {  // MeshPacket.from = field 1, fixed32
-                *from_out = (uint32_t)buf[pos]
-                          | ((uint32_t)buf[pos+1] << 8)
-                          | ((uint32_t)buf[pos+2] << 16)
-                          | ((uint32_t)buf[pos+3] << 24);
+                *from_out = raw;
+            } else if(field == 8) {  // MeshPacket.rx_snr = field 8, float
+                memcpy(snr_out, &raw, sizeof(float));
             }
             pos += 4;
         } else if(wire == PB_WIRE_VARINT) {
             uint64_t val;
             if(!read_varint(buf, len, &pos, &val)) break;
-            UNUSED(val);
+            if(field == 12) {  // MeshPacket.rx_rssi = field 12, int32
+                *rssi_out = (int16_t)(int32_t)(uint32_t)val;
+            }
         } else if(wire == PB_WIRE_BYTES) {
             uint64_t blen;
             if(!read_varint(buf, len, &pos, &blen)) break;
@@ -318,8 +324,10 @@ static void on_rx_byte(uint8_t byte, void* ctx) {
                         uint32_t from_node = 0;
                         const uint8_t* text = NULL;
                         size_t text_len = 0;
+                        int16_t rssi = 0;
+                        float snr = 0.0f;
                         decode_mesh_packet(buf + pos, (size_t)blen,
-                                           &from_node, &text, &text_len);
+                                           &from_node, &text, &text_len, &rssi, &snr);
                         if(text && text_len > 0) {
                             // LOW-2: mask limits to 4 hex chars; sender[8] is sufficient.
                             char sender[8];
@@ -330,7 +338,7 @@ static void on_rx_byte(uint8_t byte, void* ctx) {
                                               ? text_len : sizeof(text_buf) - 1;
                             memcpy(text_buf, text, copy);
                             text_buf[copy] = '\0';
-                            p->rx_cb(sender, text_buf, p->rx_ctx);
+                            p->rx_cb(sender, text_buf, rssi, snr, p->rx_ctx);
                         }
                     }
                     // HIGH-3: safe cast — blen <= len - pos guaranteed by guard above.

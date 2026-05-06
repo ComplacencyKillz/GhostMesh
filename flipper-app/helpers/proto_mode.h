@@ -13,13 +13,16 @@
 typedef struct ProtoMode ProtoMode;
 
 // Called when a complete text message packet is received from the mesh.
-// sender: last 4 hex digits of the source node ID (e.g. "f69c")
-// text:   null-terminated message text
+//   sender: last 4 hex digits of the source node ID (e.g. "f69c")
+//   text:   null-terminated message text
+//   rssi:   received signal strength in dBm (0 = not reported, e.g. local phone packet)
+//   snr:    signal-to-noise ratio in dB (0.0 = not reported)
 //
 // HIGH-2 API CONTRACT: sender and text point into stack buffers inside the UART
 // callback. They are only valid for the duration of this call. The implementation
 // MUST copy any data it wants to retain before returning — never store these pointers.
-typedef void (*ProtoRxCallback)(const char* sender, const char* text, void* context);
+typedef void (*ProtoRxCallback)(const char* sender, const char* text,
+                                int16_t rssi, float snr, void* context);
 
 // Allocate and open UART in PROTO mode.
 // Returns NULL if UART cannot be acquired.

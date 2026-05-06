@@ -53,12 +53,14 @@ print(mp.SerializeToString().hex())   # → 15 ff ff ff ff (field 2, fixed32)
 | `rebooted` | 8 | varint (bool) |
 
 ### MeshPacket
-| Field | Number | Wire |
-|-------|--------|------|
-| `from` | **1** | **fixed32** |
-| `to` | **2** | **fixed32** |
-| `decoded` (Data) | 4 | bytes |
-| `hop_limit` | **9** | varint |
+| Field | Number | Wire | Notes |
+|-------|--------|------|-------|
+| `from` | **1** | **fixed32** | source node ID |
+| `to` | **2** | **fixed32** | destination (0xFFFFFFFF = broadcast) |
+| `decoded` (Data) | 4 | bytes | |
+| `rx_snr` | 8 | fixed32 (float) | SNR in dB; 0.0 if not a radio packet |
+| `hop_limit` | **9** | varint | |
+| `rx_rssi` | 12 | varint (int32) | RSSI in dBm; 0 if not a radio packet |
 
 ### Data
 | Field | Number | Wire |

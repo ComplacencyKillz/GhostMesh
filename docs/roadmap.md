@@ -41,17 +41,16 @@ Profile selection screen before the message list.
 
 ---
 
-## Phase 4 — Node Logging + KML Export ⏳
+## Phase 4 — Node Logging + KML Export ✅
 
 Capture received message metadata for post-session analysis.
 
-- [ ] Log received messages to `SD:/apps_data/ghostmesh/log_YYYYMMDD.csv`
-- [ ] CSV fields: timestamp, node_id, message, rssi (if available), snr (if available)
-- [ ] `tools/log_to_kml.py` converts CSV with lat/lon fields to KML
-- [ ] Display last-seen timestamp for known senders in receive view
-- [ ] Optional: Flipper GPS module integration if hardware available
-
-**Prerequisite:** RSSI and SNR are available in the received `MeshPacket` via PROTO mode (fields `rx_rssi` and `rx_snr`) — no additional protocol work needed.
+- [x] Log received messages to `SD:/apps_data/ghostmesh/log_YYYYMMDD.csv`
+- [x] CSV fields: timestamp, node_id, message, rssi, snr
+- [x] `tools/log_to_kml.py` converts CSV with lat/lon fields to KML
+- [x] RSSI and SNR decoded from `MeshPacket` (fields 12 and 8) and shown in status bar
+- [x] Last-seen info in status bar: `sender rssi: message` on each receive
+- [ ] Optional: Flipper GPS module integration for lat/lon columns (hardware dependent)
 
 ---
 
@@ -91,6 +90,6 @@ These require Phase 4 completion and a stable hardware platform.
 | v0.1 | 1 | UART byte counter, compilable FAP |
 | v0.2 | 2 | Canned message menu, TEXTMSG send/receive |
 | v0.3 | 3 | Field profiles, SD card YAML loader |
-| v0.4 | 4 | Message logging, KML export _(pending)_ |
-| v0.5 | 5 | PROTO mode full client — **current** |
+| v0.4 | 4 | Message logging, KML export, RSSI/SNR decode — **current** |
+| v0.5 | 5 | PROTO mode full client |
 | v0.6 | 6 | Red team lab features |
