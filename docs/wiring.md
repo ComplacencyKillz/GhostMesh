@@ -10,16 +10,18 @@ The Flipper Zero connects to the Heltec ESP32 LoRa V3 board over **3 wires only*
 
 | Signal | Flipper Proto Board | Heltec ESP32 LoRa V3 |
 |--------|--------------------|-----------------------|
-| UART TX (Flipper → Heltec) | **U_TX / GPIO pin 13** | **GPIO7** (top row, labeled "7") |
-| UART RX (Heltec → Flipper) | **U_RX / GPIO pin 14** | **TX pad** (bottom row, labeled "TX" = GPIO43) |
+| UART TX (Flipper → Heltec) | **U_TX / GPIO pin 13** | **GPIO44** (bottom row, labeled "RX") |
+| UART RX (Heltec → Flipper) | **U_RX / GPIO pin 14** | **GPIO43** (bottom row, labeled "TX") |
 | Ground reference | **GND** | **GND** |
 | Power | — NOT CONNECTED — | — NOT CONNECTED — |
 
 > **Why GPIO7 for RX and not the pad labeled "RX" (GPIO44)?**
-> GPIO44 is UART0 RX on the ESP32-S3 and is owned by the ESP32 boot ROM and Meshtastic console.
-> GPIO41/42 are claimed by Meshtastic's I2C bus 2 at boot. GPIO7 is confirmed free — not used
-> by UART0, I2C, SPI (LoRa), USB, or ADC. UART1 can use it cleanly for RX. The pad labeled "TX"
-> (GPIO43) works fine for UART1 transmit because output can be routed to that pin without conflict.
+> GhostMesh uses Meshtastic's PhoneAPI which lives permanently on UART0 (GPIO43/44).
+> This is the same interface used by the official meshtastic Python library and the phone app
+> via the CP2102 USB bridge. Connecting the Flipper directly to GPIO43/44 accesses the PhoneAPI
+> without any special Meshtastic serial module configuration.
+> GPIO44 = UART0 RX (Flipper TX connects here). GPIO43 = UART0 TX (Flipper RX connects here).
+> The labeled "RX" and "TX" pads on the Heltec board are exactly these pins.
 
 ---
 
@@ -30,7 +32,7 @@ The Flipper Zero connects to the Heltec ESP32 LoRa V3 board over **3 wires only*
 │       Flipper Zero           │         │   Heltec WiFi LoRa 32 V3     │
 │    (via Prototype Board)     │         │     (Meshtastic firmware)     │
 │                              │         │                              │
-│  U_TX / GPIO 13  ───────────────────►  GPIO7  (top row, "7" pad)    │
+│  U_TX / GPIO 13  ───────────────────►  GPIO44  (bottom row, "RX" pad)│
 │  U_RX / GPIO 14  ◄───────────────────  GPIO43  (bottom row, "TX" pad)│
 │  GND             ───────────────────── GND                           │
 │                              │         │                              │
@@ -72,7 +74,7 @@ Flipper GPIO Header (top view, pin 1 on left):
   1   0   3   0   9   10  2   3   8
 ```
 
-- **Pin 13 = PA9 = USART1_TX** → connect to Heltec **GPIO7** (top row "7" pad)
+- **Pin 13 = PA9 = USART1_TX** → connect to Heltec **GPIO44** (bottom row "RX" labeled pad)
 - **Pin 14 = PA10 = USART1_RX** → connect to Heltec **GPIO43** (bottom row "TX" pad)
 - **Pin 8 or 18 = GND** → connect to Heltec GND
 
