@@ -104,8 +104,10 @@ static void draw_message_screen(Canvas* canvas, const MainViewState* s) {
     } else if(s->last_rx[0]) {
         snprintf(status, sizeof(status), "RX: %.34s", s->last_rx);
     } else {
-        snprintf(status, sizeof(status), "TX:%lu  RX:%lu",
-                 (unsigned long)s->tx_bytes, (unsigned long)s->rx_bytes);
+        // LOW-3: rx_bytes was always 0 in PROTO mode (raw bytes not counted).
+        // Show TX count and a send hint instead.
+        snprintf(status, sizeof(status), "TX:%lu  [OK] Send",
+                 (unsigned long)s->tx_bytes);
     }
     canvas_draw_str(canvas, 2, 63, status);
 }

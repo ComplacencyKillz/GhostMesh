@@ -206,6 +206,9 @@ uint8_t profile_load_yaml(
             uint8_t idx = profiles[cur].message_count;
 
             // Truncate to PROFILE_MSG_LEN (silent cap, already announced).
+            // LOW-1: strncpy copies up to PROFILE_MSG_LEN bytes and may not NUL-terminate
+            // if the source is exactly that length. The explicit NUL at [PROFILE_MSG_LEN]
+            // is correct because storage[][idx] is [PROFILE_MSG_LEN + 1] bytes wide.
             strncpy(storage[cur][idx], msg, PROFILE_MSG_LEN);
             storage[cur][idx][PROFILE_MSG_LEN] = '\0';
 

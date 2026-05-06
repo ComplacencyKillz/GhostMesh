@@ -26,8 +26,7 @@ typedef struct {
     uint8_t profile_scroll;
 
     // ── Message list (GhostMeshScreenMessages) ───────────────────────
-    uint32_t rx_bytes;
-    uint32_t tx_bytes;
+    uint32_t tx_bytes;  // LOW-3: rx_bytes removed — not meaningful in PROTO mode
     const char** messages;
     uint8_t message_count;
     uint8_t visible_rows;

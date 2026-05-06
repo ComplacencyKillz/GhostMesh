@@ -37,6 +37,9 @@ static size_t write_varint(uint64_t v, uint8_t* out) {
 static bool read_varint(const uint8_t* buf, size_t len, size_t* pos, uint64_t* out) {
     *out = 0;
     int shift = 0;
+    // MED-4: A protobuf varint is at most 10 bytes (64-bit value, 7 bits per byte).
+    // shift runs 0, 7, 14, ... 63 — 10 iterations, all satisfy shift < 64.
+    // An 11-byte (overlong) varint exits the loop and returns false.
     while(*pos < len && shift < 64) {
         uint8_t b = buf[(*pos)++];
         *out |= (uint64_t)(b & 0x7F) << shift;
@@ -75,7 +78,9 @@ static bool skip_field(const uint8_t* buf, size_t len, size_t* pos, uint32_t wir
     case 1: if(*pos + 8 > len) return false; *pos += 8; return true;
     case 2: {
         if(!read_varint(buf, len, pos, &tmp)) return false;
-        if(*pos + tmp > len) return false;
+        // HIGH-3: Use subtraction form to avoid size_t truncation of 64-bit tmp.
+        // len >= *pos is guaranteed because read_varint only advances within len.
+        if(tmp > (uint64_t)(len - *pos)) return false;
         *pos += (size_t)tmp;
         return true;
     }
@@ -90,6 +95,13 @@ static bool skip_field(const uint8_t* buf, size_t len, size_t* pos, uint32_t wir
 //   MeshPacket.to        = field 2, fixed32 (wire type 5) — NOT field 3 varint
 //   MeshPacket.decoded   = field 4, bytes
 //   MeshPacket.hop_limit = field 9, varint               — NOT field 13
+//
+// MED-5: Stack buffer sizes in proto_encode_text are bounded by text_len <= 80:
+//   data_buf[96]:  portnum(2) + payload_hdr(2) + text(80) = 84 bytes max
+//   mesh_buf[160]: to(5) + decoded_hdr(2) + data(84) + hop_limit(2) = 93 bytes max
+//   radio_buf[256]: packet_hdr(2) + mesh(93) = 95 bytes max
+// If PROTO_TEXT_MAX_LEN is increased beyond 80, these buffers must be recalculated.
+#define PROTO_TEXT_MAX_LEN 80
 
 static size_t write_fixed32_field(uint8_t* out, uint32_t field, uint32_t value) {
     size_t n = 0;
@@ -111,7 +123,7 @@ size_t proto_encode_text(const char* text, uint8_t* out, size_t out_max) {
 
     if(!text || out_max < 8) return 0;
     size_t text_len = strlen(text);
-    if(text_len > 80) text_len = 80;  // mesh text limit
+    if(text_len > PROTO_TEXT_MAX_LEN) text_len = PROTO_TEXT_MAX_LEN;
 
     // Data { portnum=1, payload=text }
     dl += write_varint_field(data_buf + dl, 1, PORTNUM_TEXT_MESSAGE);
@@ -270,6 +282,11 @@ static void on_rx_byte(uint8_t byte, void* ctx) {
         break;
 
     case PROTO_RX_PAYLOAD:
+        // HIGH-1: bounds-check before write, not after.
+        if(p->rx_pos >= PROTO_MAX_PAYLOAD) {
+            p->rx_state = PROTO_RX_IDLE;
+            break;
+        }
         p->rx_buf[p->rx_pos++] = byte;
         if(p->rx_pos < p->rx_expected) break;
 
@@ -294,7 +311,8 @@ static void on_rx_byte(uint8_t byte, void* ctx) {
                 } else if(wire == PB_WIRE_BYTES) {
                     uint64_t blen;
                     if(!read_varint(buf, len, &pos, &blen)) break;
-                    if(pos + blen > len) break;
+                    // HIGH-3: subtraction form avoids size_t truncation of 64-bit blen.
+                    if(blen > (uint64_t)(len - pos)) break;
 
                     if(field == 2 && p->rx_cb) {  // FromRadio.packet = MeshPacket (field 2)
                         uint32_t from_node = 0;
@@ -303,6 +321,7 @@ static void on_rx_byte(uint8_t byte, void* ctx) {
                         decode_mesh_packet(buf + pos, (size_t)blen,
                                            &from_node, &text, &text_len);
                         if(text && text_len > 0) {
+                            // LOW-2: mask limits to 4 hex chars; sender[8] is sufficient.
                             char sender[8];
                             snprintf(sender, sizeof(sender), "%04lx",
                                      (unsigned long)(from_node & 0xFFFF));
@@ -314,6 +333,7 @@ static void on_rx_byte(uint8_t byte, void* ctx) {
                             p->rx_cb(sender, text_buf, p->rx_ctx);
                         }
                     }
+                    // HIGH-3: safe cast — blen <= len - pos guaranteed by guard above.
                     pos += (size_t)blen;
                 } else {
                     if(!skip_field(buf, len, &pos, wire)) break;

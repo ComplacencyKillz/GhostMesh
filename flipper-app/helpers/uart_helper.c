@@ -50,7 +50,11 @@ UartHelper* uart_helper_alloc(uint32_t baud, UartHelperRxCallback rx_cb, void* c
 void uart_helper_free(UartHelper* helper) {
     if(!helper) return;
     if(helper->active) {
+        // LOW-4: async_rx_stop is synchronous — it drains in-flight callbacks before
+        // returning. Mark active=false immediately after to prevent any reentrant use
+        // of the handle during the deinit window.
         furi_hal_serial_async_rx_stop(helper->handle);
+        helper->active = false;
         furi_hal_serial_deinit(helper->handle);
         furi_hal_serial_control_release(helper->handle);
     }

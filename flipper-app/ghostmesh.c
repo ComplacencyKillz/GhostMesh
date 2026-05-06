@@ -17,13 +17,14 @@ typedef struct {
     MainView* main_view;
     ProtoMode* proto;
     FuriMutex* mutex;
+    FuriMutex* rx_mutex;  // MED-1: protects rx_display/rx_updated across callback/main-loop
 
     // Byte accounting
     volatile uint32_t tx_bytes;
 
-    // RX (written from proto rx callback)
+    // RX (written from proto rx callback, protected by rx_mutex)
     char rx_display[48];
-    volatile bool rx_updated;
+    bool rx_updated;
 
     // Profiles
     Profile profiles[PROFILE_MAX_COUNT];
@@ -52,8 +53,13 @@ typedef struct {
 
 static void on_rx_text(const char* sender, const char* text, void* ctx) {
     GhostMeshApp* app = ctx;
-    snprintf(app->rx_display, sizeof(app->rx_display), "%s: %s", sender, text);
-    app->rx_updated = true;
+    // MED-1: non-blocking acquire — if main loop holds the mutex, drop this update
+    // rather than blocking the UART callback. Next message will succeed.
+    if(furi_mutex_acquire(app->rx_mutex, 0) == FuriStatusOk) {
+        snprintf(app->rx_display, sizeof(app->rx_display), "%s: %s", sender, text);
+        app->rx_updated = true;
+        furi_mutex_release(app->rx_mutex);
+    }
 }
 
 // ── Input callback ────────────────────────────────────────────────────────
@@ -78,7 +84,8 @@ static void on_input(InputKey key, InputType type, void* ctx) {
             }
             break;
         case InputKeyDown:
-            if(app->profile_sel < app->profile_count - 1) {
+            // MED-3: guard against uint8_t underflow if profile_count == 0
+            if(app->profile_count > 0 && app->profile_sel < app->profile_count - 1) {
                 app->profile_sel++;
                 if(app->profile_sel >= app->profile_scroll + VISIBLE_ROWS)
                     app->profile_scroll = (uint8_t)(app->profile_sel - VISIBLE_ROWS + 1);
@@ -106,7 +113,8 @@ static void on_input(InputKey key, InputType type, void* ctx) {
             }
             break;
         case InputKeyDown:
-            if(app->msg_sel < msg_count - 1) {
+            // MED-2: guard against uint8_t underflow if msg_count == 0
+            if(msg_count > 0 && app->msg_sel < msg_count - 1) {
                 app->msg_sel++;
                 if(app->msg_sel >= app->msg_scroll + VISIBLE_ROWS)
                     app->msg_scroll = (uint8_t)(app->msg_sel - VISIBLE_ROWS + 1);
@@ -144,8 +152,9 @@ static GhostMeshApp* ghostmesh_alloc(void) {
     app->running = true;
     app->screen  = GhostMeshScreenProfile;
 
-    app->mutex = furi_mutex_alloc(FuriMutexTypeNormal);
-    app->proto = proto_mode_alloc(GHOSTMESH_UART_BAUD, on_rx_text, app);
+    app->mutex    = furi_mutex_alloc(FuriMutexTypeNormal);
+    app->rx_mutex = furi_mutex_alloc(FuriMutexTypeNormal);  // MED-1
+    app->proto    = proto_mode_alloc(GHOSTMESH_UART_BAUD, on_rx_text, app);
 
     app->profile_count = profile_load_builtins(app->profiles);
     app->profile_count += profile_load_yaml(
@@ -167,6 +176,7 @@ static void ghostmesh_free(GhostMeshApp* app) {
     furi_record_close(RECORD_GUI);
     main_view_free(app->main_view);
     proto_mode_free(app->proto);
+    furi_mutex_free(app->rx_mutex);
     furi_mutex_free(app->mutex);
     free(app);
 }
@@ -207,11 +217,15 @@ int32_t ghostmesh_app(void* p) {
         strncpy(state.active_profile_name, active->name,
                 sizeof(state.active_profile_name) - 1);
 
+        // MED-1: hold rx_mutex when reading rx_display to prevent data tearing
+        // against on_rx_text which writes it from the UART callback context.
+        furi_mutex_acquire(app->rx_mutex, FuriWaitForever);
         if(app->rx_updated) {
             strncpy(state.last_rx, app->rx_display, sizeof(state.last_rx) - 1);
             state.last_rx[sizeof(state.last_rx) - 1] = '\0';
             app->rx_updated = false;
         }
+        furi_mutex_release(app->rx_mutex);
 
         if(app->feedback_ticks > 0) {
             state.show_feedback = true;
