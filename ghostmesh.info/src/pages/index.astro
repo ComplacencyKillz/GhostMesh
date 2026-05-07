@@ -2,86 +2,92 @@
 import Layout from '../layouts/Layout.astro';
 
 const menuItems = [
-  { num: '01', label: 'INITIALIZE SYSTEM',  path: '/mission',   sub: 'Transmission origin'       },
-  { num: '02', label: 'HARDWARE MANIFEST',  path: '/hardware',  sub: 'Components and assembly'   },
-  { num: '03', label: 'FIRMWARE',           path: '/software',  sub: 'Build and deploy'          },
-  { num: '04', label: 'FIELD OPERATIONS',   path: '/usecases',  sub: 'Operational use cases'     },
-  { num: '05', label: 'SYSTEM LOGS',        path: '/docs',      sub: 'Documentation archive'     },
-  { num: '06', label: 'ROADMAP',            path: '/roadmap',   sub: 'Signal forward'            },
+  { num: '01', label: 'INITIALIZE SYSTEM',  path: '/mission',   sub: 'Transmission origin'     },
+  { num: '02', label: 'HARDWARE MANIFEST',  path: '/hardware',  sub: 'Components and assembly' },
+  { num: '03', label: 'FIRMWARE',           path: '/software',  sub: 'Build and deploy'        },
+  { num: '04', label: 'FIELD OPERATIONS',   path: '/usecases',  sub: 'Operational use cases'   },
+  { num: '05', label: 'SYSTEM LOGS',        path: '/docs',      sub: 'Documentation archive'   },
+  { num: '06', label: 'ROADMAP',            path: '/roadmap',   sub: 'Signal forward'          },
 ];
 ---
 
 <Layout title="GHOSTMESH" description="Transmitted outside sanctioned channels.">
 
   <!-- Splash / warning screen -->
-  <div id="splash" role="dialog" aria-modal="true" aria-label="Transmission warning">
-    <div class="splash-warning">
-      <p class="splash-header">⚠ UNLICENSED TRANSMISSION</p>
+  <div id="splash">
+    <div class="splash-body">
+      <p class="splash-domain">COMPLACENCYKILLZ.ME &gt; SCENE SELECTION</p>
+      <p class="splash-title">GHOSTMESH</p>
+      <p class="splash-classify">// UNLICENSED TRANSMISSION</p>
+    </div>
+    <p class="splash-prompt" id="splash-prompt">PRESS ANY KEY TO RECEIVE TRANSMISSION</p>
 
-      <!-- Interaction gate — visible before any key/click -->
-      <p class="splash-prompt" id="splash-prompt">// PRESS ANY KEY TO RECEIVE TRANSMISSION</p>
-
-      <!-- Warning lines — hidden until first interaction unlocks them -->
-      <div id="splash-lines" style="display:none;">
-        <span class="splash-line sl-hidden" id="sl-1">This material has not been reviewed, approved, or sanctioned</span>
-        <span class="splash-line sl-hidden" id="sl-2">by any government, corporation, or arcology authority.</span>
-        <span class="splash-line sl-hidden sl-gap sl-bright" id="sl-3">It carries no Listener's License.</span>
-        <span class="splash-line sl-hidden sl-bright" id="sl-4">No Creativity Permit was filed.</span>
-        <span class="splash-line sl-hidden sl-gap" id="sl-5">What you are about to access was designed in the Waste,</span>
-        <span class="splash-line sl-hidden" id="sl-6">assembled outside sanctioned channels,</span>
-        <span class="splash-line sl-hidden" id="sl-7">and broadcast so that you might at least prepare.</span>
-      </div>
-
+    <div id="splash-lines">
+      <span class="splash-line sl-hidden" id="sl-1">This material has not been reviewed, approved, or sanctioned</span>
+      <span class="splash-line sl-hidden" id="sl-2">by any government, corporation, or arcology authority.</span>
+      <span class="splash-line sl-hidden sl-gap sl-bright" id="sl-3">It carries no Listener's License.</span>
+      <span class="splash-line sl-hidden sl-bright" id="sl-4">No Creativity Permit was filed.</span>
+      <span class="splash-line sl-hidden sl-gap" id="sl-5">What you are about to access was designed in the Waste,</span>
+      <span class="splash-line sl-hidden" id="sl-6">assembled outside sanctioned channels,</span>
+      <span class="splash-line sl-hidden" id="sl-7">and broadcast so that you might at least prepare.</span>
       <button id="splash-ack" aria-label="Acknowledge and enter">[ ACKNOWLEDGE ]</button>
     </div>
+
     <p class="splash-candles" id="splash-candles">// so light your candles</p>
   </div>
 
-  <!-- Video background (muted until ACKNOWLEDGE) -->
-  <video id="bg-video" loop muted playsinline preload="auto"
-    style="position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;opacity:0;">
+  <!-- Video background -->
+  <video id="bg-video" loop muted playsinline preload="auto">
     <source src="/video/ghostmesh.mp4" type="video/mp4" />
   </video>
 
-  <!-- Mesh network canvas (on top of video, fades to partial opacity) -->
-  <canvas id="mesh-canvas" aria-hidden="true" style="position:fixed;inset:0;z-index:1;opacity:0;"></canvas>
+  <!-- Mesh canvas overlay -->
+  <canvas id="mesh-canvas" aria-hidden="true"></canvas>
+
+  <!-- Vignette — darkens edges so menu items are readable -->
+  <div class="vignette" aria-hidden="true"></div>
 
   <div class="corner corner--tl" aria-hidden="true"></div>
   <div class="corner corner--tr" aria-hidden="true"></div>
   <div class="corner corner--bl" aria-hidden="true"></div>
   <div class="corner corner--br" aria-hidden="true"></div>
 
+  <div class="rec" aria-hidden="true"><span class="rec-dot"></span>REC</div>
+
+  <!-- Ambient data overlays -->
   <div class="amb amb-1">// NODE ACTIVE<br>GHOSTMESH v0.5</div>
   <div class="amb amb-2">MESH: ONLINE<br>FREQ: 915MHz / LoRa</div>
-  <div class="amb amb-3">CHANNEL: PRIVATE<br>ENCRYPTION: AES-256</div>
+  <div class="amb amb-3">SIGNAL ████████░░ 82%<br>ENC: AES-256</div>
   <div class="amb amb-4">ORIGIN: THE WASTE<br>LICENSE: NONE</div>
+  <div class="amb amb-5">TX: 0 BYTES</div>
+  <div class="amb amb-6" id="liveTime"></div>
 
-  <main class="dvd-menu page" style="display:flex;flex-direction:column;justify-content:center;min-height:100vh;padding:0 10vw;max-width:900px;margin:0 auto;">
+  <main class="dvd-menu page">
 
     <div class="sys-bar sys-bar--top" aria-label="Breadcrumb navigation">
       <span class="sys-text">COMPLACENCYKILLZ.ME &gt; SCENE SELECTION &gt; GHOSTMESH</span>
       <a href="https://complacencykillz.me" class="return-link" aria-label="Return to main menu">← MAIN MENU</a>
     </div>
 
-    <div style="margin-bottom:2.5rem;opacity:0;" id="title-block">
-      <h1 class="glitch" data-text="GHOSTMESH" style="font-size:clamp(2rem,6vw,3.5rem);color:var(--blue);letter-spacing:0.15em;">GHOSTMESH</h1>
-      <p style="font-size:0.7rem;letter-spacing:0.2em;color:var(--text-dim);margin-top:0.5rem;" id="tagline"></p>
+    <!-- Title block — top left, absolutely positioned -->
+    <div class="title-block">
+      <h1 class="menu-title glitch" id="menuTitle" data-text="GHOSTMESH">GHOSTMESH</h1>
+      <p class="menu-tagline" id="menuTagline"></p>
     </div>
 
-    <nav aria-label="GhostMesh sections">
-      {menuItems.map((item, i) => (
-        <button
-          class={`menu-item menu-item--${i}`}
-          aria-label={item.label}
-          data-index={i}
-          data-path={item.path}
-        >
-          <span class="item-num">{item.num}</span>
-          <span class="item-label">{item.label}</span>
-          <span class="item-sub">{item.sub}</span>
-        </button>
-      ))}
-    </nav>
+    <!-- Menu items — scattered, not centered -->
+    {menuItems.map((item, i) => (
+      <button
+        class={`menu-item menu-item--${i}`}
+        aria-label={item.label}
+        data-index={i}
+        data-path={item.path}
+      >
+        <span class="item-num">{item.num}</span>
+        <span class="item-label">{item.label}</span>
+        <span class="item-sub">{item.sub}</span>
+      </button>
+    ))}
 
     <div class="sys-bar sys-bar--bottom">
       <span class="sys-text">UNLICENSED HARDWARE PROJECT / complacencykillz.me</span>
@@ -95,83 +101,417 @@ const menuItems = [
 </Layout>
 
 <style>
-  .sl-hidden { opacity: 0; }
-  .sl-gap    { margin-top: 1.2rem; display: block; }
-  .sl-bright { color: var(--text); }
-
-  .splash-prompt {
-    font-size: 0.7rem;
-    letter-spacing: 0.25em;
-    color: var(--blue);
-    margin-top: 2rem;
-    animation: prompt-blink 1.4s ease-in-out infinite;
+  /* ── Splash ─────────────────────────────────────────────── */
+  #splash {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    z-index: 9992;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
   }
 
-  @keyframes prompt-blink {
+  .splash-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.2rem;
+  }
+
+  .splash-domain {
+    font-size: 0.58rem;
+    letter-spacing: 0.3em;
+    color: var(--text-ghost);
+  }
+
+  .splash-title {
+    font-size: clamp(3rem, 10vw, 7rem);
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    color: var(--blue);
+    line-height: 1;
+    text-shadow: 0 0 40px rgba(0, 212, 255, 0.3);
+  }
+
+  .splash-classify {
+    font-size: 0.55rem;
+    letter-spacing: 0.22em;
+    color: var(--text-dim);
+    border: 1px solid var(--text-ghost);
+    padding: 0.3rem 0.8rem;
+  }
+
+  .splash-prompt {
+    position: absolute;
+    bottom: 3.5rem;
+    font-size: 0.62rem;
+    letter-spacing: 0.2em;
+    color: var(--blue);
+    animation: splash-blink 1.6s ease-in-out infinite;
+  }
+
+  @keyframes splash-blink {
     0%, 100% { opacity: 1; }
-    50%       { opacity: 0.3; }
+    50%       { opacity: 0.15; }
+  }
+
+  #splash-lines {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 2.5rem;
+    text-align: center;
+  }
+
+  .splash-line {
+    display: block;
+    font-size: 0.76rem;
+    line-height: 1.9;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+    min-height: 1.5em;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .sl-hidden { opacity: 0; }
+  .sl-gap    { margin-top: 1rem; }
+  .sl-bright { color: var(--text); }
+
+  #splash-ack {
+    display: block;
+    margin: 2.5rem auto 0;
+    background: none;
+    border: 1px solid var(--text-dim);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.25em;
+    padding: 0.8rem 2rem;
+    cursor: pointer;
+    opacity: 0;
+    animation: ack-pulse 2s ease-in-out infinite;
+  }
+
+  #splash-ack:hover { border-color: var(--blue); color: var(--blue); }
+
+  @keyframes ack-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(0,212,255,0); }
+    50%       { box-shadow: 0 0 0 4px rgba(0,212,255,0.08); }
+  }
+
+  .splash-candles {
+    position: absolute;
+    bottom: 2rem;
+    font-size: 0.58rem;
+    letter-spacing: 0.2em;
+    color: var(--text-ghost);
+    opacity: 0;
+  }
+
+  /* ── Video + canvas ─────────────────────────────────────── */
+  #bg-video {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+    opacity: 0;
+  }
+
+  #mesh-canvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .vignette {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 40% 50%,
+      transparent 15%,
+      rgba(0, 0, 0, 0.88) 100%
+    );
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  /* ── Chrome ─────────────────────────────────────────────── */
+  .corner {
+    position: fixed;
+    width: 20px;
+    height: 20px;
+    border-color: rgba(0, 212, 255, 0.2);
+    border-style: solid;
+    z-index: 10;
+  }
+  .corner--tl { top: 1.2rem;    left:  1.2rem; border-width: 1px 0 0 1px; }
+  .corner--tr { top: 1.2rem;    right: 1.2rem; border-width: 1px 1px 0 0; }
+  .corner--bl { bottom: 1.2rem; left:  1.2rem; border-width: 0 0 1px 1px; }
+  .corner--br { bottom: 1.2rem; right: 1.2rem; border-width: 0 1px 1px 0; }
+
+  .rec {
+    position: fixed;
+    top: 0.65rem;
+    right: 2.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--red);
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    z-index: 20;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .rec-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--red);
+    animation: rec-blink 1.8s ease-in-out infinite;
+  }
+  @keyframes rec-blink { 0%,100%{opacity:1} 50%{opacity:0.08} }
+
+  /* ── Ambient data ───────────────────────────────────────── */
+  .amb {
+    position: fixed;
+    font-size: 0.56rem;
+    letter-spacing: 0.12em;
+    line-height: 1.9;
+    color: var(--text-ghost);
+    pointer-events: none;
+    z-index: 6;
+    font-family: 'JetBrains Mono', monospace;
+    opacity: 0;
+  }
+  .amb-1 { top: 8vh;    left: 4vw;  color: var(--terminal); font-size: 0.6rem; }
+  .amb-2 { top: 20vh;   right: 5vw; text-align: right; }
+  .amb-3 { top: 40vh;   right: 5vw; text-align: right; color: rgba(0,212,255,0.22); }
+  .amb-4 { bottom: 30vh; right: 5vw; text-align: right; font-size: 0.52rem; }
+  .amb-5 { bottom: 22vh; left: 4vw;  font-size: 0.52rem; }
+  .amb-6 { bottom: 8vh;  right: 5vw; font-size: 0.58rem; color: rgba(0,212,255,0.28); }
+
+  /* ── Layout ─────────────────────────────────────────────── */
+  .dvd-menu {
+    position: relative;
+    min-height: 100vh;
+    z-index: 5;
+    overflow: hidden;
+  }
+
+  /* ── Title block — top-left, large ─────────────────────── */
+  .title-block {
+    position: absolute;
+    top: clamp(60px, 12vh, 140px);
+    left: clamp(24px, 5vw, 80px);
+    pointer-events: none;
+  }
+
+  .menu-title {
+    font-size: clamp(3.2rem, 10vw, 8rem);
+    font-weight: 900;
+    color: var(--text);
+    letter-spacing: 0.08em;
+    line-height: 0.9;
+    opacity: 0;
+  }
+
+  .menu-tagline {
+    margin-top: 1rem;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    letter-spacing: 0.14em;
+    font-style: italic;
+    opacity: 0;
+    min-height: 1.2em;
+  }
+
+  /* ── Menu items — scattered ─────────────────────────────── */
+  .menu-item {
+    position: absolute;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    padding: 0.5rem 0.8rem;
+    opacity: 0;
+    outline: none;
+    font-family: 'JetBrains Mono', monospace;
+    z-index: 8;
+  }
+
+  /* Fog backdrop behind each item */
+  .menu-item::before {
+    content: '';
+    position: absolute;
+    inset: -0.7rem -1.4rem;
+    background: radial-gradient(ellipse at center,
+      rgba(0, 20, 60, 0.55) 30%,
+      rgba(0, 10, 40, 0.30) 65%,
+      transparent 100%
+    );
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 6px;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .item-num {
+    display: block;
+    font-size: 0.52rem;
+    letter-spacing: 0.1em;
+    color: var(--text-ghost);
+    margin-bottom: 0.2rem;
+    transition: color 0.15s;
+  }
+  .item-label {
+    display: block;
+    font-size: clamp(0.7rem, 1.3vw, 0.95rem);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: var(--text-dim);
+    transition: color 0.15s;
+    white-space: nowrap;
+  }
+  .item-sub {
+    display: block;
+    font-size: 0.55rem;
+    letter-spacing: 0.08em;
+    color: var(--text-ghost);
+    margin-top: 0.15rem;
+    transition: color 0.15s;
+  }
+
+  .menu-item.is-selected .item-label {
+    color: var(--blue);
+    text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+  }
+  .menu-item.is-selected .item-num  { color: var(--text-dim); }
+  .menu-item.is-selected .item-sub  { color: var(--text-dim); }
+  .menu-item:hover .item-label      { color: var(--text); }
+  .menu-item:hover .item-sub        { color: var(--text-dim); }
+
+  /* Scattered positions — asymmetric, DVD-style */
+  .menu-item--0 { top: 18%;    right: 16vw; }
+  .menu-item--1 { top: 36%;    right: 7vw;  }
+  .menu-item--2 { top: 56%;    right: 20vw; }
+  .menu-item--3 { bottom: 30%; left: 9vw;   }
+  .menu-item--4 { bottom: 18%; left: 5vw;   }
+  .menu-item--5 { bottom: 12%; right: 11vw; }
+
+  /* ── Sys bars ───────────────────────────────────────────── */
+  .sys-bar {
+    position: fixed;
+    left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 2rem;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    color: var(--text-dim);
+    border-color: var(--text-ghost);
+    z-index: 10;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .sys-bar--top    { top: 0;    border-bottom: 1px solid var(--text-ghost); }
+  .sys-bar--bottom { bottom: 0; border-top:    1px solid var(--text-ghost); }
+
+  .sys-text { color: var(--text-dim); font-size: 0.65rem; letter-spacing: 0.15em; }
+
+  .return-link {
+    color: var(--text-dim);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-decoration: none;
+    border-bottom: 1px solid var(--text-ghost);
+    padding-bottom: 2px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .return-link:hover { color: var(--blue); border-color: var(--blue); }
+
+  /* ── Nav hint ───────────────────────────────────────────── */
+  .nav-hint {
+    position: fixed;
+    bottom: 2.8rem;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.55rem;
+    letter-spacing: 0.16em;
+    color: var(--text-ghost);
+    z-index: 10;
+    opacity: 0;
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
   }
 </style>
 
 <script>
   import gsap from 'gsap';
 
-  /* ── Mesh canvas ──────────────────────────────────────────── */
-  var canvas = document.getElementById('mesh-canvas');
-  var ctx    = canvas ? canvas.getContext('2d') : null;
+  /* ── Mesh canvas overlay ──────────────────────────────────── */
+  var meshCanvas = document.getElementById('mesh-canvas');
+  var meshCtx    = meshCanvas ? meshCanvas.getContext('2d') : null;
 
   function resizeMesh() {
-    if (!canvas) return;
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
+    if (!meshCanvas) return;
+    meshCanvas.width  = window.innerWidth;
+    meshCanvas.height = window.innerHeight;
   }
 
-  if (canvas && ctx) {
+  if (meshCanvas && meshCtx) {
     resizeMesh();
     window.addEventListener('resize', resizeMesh);
 
-    var NODE_COUNT = 14;
+    var NODE_COUNT = 12;
     var nodes = [];
     for (var ni = 0; ni < NODE_COUNT; ni++) {
       nodes.push({
         x:          Math.random() * window.innerWidth,
         y:          Math.random() * window.innerHeight,
-        vx:         (Math.random() - 0.5) * 0.25,
-        vy:         (Math.random() - 0.5) * 0.25,
+        vx:         (Math.random() - 0.5) * 0.2,
+        vy:         (Math.random() - 0.5) * 0.2,
         pulse:      Math.random() * Math.PI * 2,
-        pulseSpeed: 0.018 + Math.random() * 0.018,
+        pulseSpeed: 0.016 + Math.random() * 0.016,
       });
     }
 
     var signals = [];
-    var MAX_DIST = 280;
 
     function spawnSignal() {
       var from = Math.floor(Math.random() * NODE_COUNT);
       var to   = Math.floor(Math.random() * NODE_COUNT);
       while (to === from) to = Math.floor(Math.random() * NODE_COUNT);
-      signals.push({ from: from, to: to, t: 0, speed: 0.006 + Math.random() * 0.005 });
+      signals.push({ from: from, to: to, t: 0, speed: 0.005 + Math.random() * 0.004 });
     }
 
-    setInterval(spawnSignal, 1200);
+    setInterval(spawnSignal, 1400);
 
     function drawMesh() {
-      if (!ctx || !canvas) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (!meshCtx || !meshCanvas) return;
+      meshCtx.clearRect(0, 0, meshCanvas.width, meshCanvas.height);
 
       for (var i = 0; i < NODE_COUNT; i++) {
         for (var j = i + 1; j < NODE_COUNT; j++) {
           var dx   = nodes[i].x - nodes[j].x;
           var dy   = nodes[i].y - nodes[j].y;
           var dist = Math.sqrt(dx*dx + dy*dy);
-          if (dist < MAX_DIST) {
-            var a = (1 - dist / MAX_DIST) * 0.12;
-            ctx.strokeStyle = 'rgba(0,212,255,' + a + ')';
-            ctx.lineWidth   = 0.5;
-            ctx.beginPath();
-            ctx.moveTo(nodes[i].x, nodes[i].y);
-            ctx.lineTo(nodes[j].x, nodes[j].y);
-            ctx.stroke();
+          if (dist < 260) {
+            meshCtx.strokeStyle = 'rgba(0,212,255,' + ((1 - dist / 260) * 0.09) + ')';
+            meshCtx.lineWidth   = 0.5;
+            meshCtx.beginPath();
+            meshCtx.moveTo(nodes[i].x, nodes[i].y);
+            meshCtx.lineTo(nodes[j].x, nodes[j].y);
+            meshCtx.stroke();
           }
         }
       }
@@ -180,19 +520,18 @@ const menuItems = [
         var nd = nodes[n];
         nd.pulse += nd.pulseSpeed;
         var glow = 0.5 + 0.5 * Math.sin(nd.pulse);
-        ctx.beginPath();
-        ctx.arc(nd.x, nd.y, 4 + glow * 4, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(0,212,255,' + (0.08 + glow * 0.07) + ')';
-        ctx.lineWidth   = 1;
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(nd.x, nd.y, 2, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(0,212,255,' + (0.55 + glow * 0.45) + ')';
-        ctx.fill();
-        nd.x += nd.vx;
-        nd.y += nd.vy;
-        if (nd.x < 0 || nd.x > canvas.width)  nd.vx *= -1;
-        if (nd.y < 0 || nd.y > canvas.height) nd.vy *= -1;
+        meshCtx.beginPath();
+        meshCtx.arc(nd.x, nd.y, 3 + glow * 3, 0, Math.PI * 2);
+        meshCtx.strokeStyle = 'rgba(0,212,255,' + (0.06 + glow * 0.06) + ')';
+        meshCtx.lineWidth   = 1;
+        meshCtx.stroke();
+        meshCtx.beginPath();
+        meshCtx.arc(nd.x, nd.y, 1.5, 0, Math.PI * 2);
+        meshCtx.fillStyle = 'rgba(0,212,255,' + (0.4 + glow * 0.4) + ')';
+        meshCtx.fill();
+        nd.x += nd.vx; nd.y += nd.vy;
+        if (nd.x < 0 || nd.x > meshCanvas.width)  nd.vx *= -1;
+        if (nd.y < 0 || nd.y > meshCanvas.height) nd.vy *= -1;
       }
 
       for (var si = signals.length - 1; si >= 0; si--) {
@@ -203,16 +542,16 @@ const menuItems = [
         var sx = fn.x + (tn.x - fn.x) * s.t;
         var sy = fn.y + (tn.y - fn.y) * s.t;
         var ts = Math.max(0, s.t - 0.07);
-        ctx.beginPath();
-        ctx.moveTo(fn.x + (tn.x - fn.x) * ts, fn.y + (tn.y - fn.y) * ts);
-        ctx.lineTo(sx, sy);
-        ctx.strokeStyle = 'rgba(0,255,65,0.25)';
-        ctx.lineWidth   = 1.5;
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(sx, sy, 2.5, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(0,255,65,0.9)';
-        ctx.fill();
+        meshCtx.beginPath();
+        meshCtx.moveTo(fn.x + (tn.x - fn.x) * ts, fn.y + (tn.y - fn.y) * ts);
+        meshCtx.lineTo(sx, sy);
+        meshCtx.strokeStyle = 'rgba(0,255,65,0.2)';
+        meshCtx.lineWidth   = 1.5;
+        meshCtx.stroke();
+        meshCtx.beginPath();
+        meshCtx.arc(sx, sy, 2, 0, Math.PI * 2);
+        meshCtx.fillStyle = 'rgba(0,255,65,0.85)';
+        meshCtx.fill();
       }
 
       requestAnimationFrame(drawMesh);
@@ -233,104 +572,7 @@ const menuItems = [
     });
   }
 
-  function wait(ms) {
-    return new Promise(function(r) { setTimeout(r, ms); });
-  }
-
-  /* ── Video ────────────────────────────────────────────────── */
-  var video = document.getElementById('bg-video');
-
-  /* ── Splash sequence ──────────────────────────────────────── */
-  var LINES = [
-    ['sl-1', 'This material has not been reviewed, approved, or sanctioned'],
-    ['sl-2', 'by any government, corporation, or arcology authority.'],
-    ['sl-3', "It carries no Listener's License."],
-    ['sl-4', 'No Creativity Permit was filed.'],
-    ['sl-5', 'What you are about to access was designed in the Waste,'],
-    ['sl-6', 'assembled outside sanctioned channels,'],
-    ['sl-7', 'and broadcast so that you might at least prepare.'],
-  ];
-
-  var transmissionStarted = false;
-
-  async function startTransmission() {
-    if (transmissionStarted) return;
-    transmissionStarted = true;
-
-    // This click/keypress IS the browser audio unlock gesture
-    if (video) {
-      video.muted  = false;
-      video.volume = 0.35;
-      video.play();
-      gsap.to(video, { opacity: 1, duration: 1.5, ease: 'power2.inOut' });
-    }
-
-    // Swap prompt for lines
-    var prompt = document.getElementById('splash-prompt');
-    var lines  = document.getElementById('splash-lines');
-    if (prompt) gsap.to(prompt, { opacity: 0, duration: 0.3, onComplete: function() {
-      if (prompt) prompt.style.display = 'none';
-      if (lines)  lines.style.display  = 'block';
-    }});
-
-    await wait(400);
-
-    for (var li = 0; li < LINES.length; li++) {
-      var pair = LINES[li];
-      var el = document.getElementById(pair[0]);
-      if (el) {
-        el.style.opacity = '1';
-        await typewrite(el, pair[1], 16);
-        await wait(pair[0] === 'sl-4' ? 500 : 100);
-      }
-    }
-
-    await wait(500);
-    gsap.to('#splash-ack',     { opacity: 1, duration: 0.5 });
-    gsap.to('#splash-candles', { opacity: 1, duration: 1, delay: 0.4 });
-  }
-
-  // First interaction gate: any key or click starts the transmission
-  function onFirstInteract(e) {
-    if (e.type === 'keydown' && ['F5','F12','F11'].includes(e.key)) return;
-    document.removeEventListener('keydown', onFirstInteract);
-    document.removeEventListener('click',   onFirstInteract);
-    startTransmission();
-  }
-
-  document.addEventListener('keydown', onFirstInteract);
-  document.addEventListener('click',   onFirstInteract);
-
-  /* ── Menu entrance ────────────────────────────────────────── */
-  function runEntrance() {
-    // Set initial positions BEFORE building the timeline
-    gsap.set('.menu-item--0', { x: 16, opacity: 0 });
-    gsap.set('.menu-item--1', { x: 16, opacity: 0 });
-    gsap.set('.menu-item--2', { x: 16, opacity: 0 });
-    gsap.set('.menu-item--3', { x: 16, opacity: 0 });
-    gsap.set('.menu-item--4', { x: 16, opacity: 0 });
-    gsap.set('.menu-item--5', { x: 16, opacity: 0 });
-
-    if (canvas) gsap.to(canvas, { opacity: 0.6, duration: 1.5, ease: 'power2.inOut' });
-
-    gsap.timeline({ defaults: { ease: 'power2.out' } })
-      .to('.amb-1', { opacity: 1, duration: 0.5, delay: 0.3 })
-      .to('.amb-2', { opacity: 1, duration: 0.5 }, '-=0.2')
-      .to('.amb-3', { opacity: 1, duration: 0.5 }, '-=0.3')
-      .to('.amb-4', { opacity: 1, duration: 0.5 }, '-=0.3')
-      .to('#title-block', { opacity: 1, duration: 0.4 }, '-=0.2')
-      .add(function() {
-        var el = document.getElementById('tagline');
-        if (el) typewrite(el, 'My strength is my knowledge. My weapons are my skills.', 28);
-      }, '-=0.1')
-      .to('.menu-item--0', { opacity: 1, x: 0, duration: 0.3 }, '+=0.3')
-      .to('.menu-item--1', { opacity: 1, x: 0, duration: 0.3 }, '-=0.15')
-      .to('.menu-item--2', { opacity: 1, x: 0, duration: 0.3 }, '-=0.15')
-      .to('.menu-item--3', { opacity: 1, x: 0, duration: 0.3 }, '-=0.15')
-      .to('.menu-item--4', { opacity: 1, x: 0, duration: 0.3 }, '-=0.15')
-      .to('.menu-item--5', { opacity: 1, x: 0, duration: 0.3 }, '-=0.15')
-      .to('.nav-hint',     { opacity: 1, duration: 0.4 }, '-=0.1');
-  }
+  function wait(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
 
   /* ── Navigation ───────────────────────────────────────────── */
   var items = document.querySelectorAll('.menu-item');
@@ -348,9 +590,10 @@ const menuItems = [
   }
 
   document.addEventListener('keydown', function(e) {
+    if (dismissed && !transmissionStarted) return;
     if (e.key === 'ArrowDown')  { e.preventDefault(); select(cur + 1); }
     if (e.key === 'ArrowUp')    { e.preventDefault(); select(cur - 1); }
-    if (e.key === 'Enter')      { go(); }
+    if (e.key === 'Enter' && dismissed) { go(); }
   });
 
   items.forEach(function(item, i) {
@@ -358,32 +601,137 @@ const menuItems = [
     item.addEventListener('mouseenter', function() { select(i); });
   });
 
-  /* ── Acknowledge ──────────────────────────────────────────── */
-  var splash    = document.getElementById('splash');
-  var dismissed = false;
+  /* ── Entrance animation ───────────────────────────────────── */
+  function runEntrance() {
+    // Set initial offset positions before animating in
+    gsap.set('.menu-item--0', { y: -14, opacity: 0 });
+    gsap.set('.menu-item--1', { x:  18, opacity: 0 });
+    gsap.set('.menu-item--2', { x:  14, opacity: 0 });
+    gsap.set('.menu-item--3', { y:  14, opacity: 0 });
+    gsap.set('.menu-item--4', { x: -14, opacity: 0 });
+    gsap.set('.menu-item--5', { y:  12, opacity: 0 });
 
-  function dismiss() {
+    gsap.timeline({ defaults: { ease: 'power2.out' } })
+      .to('.amb-1', { opacity: 1, duration: 0.5, delay: 0.1 })
+      .to('.amb-2', { opacity: 1, duration: 0.5 }, '-=0.2')
+      .to('.amb-3', { opacity: 1, duration: 0.5 }, '-=0.3')
+      .add(function() {
+        var titleEl = document.getElementById('menuTitle');
+        if (titleEl) gsap.to(titleEl, { opacity: 1, duration: 0.4 });
+        var tagEl = document.getElementById('menuTagline');
+        if (tagEl) {
+          gsap.to(tagEl, { opacity: 1, duration: 0.3, delay: 0.5, onStart: function() {
+            typewrite(tagEl, 'My weapons are my skills.', 32);
+          }});
+        }
+      }, '-=0.1')
+      .to('.menu-item--0', { opacity: 1, y: 0, duration: 0.35 }, '+=0.3')
+      .to('.menu-item--1', { opacity: 1, x: 0, duration: 0.35 }, '-=0.2')
+      .to('.menu-item--2', { opacity: 1, x: 0, duration: 0.35 }, '-=0.2')
+      .to('.menu-item--3', { opacity: 1, y: 0, duration: 0.35 }, '-=0.2')
+      .to('.menu-item--4', { opacity: 1, x: 0, duration: 0.35 }, '-=0.2')
+      .to('.menu-item--5', { opacity: 1, y: 0, duration: 0.35 }, '-=0.2')
+      .to('.amb-4',        { opacity: 1, duration: 0.4 }, '-=0.1')
+      .to('.amb-5',        { opacity: 1, duration: 0.4 }, '-=0.3')
+      .to('.nav-hint',     { opacity: 1, duration: 0.4 }, '-=0.2')
+      .add(function() { select(0); });
+  }
+
+  /* ── Splash two-stage logic ───────────────────────────────── */
+  var video             = document.getElementById('bg-video');
+  var splash            = document.getElementById('splash');
+  var transmissionStarted = false;
+  var dismissed         = false;
+
+  var LINES = [
+    ['sl-1', 'This material has not been reviewed, approved, or sanctioned'],
+    ['sl-2', 'by any government, corporation, or arcology authority.'],
+    ['sl-3', "It carries no Listener's License."],
+    ['sl-4', 'No Creativity Permit was filed.'],
+    ['sl-5', 'What you are about to access was designed in the Waste,'],
+    ['sl-6', 'assembled outside sanctioned channels,'],
+    ['sl-7', 'and broadcast so that you might at least prepare.'],
+  ];
+
+  async function startTransmission() {
+    if (transmissionStarted) return;
+    transmissionStarted = true;
+
+    // First interaction = browser audio unlock
+    if (video) {
+      video.muted  = false;
+      video.volume = 0.35;
+      video.play();
+      gsap.to(video, { opacity: 1, duration: 1.5, ease: 'power2.inOut' });
+    }
+    if (meshCanvas) gsap.to(meshCanvas, { opacity: 0.45, duration: 2, delay: 0.5 });
+
+    // Swap prompt for warning text
+    var prompt = document.getElementById('splash-prompt');
+    var lines  = document.getElementById('splash-lines');
+    if (prompt) {
+      gsap.to(prompt, { opacity: 0, duration: 0.3, onComplete: function() {
+        if (prompt) prompt.style.display = 'none';
+        if (lines)  lines.style.display  = 'flex';
+      }});
+    }
+
+    await wait(500);
+
+    for (var li = 0; li < LINES.length; li++) {
+      var pair = LINES[li];
+      var el   = document.getElementById(pair[0]);
+      if (el) {
+        el.style.opacity = '1';
+        await typewrite(el, pair[1], 16);
+        await wait(pair[0] === 'sl-4' ? 500 : 100);
+      }
+    }
+
+    await wait(500);
+    gsap.to('#splash-ack',     { opacity: 1, duration: 0.5 });
+    gsap.to('#splash-candles', { opacity: 1, duration: 1, delay: 0.4 });
+  }
+
+  function dismissSplash() {
     if (dismissed) return;
     dismissed = true;
-    gsap.to(splash, {
-      opacity: 0,
-      duration: 0.7,
-      ease: 'power2.in',
-      onComplete: function() {
-        if (splash) splash.remove();
-        select(0);
-      },
-    });
+    if (splash) {
+      gsap.to(splash, {
+        opacity: 0,
+        duration: 0.8,
+        ease: 'power2.in',
+        onComplete: function() { if (splash) splash.remove(); },
+      });
+    }
     runEntrance();
   }
 
+  // Stage 1: any interaction starts the transmission
+  function onFirstInteract(e) {
+    if (e.type === 'keydown' && ['F5','F12','F11'].includes(e.key)) return;
+    document.removeEventListener('keydown', onFirstInteract);
+    document.removeEventListener('click',   onFirstInteract);
+    startTransmission();
+  }
+
+  document.addEventListener('keydown', onFirstInteract);
+  document.addEventListener('click',   onFirstInteract);
+
+  // Stage 2: ACKNOWLEDGE dismisses splash after reading
   var ackBtn = document.getElementById('splash-ack');
-  if (ackBtn) ackBtn.addEventListener('click', dismiss);
+  if (ackBtn) ackBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    dismissSplash();
+  });
 
   /* ── Clock ────────────────────────────────────────────────── */
-  var tsEl = document.getElementById('timestamp');
+  var tsEl   = document.getElementById('timestamp');
+  var liveEl = document.getElementById('liveTime');
   function tick() {
-    if (tsEl) tsEl.textContent = new Date().toISOString().replace('T',' ').slice(0,19) + ' UTC';
+    var s = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+    if (tsEl)   tsEl.textContent   = s;
+    if (liveEl) liveEl.textContent = s;
   }
   tick();
   setInterval(tick, 1000);
