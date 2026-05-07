@@ -31,6 +31,8 @@ const {
     <title>{title} :: GHOSTMESH</title>
     <style is:global>
       @import '../styles/global.css';
+      /* Sub-pages: body must not scroll — scene-panel handles its own overflow */
+      body { overflow: hidden; }
     </style>
   </head>
   <body>
@@ -51,16 +53,14 @@ const {
     <div class="corner corner--bl" aria-hidden="true"></div>
     <div class="corner corner--br" aria-hidden="true"></div>
 
-    <!-- REC indicator -->
-    <div class="rec" aria-hidden="true"><span class="rec-dot"></span>REC</div>
-
-    <!-- Return link sits just below REC -->
+    <!-- Return links below corner bracket -->
     <a href="/" class="sub-return-link" aria-label="Return to GhostMesh menu">← MENU</a>
     <a href="https://complacencykillz.me" class="sub-main-link" aria-label="Return to main menu">← MAIN</a>
 
-    <!-- Top sys bar -->
+    <!-- Top sys bar with REC in it -->
     <div class="sys-bar sys-bar--top">
       <span class="sys-text">GHOSTMESH &gt; {section}</span>
+      <div class="rec" aria-hidden="true"><span class="rec-dot"></span>REC</div>
     </div>
 
     <!-- Chapter intro popup -->
@@ -88,10 +88,14 @@ const {
       </div>
     </main>
 
-    <!-- Bottom sys bar -->
+    <!-- Bottom sys bar — two scrolling halves -->
     <div class="sys-bar sys-bar--bottom">
-      <span class="sys-text">ghostmesh.info</span>
-      <span class="sys-text" id="ts"></span>
+      <div class="sys-btm-half sys-btm-left">
+        <span class="sys-btm-ticker">ghostmesh.info &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+      </div>
+      <div class="sys-btm-half sys-btm-right">
+        <span class="sys-text" id="ts"></span>
+      </div>
     </div>
 
   </body>
@@ -110,19 +114,16 @@ const {
     z-index: 2;
   }
 
-  /* ── REC ────────────────────────────────────────────────────── */
+  /* ── REC lives inside the top sys-bar ──────────────────────── */
   .rec {
-    position: fixed;
-    top: 0.65rem;
-    right: 2.5rem;
     display: flex;
     align-items: center;
     gap: 0.4rem;
     color: var(--red);
     font-size: 0.6rem;
     letter-spacing: 0.2em;
-    z-index: 20;
     font-family: 'JetBrains Mono', monospace;
+    flex-shrink: 0;
   }
   .rec-dot {
     width: 5px;
@@ -133,7 +134,7 @@ const {
   }
   @keyframes rec-blink { 0%,100%{opacity:1} 50%{opacity:0.08} }
 
-  /* ── Return links below REC ─────────────────────────────────── */
+  /* ── Return links — below corner bracket ────────────────────── */
   .sub-return-link,
   .sub-main-link {
     position: fixed;
@@ -146,8 +147,8 @@ const {
     z-index: 20;
     transition: color 0.15s;
   }
-  .sub-return-link { top: 2.2rem; }
-  .sub-main-link   { top: 3.4rem; }
+  .sub-return-link { top: 3rem; }
+  .sub-main-link   { top: 4.2rem; }
   .sub-return-link:hover,
   .sub-main-link:hover { color: var(--blue); }
 
@@ -208,13 +209,17 @@ const {
 
   /* ── Scene panel — scrollable content ──────────────────────── */
   .scene-panel {
-    position: relative;
+    position: fixed;
+    top: 2.2rem;
+    bottom: 2.2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(760px, 100%);
     z-index: 5;
-    min-height: 100vh;
-    max-width: 760px;
-    margin: 0 auto;
-    padding: 5rem 2rem 5rem;
+    padding: 2rem 2rem;
     overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* Visible scrollbar */
@@ -337,6 +342,42 @@ const {
     font-size: 0.62rem;
     color: var(--text-ghost);
     letter-spacing: 0.15em;
+  }
+
+  /* ── Bottom bar two-half tickers ───────────────────────────── */
+  .sys-bar--bottom { padding: 0; }
+
+  .sys-btm-half {
+    width: 50%;
+    overflow: hidden;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0;
+  }
+
+  .sys-btm-left {
+    padding-left: 1.5rem;
+    border-right: 1px solid var(--text-ghost);
+  }
+
+  .sys-btm-right {
+    padding-right: 1.5rem;
+    justify-content: flex-end;
+  }
+
+  .sys-btm-ticker {
+    display: inline-block;
+    color: var(--text-dim);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    font-family: 'JetBrains Mono', monospace;
+    animation: sys-btm-tick 18s linear infinite;
+  }
+
+  @keyframes sys-btm-tick {
+    0%   { transform: translateX(110%); }
+    100% { transform: translateX(-110%); }
   }
 </style>
 

@@ -64,7 +64,6 @@ const menuItems = [
   <div class="corner corner--bl" aria-hidden="true"></div>
   <div class="corner corner--br" aria-hidden="true"></div>
 
-  <div class="rec" aria-hidden="true"><span class="rec-dot"></span>REC</div>
   <a href="https://complacencykillz.me" class="main-menu-link" aria-label="Return to main menu">← MAIN MENU</a>
 
   <!-- Ambient data tickers — one per corner, content scrolls -->
@@ -79,6 +78,7 @@ const menuItems = [
 
     <div class="sys-bar sys-bar--top" aria-label="Breadcrumb navigation">
       <span class="sys-text">COMPLACENCYKILLZ.ME &gt; SCENE SELECTION &gt; GHOSTMESH</span>
+      <div class="rec" aria-hidden="true"><span class="rec-dot"></span>REC</div>
     </div>
 
     <!-- Title block — top left, absolutely positioned -->
@@ -102,8 +102,12 @@ const menuItems = [
     ))}
 
     <div class="sys-bar sys-bar--bottom">
-      <span class="sys-text">UNLICENSED HARDWARE PROJECT / complacencykillz.me</span>
-      <span class="sys-text" id="timestamp"></span>
+      <div class="sys-btm-half sys-btm-left">
+        <span class="sys-btm-ticker">UNLICENSED HARDWARE PROJECT / complacencykillz.me &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+      </div>
+      <div class="sys-btm-half sys-btm-right">
+        <span class="sys-text" id="timestamp"></span>
+      </div>
     </div>
 
   </main>
@@ -324,18 +328,16 @@ const menuItems = [
   .corner--bl { bottom: 1.2rem; left:  1.2rem; border-width: 0 0 1px 1px; }
   .corner--br { bottom: 1.2rem; right: 1.2rem; border-width: 0 1px 1px 0; }
 
+  /* REC lives inside the top sys-bar — no fixed positioning needed */
   .rec {
-    position: fixed;
-    top: 0.65rem;
-    right: 2.5rem;
     display: flex;
     align-items: center;
     gap: 0.4rem;
     color: var(--red);
     font-size: 0.6rem;
     letter-spacing: 0.2em;
-    z-index: 20;
     font-family: 'JetBrains Mono', monospace;
+    flex-shrink: 0;
   }
   .rec-dot {
     width: 5px;
@@ -515,10 +517,10 @@ const menuItems = [
   .menu-item--4 { bottom: 18%; left: 5vw;   }
   .menu-item--5 { bottom: 12%; right: 11vw; }
 
-  /* ── Main menu return — sits below REC indicator ───────── */
+  /* ── Main menu return — sits below corner bracket ──────── */
   .main-menu-link {
     position: fixed;
-    top: 2.2rem;
+    top: 3rem;
     right: 2rem;
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.6rem;
@@ -549,6 +551,42 @@ const menuItems = [
   .sys-bar--bottom { bottom: 0; border-top:    1px solid var(--text-ghost); }
 
   .sys-text { color: var(--text-dim); font-size: 0.65rem; letter-spacing: 0.15em; }
+
+  /* ── Bottom bar two-half tickers ───────────────────────── */
+  .sys-bar--bottom { padding: 0; }
+
+  .sys-btm-half {
+    width: 50%;
+    overflow: hidden;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0;
+  }
+
+  .sys-btm-left {
+    padding-left: 1.5rem;
+    border-right: 1px solid var(--text-ghost);
+  }
+
+  .sys-btm-right {
+    padding-right: 1.5rem;
+    justify-content: flex-end;
+  }
+
+  .sys-btm-ticker {
+    display: inline-block;
+    color: var(--text-dim);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    font-family: 'JetBrains Mono', monospace;
+    animation: sys-btm-tick 22s linear infinite;
+  }
+
+  @keyframes sys-btm-tick {
+    0%   { transform: translateX(110%); }
+    100% { transform: translateX(-110%); }
+  }
 
   .return-link {
     color: var(--text-dim);
@@ -593,11 +631,19 @@ const menuItems = [
     .menu-tagline { font-size: 0.62rem; }
 
     .dvd-menu {
+      position: fixed;
+      top: 2.2rem;
+      bottom: 2.2rem;
+      left: 0;
+      right: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
-      overflow: visible;
-      padding-bottom: 5rem;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      min-height: unset;
+      padding-bottom: 2rem;
     }
 
     .menu-item {
