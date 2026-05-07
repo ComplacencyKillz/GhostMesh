@@ -13,6 +13,20 @@ const menuItems = [
 
 <Layout title="GHOSTMESH" description="Transmitted outside sanctioned channels.">
 
+  <!-- Return prompt — shown instead of full splash on repeat visits -->
+  <div id="return-prompt" style="display:none;">
+    <div class="return-body">
+      <p class="return-header">SIGNAL INTERRUPTED</p>
+      <p class="return-line">You are leaving the transmission.</p>
+      <p class="return-line return-gap">The node will remain active.<br>The data will persist.</p>
+      <p class="return-line return-gap return-question">Return anyway?</p>
+      <div class="return-actions">
+        <button id="return-confirm">[ CONFIRM ]</button>
+        <button id="return-stay">[ STAY ]</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Splash / warning screen -->
   <div id="splash">
     <div class="splash-body">
@@ -180,6 +194,62 @@ const menuItems = [
   .sl-hidden { opacity: 0; }
   .sl-gap    { margin-top: 1rem; }
   .sl-bright { color: var(--text); }
+
+  /* ── Return prompt ──────────────────────────────────────── */
+  #return-prompt {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    z-index: 9992;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .return-body {
+    max-width: 420px;
+    width: 100%;
+    padding: 0 2rem;
+  }
+
+  .return-header {
+    font-size: 0.62rem;
+    letter-spacing: 0.3em;
+    color: var(--red);
+    margin-bottom: 2rem;
+  }
+
+  .return-line {
+    font-size: 0.78rem;
+    line-height: 1.9;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+  }
+
+  .return-gap     { margin-top: 1.2rem; }
+  .return-question { color: var(--text); }
+
+  .return-actions {
+    display: flex;
+    gap: 2rem;
+    margin-top: 2.5rem;
+  }
+
+  .return-actions button {
+    background: none;
+    border: 1px solid var(--text-dim);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.22em;
+    padding: 0.7rem 1.4rem;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  #return-confirm:hover { border-color: var(--blue); color: var(--blue); }
+  #return-stay:hover    { border-color: var(--red);  color: var(--red);  }
 
   #splash-ack {
     display: block;
@@ -673,10 +743,14 @@ const menuItems = [
   }
 
   /* ── Splash two-stage logic ───────────────────────────────── */
-  var video             = document.getElementById('bg-video');
-  var splash            = document.getElementById('splash');
+  var video               = document.getElementById('bg-video');
+  var splash              = document.getElementById('splash');
+  var returnPrompt        = document.getElementById('return-prompt');
   var transmissionStarted = false;
-  var dismissed         = false;
+  var dismissed           = false;
+
+  var SESSION_KEY = 'ghostmesh_acknowledged';
+  var isReturn    = sessionStorage.getItem(SESSION_KEY) === '1';
 
   var LINES = [
     ['sl-1', 'This material has not been reviewed, approved, or sanctioned'],
@@ -731,6 +805,7 @@ const menuItems = [
   function dismissSplash() {
     if (dismissed) return;
     dismissed = true;
+    sessionStorage.setItem(SESSION_KEY, '1');
     if (splash) {
       gsap.to(splash, {
         opacity: 0,
@@ -742,23 +817,56 @@ const menuItems = [
     runEntrance();
   }
 
-  // Stage 1: any interaction starts the transmission
-  function onFirstInteract(e) {
-    if (e.type === 'keydown' && ['F5','F12','F11'].includes(e.key)) return;
-    document.removeEventListener('keydown', onFirstInteract);
-    document.removeEventListener('click',   onFirstInteract);
-    startTransmission();
+  if (isReturn) {
+    // ── Return visit: skip full splash, show brief prompt ──────
+    if (splash)       splash.style.display       = 'none';
+    if (returnPrompt) returnPrompt.style.display = 'flex';
+
+    var confirmBtn = document.getElementById('return-confirm');
+    var stayBtn    = document.getElementById('return-stay');
+
+    // CONFIRM — this click IS the audio unlock gesture
+    if (confirmBtn) confirmBtn.addEventListener('click', function() {
+      if (returnPrompt) returnPrompt.remove();
+      if (video) { video.muted = false; video.volume = 0.35; video.play(); }
+      gsap.to(video,     { opacity: 1,   duration: 1.2, ease: 'power2.inOut' });
+      gsap.to(meshCanvas,{ opacity: 0.45, duration: 2,  delay: 0.5 });
+      runEntrance();
+    });
+
+    // STAY — dismiss prompt, keep the user right here
+    if (stayBtn) stayBtn.addEventListener('click', function() {
+      if (returnPrompt) {
+        gsap.to(returnPrompt, { opacity: 0, duration: 0.4, onComplete: function() {
+          returnPrompt.remove();
+          if (video) { video.muted = true; video.play(); }
+          gsap.to(video,     { opacity: 1,   duration: 1.2 });
+          gsap.to(meshCanvas,{ opacity: 0.45, duration: 2  });
+          runEntrance();
+        }});
+      }
+    });
+
+  } else {
+    // ── First visit: full two-stage splash ─────────────────────
+    // Stage 1: any interaction starts the transmission
+    function onFirstInteract(e) {
+      if (e.type === 'keydown' && ['F5','F12','F11'].includes(e.key)) return;
+      document.removeEventListener('keydown', onFirstInteract);
+      document.removeEventListener('click',   onFirstInteract);
+      startTransmission();
+    }
+
+    document.addEventListener('keydown', onFirstInteract);
+    document.addEventListener('click',   onFirstInteract);
+
+    // Stage 2: ACKNOWLEDGE dismisses splash after reading
+    var ackBtn = document.getElementById('splash-ack');
+    if (ackBtn) ackBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      dismissSplash();
+    });
   }
-
-  document.addEventListener('keydown', onFirstInteract);
-  document.addEventListener('click',   onFirstInteract);
-
-  // Stage 2: ACKNOWLEDGE dismisses splash after reading
-  var ackBtn = document.getElementById('splash-ack');
-  if (ackBtn) ackBtn.addEventListener('click', function(e) {
-    e.stopPropagation();
-    dismissSplash();
-  });
 
   /* ── Idle cycle ───────────────────────────────────────────── */
   // Fisher-Yates shuffle — guarantees every index appears exactly once per permutation

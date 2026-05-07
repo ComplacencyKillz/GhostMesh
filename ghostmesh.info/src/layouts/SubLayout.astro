@@ -276,4 +276,20 @@ const {
   }
   tick();
   setInterval(tick, 1000);
+
+  // Audio unlock on first interaction — quieter than main page (0.2 vs 0.35)
+  var subVideo   = document.getElementById('sub-video');
+  var audioReady = false;
+
+  function unlockAudio() {
+    if (audioReady || !subVideo) return;
+    audioReady      = true;
+    subVideo.muted  = false;
+    subVideo.volume = 0.2;
+    document.removeEventListener('click',   unlockAudio);
+    document.removeEventListener('keydown', unlockAudio);
+  }
+
+  document.addEventListener('click',   unlockAudio);
+  document.addEventListener('keydown', unlockAudio);
 </script>
