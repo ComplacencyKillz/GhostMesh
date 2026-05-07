@@ -236,9 +236,9 @@ const menuItems = [
   .vignette {
     position: fixed;
     inset: 0;
-    background: radial-gradient(ellipse at 40% 50%,
-      transparent 15%,
-      rgba(0, 0, 0, 0.88) 100%
+    background: radial-gradient(ellipse at 35% 45%,
+      transparent 25%,
+      rgba(0, 0, 0, 0.80) 100%
     );
     pointer-events: none;
     z-index: 2;
@@ -348,19 +348,25 @@ const menuItems = [
     z-index: 8;
   }
 
-  /* Fog backdrop behind each item */
+  /* Override global.css width:100% — items are absolutely positioned here,
+     not in a list. Without this every button stretches across the viewport. */
+  .menu-item {
+    width: auto;
+    display: block;
+    padding: 0.5rem 0.8rem;
+  }
+
+  /* Dark fog — sized to the button content, no backdrop-filter artifacts */
   .menu-item::before {
     content: '';
     position: absolute;
-    inset: -0.7rem -1.4rem;
+    inset: -0.6rem -1.2rem;
     background: radial-gradient(ellipse at center,
-      rgba(0, 20, 60, 0.55) 30%,
-      rgba(0, 10, 40, 0.30) 65%,
+      rgba(0, 3, 18, 0.80) 20%,
+      rgba(0, 3, 18, 0.45) 60%,
       transparent 100%
     );
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-radius: 6px;
+    border-radius: 10px;
     z-index: -1;
     pointer-events: none;
   }
@@ -397,8 +403,11 @@ const menuItems = [
   }
   .menu-item.is-selected .item-num  { color: var(--text-dim); }
   .menu-item.is-selected .item-sub  { color: var(--text-dim); }
-  .menu-item:hover .item-label      { color: var(--text); }
-  .menu-item:hover .item-sub        { color: var(--text-dim); }
+  .menu-item:hover .item-label {
+    color: var(--text);
+    text-shadow: 0 0 12px rgba(0, 0, 0, 0.9), 0 0 24px rgba(0, 0, 0, 0.7);
+  }
+  .menu-item:hover .item-sub { color: var(--text-dim); }
 
   /* Scattered positions — asymmetric, DVD-style */
   .menu-item--0 { top: 18%;    right: 16vw; }
@@ -472,7 +481,7 @@ const menuItems = [
     resizeMesh();
     window.addEventListener('resize', resizeMesh);
 
-    var NODE_COUNT = 12;
+    var NODE_COUNT = 7;
     var nodes = [];
     for (var ni = 0; ni < NODE_COUNT; ni++) {
       nodes.push({
@@ -612,28 +621,28 @@ const menuItems = [
     gsap.set('.menu-item--5', { y:  12, opacity: 0 });
 
     gsap.timeline({ defaults: { ease: 'power2.out' } })
-      .to('.amb-1', { opacity: 1, duration: 0.5, delay: 0.1 })
-      .to('.amb-2', { opacity: 1, duration: 0.5 }, '-=0.2')
-      .to('.amb-3', { opacity: 1, duration: 0.5 }, '-=0.3')
+      .to('.amb-1', { opacity: 1, duration: 0.3 })
+      .to('.amb-2', { opacity: 1, duration: 0.3 }, '-=0.15')
+      .to('.amb-3', { opacity: 1, duration: 0.3 }, '-=0.15')
       .add(function() {
         var titleEl = document.getElementById('menuTitle');
-        if (titleEl) gsap.to(titleEl, { opacity: 1, duration: 0.4 });
+        if (titleEl) gsap.to(titleEl, { opacity: 1, duration: 0.3 });
         var tagEl = document.getElementById('menuTagline');
         if (tagEl) {
-          gsap.to(tagEl, { opacity: 1, duration: 0.3, delay: 0.5, onStart: function() {
-            typewrite(tagEl, 'My weapons are my skills.', 32);
+          gsap.to(tagEl, { opacity: 1, duration: 0.2, delay: 0.3, onStart: function() {
+            typewrite(tagEl, 'My weapons are my skills.', 22);
           }});
         }
       }, '-=0.1')
-      .to('.menu-item--0', { opacity: 1, y: 0, duration: 0.35 }, '+=0.3')
-      .to('.menu-item--1', { opacity: 1, x: 0, duration: 0.35 }, '-=0.2')
-      .to('.menu-item--2', { opacity: 1, x: 0, duration: 0.35 }, '-=0.2')
-      .to('.menu-item--3', { opacity: 1, y: 0, duration: 0.35 }, '-=0.2')
-      .to('.menu-item--4', { opacity: 1, x: 0, duration: 0.35 }, '-=0.2')
-      .to('.menu-item--5', { opacity: 1, y: 0, duration: 0.35 }, '-=0.2')
-      .to('.amb-4',        { opacity: 1, duration: 0.4 }, '-=0.1')
-      .to('.amb-5',        { opacity: 1, duration: 0.4 }, '-=0.3')
-      .to('.nav-hint',     { opacity: 1, duration: 0.4 }, '-=0.2')
+      .to('.menu-item--0', { opacity: 1, y: 0, duration: 0.25 }, '+=0.15')
+      .to('.menu-item--1', { opacity: 1, x: 0, duration: 0.25 }, '-=0.15')
+      .to('.menu-item--2', { opacity: 1, x: 0, duration: 0.25 }, '-=0.15')
+      .to('.menu-item--3', { opacity: 1, y: 0, duration: 0.25 }, '-=0.15')
+      .to('.menu-item--4', { opacity: 1, x: 0, duration: 0.25 }, '-=0.15')
+      .to('.menu-item--5', { opacity: 1, y: 0, duration: 0.25 }, '-=0.15')
+      .to('.amb-4',        { opacity: 1, duration: 0.3 }, '-=0.1')
+      .to('.amb-5',        { opacity: 1, duration: 0.3 }, '-=0.2')
+      .to('.nav-hint',     { opacity: 1, duration: 0.3 }, '-=0.2')
       .add(function() { select(0); });
   }
 
@@ -676,21 +685,21 @@ const menuItems = [
       }});
     }
 
-    await wait(500);
+    await wait(200);
 
     for (var li = 0; li < LINES.length; li++) {
       var pair = LINES[li];
       var el   = document.getElementById(pair[0]);
       if (el) {
         el.style.opacity = '1';
-        await typewrite(el, pair[1], 16);
-        await wait(pair[0] === 'sl-4' ? 500 : 100);
+        await typewrite(el, pair[1], 6);
+        await wait(pair[0] === 'sl-4' ? 180 : 40);
       }
     }
 
-    await wait(500);
-    gsap.to('#splash-ack',     { opacity: 1, duration: 0.5 });
-    gsap.to('#splash-candles', { opacity: 1, duration: 1, delay: 0.4 });
+    await wait(200);
+    gsap.to('#splash-ack',     { opacity: 1, duration: 0.3 });
+    gsap.to('#splash-candles', { opacity: 1, duration: 0.5, delay: 0.2 });
   }
 
   function dismissSplash() {
