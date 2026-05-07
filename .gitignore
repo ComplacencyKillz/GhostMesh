@@ -7,3 +7,6 @@ __pycache__/
 # Claude Code — ignore machine-local settings, keep agents/ and skills/ when added
 .claude/settings.json
 .claude/settings.local.json
+
+# ghostmesh.info deploy credentials — never commit
+ghostmesh.info/parameters.ghostmeshinfo.yaml

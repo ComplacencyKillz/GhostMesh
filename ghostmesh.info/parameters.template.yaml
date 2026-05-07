@@ -1,0 +1,10 @@
+# Deploy configuration template
+# Copy this file to parameters.cicd.yaml and fill in your values.
+# parameters.cicd.yaml is gitignored — never commit it.
+
+# IONOS SFTP credentials
+sftp_host:        # e.g. sftp.your-domain.com or your IONOS FTP hostname
+sftp_user:        # your IONOS FTP/SFTP username
+sftp_pass:        # your IONOS FTP/SFTP password
+sftp_remote_path: # remote directory — leave as / if FTP root is web root
+sftp_port:        # default 22 for SFTP
