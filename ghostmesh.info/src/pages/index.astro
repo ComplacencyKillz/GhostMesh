@@ -67,13 +67,13 @@ const menuItems = [
   <div class="rec" aria-hidden="true"><span class="rec-dot"></span>REC</div>
   <a href="https://complacencykillz.me" class="main-menu-link" aria-label="Return to main menu">← MAIN MENU</a>
 
-  <!-- Ambient data overlays -->
-  <div class="amb amb-1">// NODE ACTIVE<br>GHOSTMESH v0.5</div>
-  <div class="amb amb-2">MESH: ONLINE<br>FREQ: 915MHz / LoRa</div>
-  <div class="amb amb-3">SIGNAL ████████░░ 82%<br>ENC: AES-256</div>
-  <div class="amb amb-4">ORIGIN: THE WASTE<br>LICENSE: NONE</div>
-  <div class="amb amb-5">TX: 0 BYTES</div>
-  <div class="amb amb-6" id="liveTime"></div>
+  <!-- Ambient data tickers — one per corner, content scrolls -->
+  <div class="amb amb-1" aria-hidden="true"><span class="amb-t">// NODE ACTIVE &mdash; GHOSTMESH v0.5 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></div>
+  <div class="amb amb-2" aria-hidden="true"><span class="amb-t">MESH: ONLINE &mdash; FREQ: 915MHz / LoRa &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></div>
+  <div class="amb amb-3" aria-hidden="true"><span class="amb-t">SIGNAL ████████░░ 82% &mdash; ENC: AES-256 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></div>
+  <div class="amb amb-4" aria-hidden="true"><span class="amb-t">ORIGIN: THE WASTE &mdash; LICENSE: NONE &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></div>
+  <div class="amb amb-5" aria-hidden="true"><span class="amb-t">CHANNEL: PRIVATE &mdash; TX: 0 BYTES &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></div>
+  <div class="amb amb-6" id="liveTime" aria-hidden="true"></div>
 
   <main class="dvd-menu page">
 
@@ -346,24 +346,48 @@ const menuItems = [
   }
   @keyframes rec-blink { 0%,100%{opacity:1} 50%{opacity:0.08} }
 
-  /* ── Ambient data ───────────────────────────────────────── */
+  /* ── Ambient data tickers ───────────────────────────────── */
   .amb {
     position: fixed;
-    font-size: 0.56rem;
-    letter-spacing: 0.12em;
-    line-height: 1.9;
-    color: var(--text-ghost);
+    width: 160px;
+    overflow: hidden;
+    white-space: nowrap;
+    font-size: 0.52rem;
+    letter-spacing: 0.1em;
+    color: rgba(0, 212, 255, 0.5);
     pointer-events: none;
     z-index: 6;
     font-family: 'JetBrains Mono', monospace;
     opacity: 0;
   }
-  .amb-1 { top: 8vh;    left: 4vw;  color: var(--terminal); font-size: 0.6rem; }
-  .amb-2 { top: 20vh;   right: 5vw; text-align: right; }
-  .amb-3 { top: 40vh;   right: 5vw; text-align: right; color: rgba(0,212,255,0.22); }
-  .amb-4 { bottom: 30vh; right: 5vw; text-align: right; font-size: 0.52rem; }
-  .amb-5 { bottom: 22vh; left: 4vw;  font-size: 0.52rem; }
-  .amb-6 { bottom: 8vh;  right: 5vw; font-size: 0.58rem; color: rgba(0,212,255,0.28); }
+
+  /* Scrolling inner span */
+  .amb-t {
+    display: inline-block;
+    animation: amb-ticker 14s linear infinite;
+  }
+  /* Stagger so corners don't all sync up */
+  .amb-2 .amb-t { animation-delay: -3s; }
+  .amb-3 .amb-t { animation-delay: -7s; }
+  .amb-4 .amb-t { animation-delay: -1.5s; }
+  .amb-5 .amb-t { animation-delay: -5s; }
+
+  @keyframes amb-ticker {
+    0%   { transform: translateX(160px); }
+    100% { transform: translateX(-100%); }
+  }
+
+  /* Corner positions — two per side, slight vertical offset */
+  .amb-1 { top: 7vh;     left: 4vw; }
+  .amb-2 { top: 7vh;     right: 4vw; }
+  .amb-3 { top: 11vh;    right: 4vw; color: rgba(0,212,255,0.35); }
+  .amb-4 { bottom: 11vh; right: 4vw; }
+  .amb-5 { bottom: 7vh;  left: 4vw; }
+  .amb-6 {
+    bottom: 7vh; right: 4vw;
+    width: auto; overflow: visible; white-space: nowrap;
+    font-size: 0.5rem; color: rgba(0,212,255,0.4);
+  }
 
   /* ── Layout ─────────────────────────────────────────────── */
   .dvd-menu {
@@ -393,7 +417,7 @@ const menuItems = [
   .menu-tagline {
     margin-top: 1rem;
     font-size: 0.72rem;
-    color: var(--text-dim);
+    color: rgba(200, 212, 232, 0.65);
     letter-spacing: 0.14em;
     font-style: italic;
     opacity: 0;
@@ -551,6 +575,51 @@ const menuItems = [
     font-family: 'JetBrains Mono', monospace;
     white-space: nowrap;
   }
+
+  /* ── Mobile layout ───────────────────────────────────────── */
+  @media (max-width: 700px) {
+
+    .title-block {
+      position: relative;
+      top: auto; left: auto;
+      text-align: center;
+      width: 100%;
+      padding-top: 4.5rem;
+      margin-bottom: 1.5rem;
+      pointer-events: none;
+    }
+
+    .menu-title  { font-size: clamp(2.8rem, 14vw, 5rem); }
+    .menu-tagline { font-size: 0.62rem; }
+
+    .dvd-menu {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow: visible;
+      padding-bottom: 5rem;
+    }
+
+    .menu-item {
+      position: relative !important;
+      top: auto !important; right: auto !important;
+      left: auto !important; bottom: auto !important;
+      width: 88%;
+      max-width: 360px;
+      border-bottom: 1px solid var(--text-ghost);
+      padding: 0.75rem 0.5rem;
+    }
+
+    .menu-item::before { display: none; }
+
+    .amb   { width: 120px; font-size: 0.48rem; }
+    .amb-3 { display: none; }
+    .amb-4 { bottom: 4.5rem; }
+    .amb-6 { bottom: 2.8rem; right: 3vw; }
+
+    .sys-bar--top .sys-text:first-child { display: none; }
+    .nav-hint { display: none; }
+  }
 </style>
 
 <script>
@@ -700,42 +769,62 @@ const menuItems = [
   });
 
   /* ── Entrance animation ───────────────────────────────────── */
-  function runEntrance() {
-    // Set initial offset positions before animating in
-    gsap.set('.menu-item--0', { y: -14, opacity: 0 });
-    gsap.set('.menu-item--1', { x:  18, opacity: 0 });
-    gsap.set('.menu-item--2', { x:  14, opacity: 0 });
-    gsap.set('.menu-item--3', { y:  14, opacity: 0 });
-    gsap.set('.menu-item--4', { x: -14, opacity: 0 });
-    gsap.set('.menu-item--5', { y:  12, opacity: 0 });
+  var isMobile = window.innerWidth <= 700;
 
-    gsap.timeline({ defaults: { ease: 'power2.out' } })
-      .to('.amb-1', { opacity: 1, duration: 0.3 })
-      .to('.amb-2', { opacity: 1, duration: 0.3 }, '-=0.15')
-      .to('.amb-3', { opacity: 1, duration: 0.3 }, '-=0.15')
-      .add(function() {
-        var titleEl = document.getElementById('menuTitle');
-        if (titleEl) gsap.to(titleEl, { opacity: 1, duration: 0.3 });
-        var tagEl = document.getElementById('menuTagline');
-        if (tagEl) {
-          gsap.to(tagEl, { opacity: 1, duration: 0.2, delay: 0.3, onStart: function() {
+  function runEntrance() {
+    if (meshCanvas) gsap.to(meshCanvas, { opacity: 0.45, duration: 1.5, ease: 'power2.inOut' });
+
+    if (isMobile) {
+      // Mobile: items are in flex column — simple stagger fade, no offsets
+      gsap.set('.menu-item--0,.menu-item--1,.menu-item--2,.menu-item--3,.menu-item--4,.menu-item--5',
+               { opacity: 0 });
+      gsap.timeline({ defaults: { ease: 'power2.out' } })
+        .to('.amb-1', { opacity: 1, duration: 0.3 })
+        .to('.amb-2', { opacity: 1, duration: 0.3 }, '-=0.15')
+        .add(function() {
+          var titleEl = document.getElementById('menuTitle');
+          if (titleEl) gsap.to(titleEl, { opacity: 1, duration: 0.3 });
+          var tagEl = document.getElementById('menuTagline');
+          if (tagEl) gsap.to(tagEl, { opacity: 1, duration: 0.3, delay: 0.3, onStart: function() {
             typewrite(tagEl, 'My weapons are my skills.', 22);
           }});
-        }
-      }, '-=0.1')
-      .to('.menu-item--0', { opacity: 1, y: 0, duration: 0.25 }, '+=0.15')
-      .to('.menu-item--1', { opacity: 1, x: 0, duration: 0.25 }, '-=0.15')
-      .to('.menu-item--2', { opacity: 1, x: 0, duration: 0.25 }, '-=0.15')
-      .to('.menu-item--3', { opacity: 1, y: 0, duration: 0.25 }, '-=0.15')
-      .to('.menu-item--4', { opacity: 1, x: 0, duration: 0.25 }, '-=0.15')
-      .to('.menu-item--5', { opacity: 1, y: 0, duration: 0.25 }, '-=0.15')
-      .to('.amb-4',        { opacity: 1, duration: 0.3 }, '-=0.1')
-      .to('.amb-5',        { opacity: 1, duration: 0.3 }, '-=0.2')
-      .to('.nav-hint',     { opacity: 1, duration: 0.3 }, '-=0.2')
-      .add(function() {
-        select(0);
-        startIdleCycle();
-      });
+        }, '-=0.1')
+        .to('.menu-item--0,.menu-item--1,.menu-item--2,.menu-item--3,.menu-item--4,.menu-item--5',
+            { opacity: 1, duration: 0.35, stagger: 0.08 }, '+=0.1')
+        .to('.amb-5', { opacity: 1, duration: 0.3 }, '-=0.1')
+        .add(function() { select(0); startIdleCycle(); });
+    } else {
+      // Desktop: directional slide-in matching the scattered positions
+      gsap.set('.menu-item--0', { y: -14, opacity: 0 });
+      gsap.set('.menu-item--1', { x:  18, opacity: 0 });
+      gsap.set('.menu-item--2', { x:  14, opacity: 0 });
+      gsap.set('.menu-item--3', { y:  14, opacity: 0 });
+      gsap.set('.menu-item--4', { x: -14, opacity: 0 });
+      gsap.set('.menu-item--5', { y:  12, opacity: 0 });
+
+      gsap.timeline({ defaults: { ease: 'power2.out' } })
+        .to('.amb-1', { opacity: 1, duration: 0.3 })
+        .to('.amb-2', { opacity: 1, duration: 0.3 }, '-=0.15')
+        .to('.amb-3', { opacity: 1, duration: 0.3 }, '-=0.15')
+        .add(function() {
+          var titleEl = document.getElementById('menuTitle');
+          if (titleEl) gsap.to(titleEl, { opacity: 1, duration: 0.3 });
+          var tagEl = document.getElementById('menuTagline');
+          if (tagEl) gsap.to(tagEl, { opacity: 1, duration: 0.2, delay: 0.3, onStart: function() {
+            typewrite(tagEl, 'My weapons are my skills.', 22);
+          }});
+        }, '-=0.1')
+        .to('.menu-item--0', { opacity: 1, y: 0, duration: 0.25 }, '+=0.15')
+        .to('.menu-item--1', { opacity: 1, x: 0, duration: 0.25 }, '-=0.15')
+        .to('.menu-item--2', { opacity: 1, x: 0, duration: 0.25 }, '-=0.15')
+        .to('.menu-item--3', { opacity: 1, y: 0, duration: 0.25 }, '-=0.15')
+        .to('.menu-item--4', { opacity: 1, x: 0, duration: 0.25 }, '-=0.15')
+        .to('.menu-item--5', { opacity: 1, y: 0, duration: 0.25 }, '-=0.15')
+        .to('.amb-4',        { opacity: 1, duration: 0.3 }, '-=0.1')
+        .to('.amb-5',        { opacity: 1, duration: 0.3 }, '-=0.2')
+        .to('.nav-hint',     { opacity: 1, duration: 0.3 }, '-=0.2')
+        .add(function() { select(0); startIdleCycle(); });
+    }
   }
 
   /* ── Splash two-stage logic ───────────────────────────────── */
