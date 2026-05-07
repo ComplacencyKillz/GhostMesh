@@ -16,13 +16,11 @@ const menuItems = [
   <!-- Return prompt — shown instead of full splash on repeat visits -->
   <div id="return-prompt" style="display:none;">
     <div class="return-body">
-      <p class="return-header">SIGNAL INTERRUPTED</p>
-      <p class="return-line">You are leaving the transmission.</p>
-      <p class="return-line return-gap">The node will remain active.<br>The data will persist.</p>
-      <p class="return-line return-gap return-question">Return anyway?</p>
+      <p class="return-header">SIGNAL RESTORED</p>
+      <p class="return-line">The node held your position.</p>
+      <p class="return-line return-gap return-dim">// connection re-established</p>
       <div class="return-actions">
-        <button id="return-confirm">[ CONFIRM ]</button>
-        <button id="return-stay">[ STAY ]</button>
+        <button id="return-confirm">[ RESUME TRANSMISSION ]</button>
       </div>
     </div>
   </div>
@@ -228,11 +226,9 @@ const menuItems = [
   }
 
   .return-gap     { margin-top: 1.2rem; }
-  .return-question { color: var(--text); }
+  .return-dim { color: var(--text-ghost); }
 
   .return-actions {
-    display: flex;
-    gap: 2rem;
     margin-top: 2.5rem;
   }
 
@@ -243,13 +239,13 @@ const menuItems = [
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.72rem;
     letter-spacing: 0.22em;
-    padding: 0.7rem 1.4rem;
+    padding: 0.7rem 1.8rem;
     cursor: pointer;
     transition: border-color 0.15s, color 0.15s;
+    animation: ack-pulse 2s ease-in-out infinite;
   }
 
   #return-confirm:hover { border-color: var(--blue); color: var(--blue); }
-  #return-stay:hover    { border-color: var(--red);  color: var(--red);  }
 
   #splash-ack {
     display: block;
@@ -823,28 +819,14 @@ const menuItems = [
     if (returnPrompt) returnPrompt.style.display = 'flex';
 
     var confirmBtn = document.getElementById('return-confirm');
-    var stayBtn    = document.getElementById('return-stay');
 
-    // CONFIRM — this click IS the audio unlock gesture
+    // Single button — this click IS the browser audio unlock gesture
     if (confirmBtn) confirmBtn.addEventListener('click', function() {
       if (returnPrompt) returnPrompt.remove();
       if (video) { video.muted = false; video.volume = 0.35; video.play(); }
       gsap.to(video,     { opacity: 1,   duration: 1.2, ease: 'power2.inOut' });
       gsap.to(meshCanvas,{ opacity: 0.45, duration: 2,  delay: 0.5 });
       runEntrance();
-    });
-
-    // STAY — dismiss prompt, keep the user right here
-    if (stayBtn) stayBtn.addEventListener('click', function() {
-      if (returnPrompt) {
-        gsap.to(returnPrompt, { opacity: 0, duration: 0.4, onComplete: function() {
-          returnPrompt.remove();
-          if (video) { video.muted = true; video.play(); }
-          gsap.to(video,     { opacity: 1,   duration: 1.2 });
-          gsap.to(meshCanvas,{ opacity: 0.45, duration: 2  });
-          runEntrance();
-        }});
-      }
     });
 
   } else {

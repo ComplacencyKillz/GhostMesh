@@ -4,6 +4,8 @@ interface Props {
   section: string;
   classification?: string;
   description?: string;
+  introLines?: string[];   // ominous chapter intro lines shown before content
+  introAction?: string;    // button label, default "[ ACCESS ]"
 }
 
 const {
@@ -11,6 +13,8 @@ const {
   section,
   classification = 'UNLICENSED / ORIGIN: THE WASTE',
   description = 'Transmitted outside sanctioned channels.',
+  introLines = [],
+  introAction = '[ ACCESS ]',
 } = Astro.props;
 ---
 
@@ -59,8 +63,21 @@ const {
       <span class="sys-text">GHOSTMESH &gt; {section}</span>
     </div>
 
+    <!-- Chapter intro popup -->
+    {introLines.length > 0 && (
+      <div id="chapter-intro">
+        <div class="chapter-body">
+          <p class="chapter-header">{section}</p>
+          {introLines.map((line) => (
+            <p class="chapter-line">{line}</p>
+          ))}
+          <button id="chapter-access">{introAction}</button>
+        </div>
+      </div>
+    )}
+
     <!-- Scrollable scene panel -->
-    <main class="scene-panel">
+    <main class="scene-panel" id="scene-panel" style={introLines.length > 0 ? 'visibility:hidden' : ''}>
       <header class="scene-header">
         <p class="scene-classify">{classification}</p>
         <h1 class="scene-title">{title}</h1>
@@ -133,6 +150,61 @@ const {
   .sub-main-link   { top: 3.4rem; }
   .sub-return-link:hover,
   .sub-main-link:hover { color: var(--blue); }
+
+  /* ── Chapter intro popup ───────────────────────────────────── */
+  #chapter-intro {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.92);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .chapter-body {
+    max-width: 460px;
+    width: 100%;
+    padding: 0 2rem;
+  }
+
+  .chapter-header {
+    font-size: 0.58rem;
+    letter-spacing: 0.3em;
+    color: var(--text-ghost);
+    margin-bottom: 2rem;
+  }
+
+  .chapter-line {
+    font-size: 0.82rem;
+    line-height: 1.9;
+    color: var(--text-dim);
+    letter-spacing: 0.04em;
+    margin-bottom: 0.4rem;
+  }
+
+  #chapter-access {
+    display: block;
+    margin-top: 2.5rem;
+    background: none;
+    border: 1px solid var(--text-dim);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.22em;
+    padding: 0.7rem 1.8rem;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+    animation: chapter-pulse 2s ease-in-out infinite;
+  }
+
+  #chapter-access:hover { border-color: var(--blue); color: var(--blue); }
+
+  @keyframes chapter-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(0,212,255,0); }
+    50%       { box-shadow: 0 0 0 4px rgba(0,212,255,0.08); }
+  }
 
   /* ── Scene panel — scrollable content ──────────────────────── */
   .scene-panel {
@@ -277,19 +349,19 @@ const {
   tick();
   setInterval(tick, 1000);
 
-  // Audio unlock on first interaction — quieter than main page (0.2 vs 0.35)
-  var subVideo   = document.getElementById('sub-video');
-  var audioReady = false;
+  // Chapter intro dismiss
+  var intro      = document.getElementById('chapter-intro');
+  var panel      = document.getElementById('scene-panel');
+  var accessBtn  = document.getElementById('chapter-access');
 
-  function unlockAudio() {
-    if (audioReady || !subVideo) return;
-    audioReady      = true;
-    subVideo.muted  = false;
-    subVideo.volume = 0.2;
-    document.removeEventListener('click',   unlockAudio);
-    document.removeEventListener('keydown', unlockAudio);
+  if (intro && accessBtn && panel) {
+    accessBtn.addEventListener('click', function() {
+      intro.style.opacity = '0';
+      intro.style.transition = 'opacity 0.5s';
+      setTimeout(function() {
+        intro.remove();
+        panel.style.visibility = 'visible';
+      }, 500);
+    });
   }
-
-  document.addEventListener('click',   unlockAudio);
-  document.addEventListener('keydown', unlockAudio);
 </script>

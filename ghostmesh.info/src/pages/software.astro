@@ -3,7 +3,13 @@ import SubLayout from '../layouts/SubLayout.astro';
 ---
 
 <SubLayout title="FIRMWARE" section="FIRMWARE"
-  classification="CLASSIFICATION: BUILD INSTRUCTIONS / STACK: C / UFBT">
+  classification="CLASSIFICATION: BUILD INSTRUCTIONS / STACK: C / UFBT"
+  introLines={[
+    "These instructions assume you have what you need.",
+    "If you do not —",
+    "that is a different problem.",
+  ]}
+  introAction="[ INITIALIZE ]">
 
   <h2>REQUIREMENTS</h2>
   <p>Python 3.8+, pip, and a Flipper Zero running official or compatible firmware.

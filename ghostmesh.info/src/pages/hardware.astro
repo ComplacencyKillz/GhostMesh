@@ -3,7 +3,13 @@ import SubLayout from '../layouts/SubLayout.astro';
 ---
 
 <SubLayout title="HARDWARE MANIFEST" section="HARDWARE MANIFEST"
-  classification="CLASSIFICATION: BUILD REFERENCE / STATUS: ACTIVE">
+  classification="CLASSIFICATION: BUILD REFERENCE / STATUS: ACTIVE"
+  introLines={[
+    "This is a parts list.",
+    "It is also a set of instructions.",
+    "The distinction is intentional.",
+  ]}
+  introAction="[ VIEW MANIFEST ]">
 
   <h2>CORE COMPONENTS</h2>
   <table class="data-table">
