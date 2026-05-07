@@ -10,7 +10,10 @@ if [[ ! -f "$PARAMS_FILE" ]]; then
 fi
 
 read_param() {
-  yq ".$1" "$PARAMS_FILE" | tr -d '"'
+  local val
+  val=$(yq ".$1" "$PARAMS_FILE" | tr -d '"')
+  # yq outputs "null" for empty YAML values — treat as empty so defaults apply
+  [[ "$val" == "null" ]] && echo "" || echo "$val"
 }
 
 SFTP_HOST=$(read_param sftp_host)

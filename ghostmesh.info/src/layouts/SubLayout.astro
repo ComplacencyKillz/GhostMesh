@@ -172,14 +172,14 @@ const {
   .chapter-header {
     font-size: 0.58rem;
     letter-spacing: 0.3em;
-    color: var(--text-ghost);
+    color: var(--red);
     margin-bottom: 2rem;
   }
 
   .chapter-line {
     font-size: 0.82rem;
     line-height: 1.9;
-    color: var(--text-dim);
+    color: var(--text);
     letter-spacing: 0.04em;
     margin-bottom: 0.4rem;
   }
@@ -349,19 +349,27 @@ const {
   tick();
   setInterval(tick, 1000);
 
-  // Chapter intro dismiss
-  var intro      = document.getElementById('chapter-intro');
-  var panel      = document.getElementById('scene-panel');
-  var accessBtn  = document.getElementById('chapter-access');
+  // Chapter intro dismiss — clicking ACCESS is the audio unlock gesture
+  var subVideo  = document.getElementById('sub-video');
+  var intro     = document.getElementById('chapter-intro');
+  var panel     = document.getElementById('scene-panel');
+  var accessBtn = document.getElementById('chapter-access');
 
   if (intro && accessBtn && panel) {
     accessBtn.addEventListener('click', function() {
-      intro.style.opacity = '0';
+      // Unlock audio on this user gesture
+      if (subVideo) {
+        subVideo.muted  = false;
+        subVideo.volume = 0.2;
+      }
+      intro.style.opacity    = '0';
       intro.style.transition = 'opacity 0.5s';
       setTimeout(function() {
         intro.remove();
         panel.style.visibility = 'visible';
       }, 500);
     });
+  } else {
+    // No intro on this page — keep video muted
   }
 </script>

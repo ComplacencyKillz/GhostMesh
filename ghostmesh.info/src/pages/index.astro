@@ -745,8 +745,11 @@ const menuItems = [
   var transmissionStarted = false;
   var dismissed           = false;
 
-  var SESSION_KEY = 'ghostmesh_acknowledged';
-  var isReturn    = sessionStorage.getItem(SESSION_KEY) === '1';
+  // Show return prompt if the user navigated here from within the site
+  // (referrer includes the same hostname). Works on first visit, private mode,
+  // and new tabs without needing sessionStorage state.
+  var isReturn = document.referrer.length > 0 &&
+                 document.referrer.includes(window.location.hostname);
 
   var LINES = [
     ['sl-1', 'This material has not been reviewed, approved, or sanctioned'],
@@ -801,7 +804,6 @@ const menuItems = [
   function dismissSplash() {
     if (dismissed) return;
     dismissed = true;
-    sessionStorage.setItem(SESSION_KEY, '1');
     if (splash) {
       gsap.to(splash, {
         opacity: 0,
