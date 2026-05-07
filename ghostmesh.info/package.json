@@ -12,6 +12,9 @@
     "astro": "astro",
     "deploy": "bash scripts/deploy.sh"
   },
+  "overrides": {
+    "vite": "^7"
+  },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.4",
     "astro": "^6.2.1",
