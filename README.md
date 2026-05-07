@@ -2,20 +2,20 @@
 
 **GhostMesh: a Flipper Zero companion interface for offline Meshtastic field communications.**
 
-GhostMesh turns your Flipper Zero into a handheld controller for a Meshtastic-enabled ESP32 LoRa node, enabling encrypted mesh radio messaging without any phone, internet, or cell infrastructure.
+GhostMesh turns your Flipper Zero into a long-range, mesh-radio command terminal by pairing it with a Heltec ESP32 LoRa node running Meshtastic. No phone, no internet, no cell infrastructure required.
 
 ---
 
 ## What It Does
 
-- Connects the Flipper Zero to a Heltec LoRa node over UART using Meshtastic's full PROTO protocol
-- Profile selector on launch — built-in profiles for Grid Down, Hiking/SAR, and Red Team
-- Scrollable canned message menu — UP/DOWN to select, OK to send; long text marquee-scrolls across the display
-- Receives incoming mesh text messages; sender + message shown in the status bar, RSSI shown in history
-- Long-press Down on the message screen opens the RX history screen — last 16 messages with full sender/RSSI/text, scrollable
-- Logs every received message to a dated CSV on the SD card (`SD:/apps_data/ghostmesh/log_YYYYMMDD.csv`) with timestamp, node ID, message, RSSI, and SNR
-- Upload your own message profiles via a `profiles.yaml` file on the Flipper SD card
-- RF noise immune — PROTO framing rejects spurious bytes from the nearby LoRa antenna
+- Sends canned field messages over LoRa mesh — select from scrollable profiles, press OK
+- Receives incoming mesh text messages with sender ID and RSSI displayed
+- RX history screen (long-press Down) — last 16 messages with full signal data, scrollable
+- Logs every received message to a dated CSV on the Flipper SD card with timestamp, node ID, RSSI, and SNR
+- Three built-in profiles: Grid Down, Hiking / SAR, Red Team
+- Custom profiles loaded from `profiles.yaml` on the SD card
+- All text marquee-scrolls if it doesn't fit the display — nothing is cut off
+- `tools/log_to_kml.py` converts the SD card CSV to KML for Google Earth / QGIS
 
 ---
 
@@ -23,36 +23,34 @@ GhostMesh turns your Flipper Zero into a handheld controller for a Meshtastic-en
 
 | Component | Details |
 |-----------|---------|
-| Flipper Zero | With official prototype board |
-| ESP32 LoRa node | MakerHawk / Heltec WiFi LoRa 32 V3 compatible |
-| Radio | SX1262, 915 MHz antenna |
-| Heltec battery | Connected directly to Heltec — not from Flipper |
-| Flipper battery | Flipper runs from its own battery |
+| Flipper Zero | With PINGEQUA or official prototype board |
+| Heltec WiFi LoRa 32 V3 | ESP32-S3 + SX1262, Meshtastic firmware |
+| 915 MHz antenna | Attached to Heltec before powering on |
+| LiPo battery | For Heltec — independent of Flipper battery |
 
-The Heltec board must be pre-flashed with [Meshtastic firmware](https://meshtastic.org/).
+See [docs/hardware.md](docs/hardware.md) for the full hardware reference and planned sensor expansion (GPS, BME280, tamper sensors, etc.).
 
 ---
 
 ## Quick Start
 
-### 1. Wire the hardware
+### 1. Flash Meshtastic to the Heltec
+
+Visit [flasher.meshtastic.org](https://flasher.meshtastic.org), select **Heltec WiFi LoRa 32 V3**, and flash. Set your region in the Meshtastic app before proceeding.
+
+See [docs/meshtastic-setup.md](docs/meshtastic-setup.md) for full setup and private channel configuration.
+
+### 2. Wire the devices
 
 ```
-Flipper U_TX (pin 13)  →  Heltec GPIO44  (bottom row, pad labeled "RX")
-Flipper U_RX (pin 14)  →  Heltec GPIO43  (bottom row, pad labeled "TX")
+Flipper U_TX (pin 13)  →  Heltec GPIO44  (labeled "RX" on board)
+Flipper U_RX (pin 14)  →  Heltec GPIO43  (labeled "TX" on board)
 Flipper GND            →  Heltec GND
-NO shared power        —  each device runs from its own battery
 ```
 
-See [docs/wiring.md](docs/wiring.md) for the full pinout and safety notes.
+**Do not connect power rails.** Each device runs from its own battery. See [docs/wiring.md](docs/wiring.md).
 
-### 2. No Meshtastic serial module config needed
-
-GhostMesh connects directly to Meshtastic's PhoneAPI on UART0 (the same path as the phone app and Python library over USB). No special serial module settings are required.
-
-Set your region under **Settings → Radio Config → LoRa → Region** and ensure the node is on the default **LongFast** channel. See [docs/meshtastic-setup.md](docs/meshtastic-setup.md).
-
-### 3. Build and install the FAP
+### 3. Build and install
 
 ```bash
 pip install ufbt
@@ -60,23 +58,25 @@ cd flipper-app
 ufbt
 ```
 
-Copy `dist/ghostmesh.fap` to `SD:/apps/Tools/` on your Flipper. See [docs/flipper-setup.md](docs/flipper-setup.md).
+Copy `dist/ghostmesh.fap` to `SD:/apps/Tools/` on your Flipper, or run `ufbt launch` with the Flipper connected via USB.
 
-### 4. Run the app
+See [docs/flipper-setup.md](docs/flipper-setup.md) for the full build guide.
+
+### 4. Run
 
 **Apps → Tools → GhostMesh**
 
-The title bar shows `...` for a few seconds while the connection handshake completes, then `RDY`. Select a profile with UP/DOWN/OK, then navigate the message list and press OK to send. Long-press Down to open the RX history screen.
+The title bar shows `...` during the startup handshake (~3 seconds), then `RDY`. Select a profile, navigate the message list, press OK to send.
+
+See [docs/user-guide.md](docs/user-guide.md) for a screen-by-screen walkthrough.
 
 ---
 
 ## Custom Profiles via SD Card
 
-Create `SD:/apps_data/ghostmesh/profiles.yaml` on your Flipper:
+Create `SD:/apps_data/ghostmesh/profiles.yaml`:
 
 ```yaml
-# GhostMesh custom profiles
-
 name: My Profile
 - CHECKIN OK
 - IN POSITION
@@ -88,7 +88,7 @@ name: Another Profile
 - MESSAGE TWO
 ```
 
-Up to 5 custom profiles are loaded alongside the 3 built-ins. See `examples/profiles.yaml` for the full documented template.
+Up to 5 custom profiles load alongside the 3 built-ins (8 total). See `examples/profiles.yaml` for the full documented template.
 
 ---
 
@@ -98,38 +98,59 @@ Up to 5 custom profiles are loaded alongside the 3 built-ins. See `examples/prof
 ghostmesh/
 ├── README.md
 ├── docs/
-│   ├── hardware.md           Hardware specs
-│   ├── wiring.md             Exact pinout and GPIO conflict notes
-│   ├── meshtastic-setup.md   Meshtastic config (minimal — no serial module needed)
-│   ├── flipper-setup.md      ufbt build and install
-│   ├── serial-modes.md       PROTO protocol field numbers and implementation notes
-│   ├── roadmap.md            Phased development plan
-│   └── red-team-lab-use-cases.md  Authorized lab use cases (docs only)
+│   ├── user-guide.md           Screen-by-screen user manual
+│   ├── developer-guide.md      Code architecture and contribution guide
+│   ├── hardware.md             Full hardware reference and BOM
+│   ├── wiring.md               Pinout, connections, sensor wiring
+│   ├── meshtastic-setup.md     Meshtastic config, private channels
+│   ├── flipper-setup.md        ufbt build and install
+│   ├── opsec.md                Encryption, stealth, nuke protocol
+│   ├── serial-modes.md         PROTO protocol field numbers
+│   ├── roadmap.md              Phased development plan (Phases 0–14)
+│   └── red-team-lab-use-cases.md  Authorized lab use cases
 ├── flipper-app/
 │   ├── application.fam
-│   ├── ghostmesh.c           App entry point, profile/message/screen/history state
+│   ├── ghostmesh.c             App entry point and main loop
 │   ├── helpers/
-│   │   ├── proto_mode.h/.c   PROTO encoder/decoder, handshake, UART state machine
+│   │   ├── proto_mode.h/.c     PROTO encoder/decoder, handshake
 │   │   ├── profile_manager.h/.c  Built-in profiles + YAML loader
-│   │   ├── log_manager.h/.c  SD card CSV logger (one file per day)
-│   │   ├── uart_helper.h/.c  USART1 init and async RX/TX
-│   │   └── proto_notes.md    Protocol implementation reference
+│   │   ├── log_manager.h/.c    SD card CSV logger
+│   │   ├── uart_helper.h/.c    USART1 init and async RX/TX
+│   │   └── proto_notes.md      Protocol implementation reference
 │   └── views/
-│       └── main_view.h/.c    Three-screen UI (profile list, message list, RX history)
+│       └── main_view.h/.c      Three-screen UI
 ├── examples/
-│   └── profiles.yaml         Documented YAML template for custom profiles
+│   └── profiles.yaml           Documented custom profile template
 ├── tests/
-│   ├── uart-test-plan.md     Manual hardware validation checklist
-│   └── proto_send_test.py    Python PROTO test script (bypasses Flipper)
+│   ├── uart-test-plan.md       Manual hardware validation checklist
+│   └── proto_send_test.py      Python PROTO test script
 └── tools/
-    └── log_to_kml.py         Convert SD card CSV log to KML for Google Earth / QGIS
+    └── log_to_kml.py           Convert SD card CSV log to KML
 ```
 
 ---
 
 ## Protocol
 
-GhostMesh uses Meshtastic's binary PROTO protocol with a `0x94 0xC3` framing header. The full connection handshake (~47 config frames) completes in a few seconds on startup. All protobuf field numbers were confirmed against the meshtastic Python library (v2.7.8) — see [docs/serial-modes.md](docs/serial-modes.md) for the complete reference.
+GhostMesh connects to Meshtastic's **PhoneAPI on UART0** (GPIO43/44) — the same interface used by the official phone app and Python library over USB. Packets use Meshtastic's binary PROTO framing (`0x94 0xC3` magic bytes + protobuf payload). All protobuf field numbers are confirmed against meshtastic Python library v2.7.8.
+
+See [docs/serial-modes.md](docs/serial-modes.md) for the complete protocol reference.
+
+---
+
+## Operational Security
+
+GhostMesh on the default Meshtastic channel uses a **public encryption key** — traffic is visible to any Meshtastic node. For operational use, create a private channel with a random key before deployment.
+
+See [docs/opsec.md](docs/opsec.md) for the full encryption picture, private channel setup, and the planned nuke / stealth features.
+
+---
+
+## Roadmap
+
+Current version: **v0.5** — PROTO mode full client, SD logging, RX history, marquee scroll.
+
+Planned phases include GPS + wardriving, environmental telemetry, tamper detection, dead-drop surveillance, remote payload execution, and UART encryption. See [docs/roadmap.md](docs/roadmap.md).
 
 ---
 
@@ -137,7 +158,7 @@ GhostMesh uses Meshtastic's binary PROTO protocol with a `0x94 0xC3` framing hea
 
 This project is for **authorized security work, personal lab testing, grid-down comms experimentation, and open-source learning only.**
 
-No malware, unauthorized remote execution, credential theft, or destructive payloads are implemented or will be accepted. Red-team-adjacent features require explicit local arming, use only benign/lab-safe payloads, and are scoped to owned/authorized systems. See [docs/red-team-lab-use-cases.md](docs/red-team-lab-use-cases.md).
+No malware, unauthorized remote execution, credential theft, or destructive payloads are implemented or will be accepted. See [docs/red-team-lab-use-cases.md](docs/red-team-lab-use-cases.md).
 
 ---
 

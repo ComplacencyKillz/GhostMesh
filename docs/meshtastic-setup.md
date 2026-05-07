@@ -41,9 +41,13 @@ Set your region under **Settings → Radio Config → LoRa → Region**. The 915
 
 Using the wrong region with a mismatched antenna risks poor RF performance.
 
-### Channel (default is fine)
+### Channel
 
-The default **LongFast** channel on channel index 0 is what GhostMesh targets for broadcast messages. No changes needed unless you have a custom channel setup.
+The default **LongFast** channel uses a publicly known key (`AQ==`) — any Meshtastic
+node can read your traffic. For operational use, create a private channel with a random
+key. See [docs/opsec.md](opsec.md) for the full setup procedure.
+
+For basic testing, the default channel is fine.
 
 ---
 
@@ -54,8 +58,8 @@ The default **LongFast** channel on channel index 0 is what GhostMesh targets fo
 - Heltec OLED shows node name, battery %, and ChUtil
 
 When GhostMesh connects:
-1. The Flipper screen shows `PROTO:...` for a few seconds (config handshake in progress)
-2. It changes to `PROTO:RDY` when the ~47-frame config exchange completes
+1. The Flipper title bar shows `...` for a few seconds (config handshake in progress)
+2. It changes to `RDY` when the ~47-frame config exchange completes
 3. The OK button becomes active
 
 ---
@@ -86,6 +90,20 @@ name: Grid Down Custom
 See `examples/profiles.yaml` in the GhostMesh repo for a fully commented template.
 
 Up to 5 custom profiles are loaded alongside the 3 built-ins (8 total). Profiles with no messages are silently discarded.
+
+---
+
+## Sensor Module Configuration (Phases 7+)
+
+When sensor hardware is added to the Heltec, enable the corresponding Meshtastic modules
+in the app. No custom firmware needed for these:
+
+| Sensor | Meshtastic setting | Path in app |
+|--------|--------------------|-------------|
+| BME280 (temp/humidity/pressure) | Enable Environment Telemetry | Module Config → Telemetry → Environment |
+| BN-220 GPS | Enable External GPS, set UART1 pins 35/36 | Module Config → GPS |
+
+See [docs/hardware.md](hardware.md) for full sensor wiring and GPIO assignments.
 
 ---
 
