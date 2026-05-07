@@ -53,6 +53,7 @@ const menuItems = [
   <div class="corner corner--br" aria-hidden="true"></div>
 
   <div class="rec" aria-hidden="true"><span class="rec-dot"></span>REC</div>
+  <a href="https://complacencykillz.me" class="main-menu-link" aria-label="Return to main menu">← MAIN MENU</a>
 
   <!-- Ambient data overlays -->
   <div class="amb amb-1">// NODE ACTIVE<br>GHOSTMESH v0.5</div>
@@ -66,7 +67,6 @@ const menuItems = [
 
     <div class="sys-bar sys-bar--top" aria-label="Breadcrumb navigation">
       <span class="sys-text">COMPLACENCYKILLZ.ME &gt; SCENE SELECTION &gt; GHOSTMESH</span>
-      <a href="https://complacencykillz.me" class="return-link" aria-label="Return to main menu">← MAIN MENU</a>
     </div>
 
     <!-- Title block — top left, absolutely positioned -->
@@ -409,6 +409,14 @@ const menuItems = [
   }
   .menu-item:hover .item-sub { color: var(--text-dim); }
 
+  /* Idle cycle highlight — same blue as is-selected */
+  .menu-item.is-cycling .item-label {
+    color: var(--blue);
+    text-shadow: 0 0 20px rgba(0, 212, 255, 0.45);
+  }
+  .menu-item.is-cycling .item-num { color: var(--text-dim); }
+  .menu-item.is-cycling .item-sub { color: var(--text-dim); }
+
   /* Scattered positions — asymmetric, DVD-style */
   .menu-item--0 { top: 18%;    right: 16vw; }
   .menu-item--1 { top: 36%;    right: 7vw;  }
@@ -416,6 +424,21 @@ const menuItems = [
   .menu-item--3 { bottom: 30%; left: 9vw;   }
   .menu-item--4 { bottom: 18%; left: 5vw;   }
   .menu-item--5 { bottom: 12%; right: 11vw; }
+
+  /* ── Main menu return — sits below REC indicator ───────── */
+  .main-menu-link {
+    position: fixed;
+    top: 2.2rem;
+    right: 2rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.18em;
+    color: var(--text-dim);
+    text-decoration: none;
+    z-index: 20;
+    transition: color 0.15s;
+  }
+  .main-menu-link:hover { color: var(--blue); }
 
   /* ── Sys bars ───────────────────────────────────────────── */
   .sys-bar {
@@ -643,7 +666,10 @@ const menuItems = [
       .to('.amb-4',        { opacity: 1, duration: 0.3 }, '-=0.1')
       .to('.amb-5',        { opacity: 1, duration: 0.3 }, '-=0.2')
       .to('.nav-hint',     { opacity: 1, duration: 0.3 }, '-=0.2')
-      .add(function() { select(0); });
+      .add(function() {
+        select(0);
+        startIdleCycle();
+      });
   }
 
   /* ── Splash two-stage logic ───────────────────────────────── */
@@ -733,6 +759,41 @@ const menuItems = [
     e.stopPropagation();
     dismissSplash();
   });
+
+  /* ── Idle cycle ───────────────────────────────────────────── */
+  // Fisher-Yates shuffle — guarantees every index appears exactly once per permutation
+  function shuffle(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  function startIdleCycle() {
+    var indices = [0, 1, 2, 3, 4, 5];
+    var order   = [];
+    var pos     = 0;
+
+    function tick() {
+      // Clear previous cycle highlight
+      items.forEach(function(item) { item.classList.remove('is-cycling'); });
+
+      // Exhausted the permutation — generate a fresh one
+      if (pos >= order.length) {
+        order = shuffle(indices);
+        pos   = 0;
+      }
+
+      var idx = order[pos++];
+      if (items[idx]) items[idx].classList.add('is-cycling');
+
+      setTimeout(tick, 1750);
+    }
+
+    tick();
+  }
 
   /* ── Clock ────────────────────────────────────────────────── */
   var tsEl   = document.getElementById('timestamp');

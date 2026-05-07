@@ -1,131 +1,69 @@
 ---
-import Layout from '../layouts/Layout.astro';
+import SubLayout from '../layouts/SubLayout.astro';
 ---
 
-<Layout title="HARDWARE MANIFEST" description="Components, wiring, and assembly for the GhostMesh backpack.">
-  <div class="bg-grid" aria-hidden="true"
-    style="position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.025) 1px,transparent 1px);background-size:64px 64px;z-index:0;"></div>
+<SubLayout title="HARDWARE MANIFEST" section="HARDWARE MANIFEST"
+  classification="CLASSIFICATION: BUILD REFERENCE / STATUS: ACTIVE">
 
-  <div class="corner corner--tl" aria-hidden="true"></div>
-  <div class="corner corner--tr" aria-hidden="true"></div>
-  <div class="corner corner--bl" aria-hidden="true"></div>
-  <div class="corner corner--br" aria-hidden="true"></div>
+  <h2>CORE COMPONENTS</h2>
+  <table class="data-table">
+    <thead><tr><th>COMPONENT</th><th>SPEC</th><th>ROLE</th></tr></thead>
+    <tbody>
+      <tr><td>Flipper Zero</td><td>STM32WB55 / 128×64 LCD</td><td>Operator interface</td></tr>
+      <tr><td>Heltec WiFi LoRa 32 V3</td><td>ESP32-S3 / SX1262 / 915MHz</td><td>Mesh radio node, sensor hub</td></tr>
+      <tr><td>PINGEQUA ProtoBoard</td><td>Flipper GPIO breakout</td><td>Clean sensor mounting</td></tr>
+      <tr><td>LiPo battery</td><td>JST-PH, 3.7V</td><td>Heltec power — independent</td></tr>
+      <tr><td>915MHz antenna</td><td>SMA or IPEX</td><td>Required before powering radio</td></tr>
+    </tbody>
+  </table>
 
-  <div class="sys-bar sys-bar--top">
-    <span class="sys-text">GHOSTMESH &gt; HARDWARE MANIFEST</span>
-    <a href="/" class="return-link">← BACK</a>
-  </div>
+  <h2>SENSOR EXPANSION (PLANNED)</h2>
+  <table class="data-table">
+    <thead><tr><th>SENSOR</th><th>INTERFACE</th><th>FUNCTION</th><th>PHASE</th></tr></thead>
+    <tbody>
+      <tr><td>BME280</td><td>I2C (0x76)</td><td>Temp / humidity / pressure</td><td>07</td></tr>
+      <tr><td>MAX17048</td><td>I2C (0x36)</td><td>LiPo fuel gauge</td><td>09</td></tr>
+      <tr><td>BN-220 GPS</td><td>UART1 9600 baud</td><td>Position + timestamp</td><td>08</td></tr>
+      <tr><td>HC-SR04</td><td>GPIO 21/47</td><td>Proximity — dead-drop detection</td><td>11</td></tr>
+      <tr><td>SW-520D tilt</td><td>GPIO 2</td><td>Tamper — node disturbed</td><td>10</td></tr>
+      <tr><td>Slide switch</td><td>GPIO 4 / Flipper pin 15</td><td>Physical arm/disarm</td><td>10</td></tr>
+      <tr><td>Photoresistor</td><td>ADC GPIO 5</td><td>Tamper — case opened</td><td>10</td></tr>
+      <tr><td>IR receiver</td><td>GPIO 48</td><td>Remote arm/disarm ~10m</td><td>10</td></tr>
+      <tr><td>Vibration motor</td><td>Flipper pin 6 via AO3400</td><td>Haptic RX alert</td><td>10</td></tr>
+      <tr><td>Active buzzer</td><td>Flipper pin 5 via PN2222</td><td>Audible RX alert</td><td>10</td></tr>
+    </tbody>
+  </table>
 
-  <main class="content-panel">
-    <p class="classification">CLASSIFICATION: BUILD REFERENCE / STATUS: ACTIVE</p>
-    <h1>HARDWARE MANIFEST</h1>
-    <p style="font-size:0.7rem;color:var(--text-dim);letter-spacing:0.15em;margin-bottom:2.5rem;">
-      Components and assembly. What you need and how it connects.
-    </p>
-
-    <h2>CORE COMPONENTS</h2>
-    <table class="data-table" aria-label="Core hardware components">
-      <thead>
-        <tr>
-          <th>COMPONENT</th>
-          <th>SPEC</th>
-          <th>ROLE</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td>Flipper Zero</td><td>STM32WB55 / 128×64 LCD</td><td>Operator interface</td></tr>
-        <tr><td>Heltec WiFi LoRa 32 V3</td><td>ESP32-S3 / SX1262 / 915MHz</td><td>Mesh radio node, sensor hub</td></tr>
-        <tr><td>PINGEQUA ProtoBoard</td><td>Flipper GPIO breakout</td><td>Clean sensor mounting</td></tr>
-        <tr><td>LiPo battery</td><td>JST-PH, 3.7V</td><td>Heltec power — independent</td></tr>
-        <tr><td>915MHz antenna</td><td>SMA or IPEX</td><td>Required before powering radio</td></tr>
-      </tbody>
-    </table>
-
-    <h2>SENSOR EXPANSION (PLANNED)</h2>
-    <table class="data-table" aria-label="Sensor components">
-      <thead>
-        <tr>
-          <th>SENSOR</th>
-          <th>INTERFACE</th>
-          <th>FUNCTION</th>
-          <th>PHASE</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td>BME280</td><td>I2C (0x76)</td><td>Temp / humidity / pressure</td><td>07</td></tr>
-        <tr><td>MAX17048</td><td>I2C (0x36)</td><td>LiPo fuel gauge</td><td>09</td></tr>
-        <tr><td>BN-220 GPS</td><td>UART1 9600 baud</td><td>Position + timestamp</td><td>08</td></tr>
-        <tr><td>HC-SR04</td><td>GPIO 21/47</td><td>Proximity — dead-drop detection</td><td>11</td></tr>
-        <tr><td>SW-520D tilt</td><td>GPIO 2</td><td>Tamper — node disturbed</td><td>10</td></tr>
-        <tr><td>Slide switch</td><td>GPIO 4 (Heltec) / pin 15 (Flipper)</td><td>Physical arm/disarm</td><td>10</td></tr>
-        <tr><td>Photoresistor</td><td>ADC GPIO 5</td><td>Tamper — case opened</td><td>10</td></tr>
-        <tr><td>IR receiver</td><td>GPIO 48</td><td>Remote arm/disarm ~10m</td><td>10</td></tr>
-        <tr><td>Vibration motor</td><td>Flipper pin 6 via AO3400</td><td>Haptic RX alert</td><td>10</td></tr>
-        <tr><td>Active buzzer</td><td>Flipper pin 5 via PN2222</td><td>Audible RX alert</td><td>10</td></tr>
-      </tbody>
-    </table>
-
-    <h2>BASE WIRING (3 WIRES)</h2>
-    <div class="code-block" role="region" aria-label="Wiring diagram">
-      <pre>Flipper U_TX (pin 13)  →  Heltec GPIO44  (labeled "RX")
+  <h2>BASE WIRING — 3 WIRES</h2>
+  <div class="code-block"><pre>Flipper U_TX (pin 13)  →  Heltec GPIO44  (labeled "RX")
 Flipper U_RX (pin 14)  →  Heltec GPIO43  (labeled "TX")
 Flipper GND            →  Heltec GND
 
 DO NOT connect power rails.
-Each device runs from its own battery.
-Only TX, RX, and GND are shared.</pre>
-    </div>
+Each device runs from its own battery.</pre></div>
 
-    <h2>POWER ARCHITECTURE</h2>
-    <p>
-      No shared power between devices. The Flipper's 3.3V regulator cannot source the
-      200–500mA the ESP32-S3 draws under load. Connecting power rails risks hardware damage.
-    </p>
-    <div class="code-block">
-      <pre>[Flipper battery]  →  Flipper Zero      (independent)
-[Heltec battery]   →  Heltec ESP32-S3   (independent)
-                           │
-                      [GPIO26 Vext]  →  Sensor 3.3V rail
-                                        (software power gate)</pre>
-    </div>
+  <h2>POWER ARCHITECTURE</h2>
+  <p>No shared power between devices. The Flipper's 3.3V regulator cannot source
+  the 200–500mA the ESP32-S3 draws under load.</p>
+  <div class="code-block"><pre>[Flipper battery]  →  Flipper Zero       (independent)
+[Heltec battery]   →  Heltec ESP32-S3    (independent)
+                            │
+                       [GPIO26 Vext]  →  Sensor 3.3V rail</pre></div>
 
-    <h2>SAFETY NOTES</h2>
-    <p>
-      <span class="tag tag--warn">REQUIRED</span> Attach the 915MHz antenna before powering
-      the Heltec. Running the SX1262 without an antenna risks RF damage to the transceiver.
-    </p>
-    <p>
-      <span class="tag tag--warn">REQUIRED</span> When wiring the vibration motor,
-      install the 1N4007 flyback diode across the motor terminals before the MOSFET.
-      The motor is an inductive load. Without the diode, back-EMF spikes will damage
-      the AO3400 and potentially the Flipper GPIO.
-    </p>
-    <p>
-      <span class="tag tag--warn">NOTE</span> HC-SR04 standard variant requires 5V.
-      Verify your module's datasheet — some clones operate at 3.3V. The Heltec 5V pin
-      is only live when USB-powered.
-    </p>
+  <h2>SAFETY NOTES</h2>
+  <p><span class="tag tag--warn">REQUIRED</span> Attach the 915MHz antenna before
+  powering the Heltec. Running the SX1262 without an antenna risks RF damage.</p>
+  <p><span class="tag tag--warn">REQUIRED</span> Install the 1N4007 flyback diode
+  across the vibration motor terminals before the MOSFET. The motor is an inductive
+  load — without the diode, back-EMF spikes will damage the AO3400.</p>
+  <p><span class="tag tag--warn">NOTE</span> Standard HC-SR04 requires 5V. Verify
+  your module's datasheet. The Heltec 5V pin is only live when USB-powered.</p>
 
-    <div style="margin-top:2.5rem;">
-      <p style="font-size:0.75rem;color:var(--text-dim);">
-        Full pinout, I2C bus architecture, and sensor wiring in the
-        <a href="https://github.com/ComplacencyKillz/GhostMesh/blob/main/docs/wiring.md"
-           style="color:var(--blue);text-decoration:none;border-bottom:1px solid var(--text-ghost);"
-           target="_blank" rel="noopener">
-          documentation archive →
-        </a>
-      </p>
-    </div>
-  </main>
-
-  <div class="sys-bar sys-bar--bottom">
-    <span class="sys-text">ghostmesh.info</span>
-    <span class="sys-text" id="ts"></span>
+  <div class="scene-divider">
+    <p>Full pinout and sensor wiring →
+      <a href="https://github.com/ComplacencyKillz/GhostMesh/blob/main/docs/wiring.md"
+         target="_blank" rel="noopener">docs/wiring.md</a>
+    </p>
   </div>
-</Layout>
 
-<script>
-  const el = document.getElementById('ts');
-  const tick = () => { if (el) el.textContent = new Date().toISOString().replace('T',' ').slice(0,19)+' UTC'; };
-  tick(); setInterval(tick, 1000);
-</script>
+</SubLayout>

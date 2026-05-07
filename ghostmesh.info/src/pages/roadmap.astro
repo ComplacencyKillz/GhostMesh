@@ -1,139 +1,79 @@
 ---
-import Layout from '../layouts/Layout.astro';
+import SubLayout from '../layouts/SubLayout.astro';
 
 const phases = [
-  { num: '00', label: 'Documentation & Hardware Validation', status: 'complete', note: 'Wiring confirmed, end-to-end test passed' },
-  { num: '01', label: 'UART Byte-Counter FAP',               status: 'complete', note: 'Compilable FAP, UART open, byte counters' },
-  { num: '02', label: 'Canned Message Selector',             status: 'complete', note: 'Scrollable menu, send, feedback banner' },
-  { num: '03', label: 'Field Profiles',                      status: 'complete', note: '3 built-ins, SD card YAML loader' },
-  { num: '04', label: 'Node Logging + KML Export',           status: 'complete', note: 'CSV log, RSSI/SNR, RX history screen, marquee' },
-  { num: '05', label: 'PROTO Mode Full Client',              status: 'complete', note: 'Hand-coded protobuf, handshake, TX + RX confirmed' },
-  { num: '06', label: 'Security Baseline',                   status: 'next',     note: 'Nuke button, private channel keygen, stealth mode' },
-  { num: '07', label: 'Environmental Telemetry',             status: 'planned',  note: 'BME280 temp/humidity/pressure, RF ducting indicator' },
-  { num: '08', label: 'GPS + Wardriving',                    status: 'planned',  note: 'BN-220 GPS, position logging, KML heatmap' },
-  { num: '09', label: 'Battery Intelligence',                status: 'planned',  note: 'MAX17048 fuel gauge, persistent % in UI' },
-  { num: '10', label: 'Physical Controls & Alerting',        status: 'planned',  note: 'Tamper sensors, dead-drop arm/disarm, haptic + audio' },
-  { num: '11', label: 'Dead-Drop Surveillance',              status: 'planned',  note: 'HC-SR04 proximity, autonomous unattended alerts' },
-  { num: '12', label: 'SIGINT & Advanced Sensing',           status: 'planned',  note: 'Jammer detection, advanced wardriving, ducting display' },
-  { num: '13', label: 'Remote Payload Execution',            status: 'planned',  note: 'BadUSB over mesh, NFC orchestration, Sub-GHz relay' },
-  { num: '14', label: 'UART Encryption',                     status: 'planned',  note: 'ChaCha20-Poly1305 authenticated encryption, key mgmt' },
+  { num:'00', label:'Documentation & Hardware Validation', status:'complete', note:'Wiring confirmed, end-to-end test passed'           },
+  { num:'01', label:'UART Byte-Counter FAP',               status:'complete', note:'Compilable FAP, UART open, byte counters'           },
+  { num:'02', label:'Canned Message Selector',             status:'complete', note:'Scrollable menu, send, feedback banner'             },
+  { num:'03', label:'Field Profiles',                      status:'complete', note:'3 built-ins, SD card YAML loader'                  },
+  { num:'04', label:'Node Logging + KML Export',           status:'complete', note:'CSV log, RSSI/SNR, RX history, marquee scroll'      },
+  { num:'05', label:'PROTO Mode Full Client',              status:'complete', note:'Hand-coded protobuf, handshake, TX + RX confirmed'  },
+  { num:'06', label:'Security Baseline',                   status:'next',     note:'Nuke button, private channel keygen, stealth mode'  },
+  { num:'07', label:'Environmental Telemetry',             status:'planned',  note:'BME280 temp/humidity/pressure, RF ducting indicator'},
+  { num:'08', label:'GPS + Wardriving',                    status:'planned',  note:'BN-220 GPS, position logging, KML heatmap'          },
+  { num:'09', label:'Battery Intelligence',                status:'planned',  note:'MAX17048 fuel gauge, persistent % in UI'            },
+  { num:'10', label:'Physical Controls & Alerting',        status:'planned',  note:'Tamper sensors, dead-drop arm/disarm'               },
+  { num:'11', label:'Dead-Drop Surveillance',              status:'planned',  note:'HC-SR04 proximity, autonomous alerts'               },
+  { num:'12', label:'SIGINT & Advanced Sensing',           status:'planned',  note:'Jammer detection, advanced wardriving'              },
+  { num:'13', label:'Remote Payload Execution',            status:'planned',  note:'BadUSB over mesh, NFC orchestration, Sub-GHz relay' },
+  { num:'14', label:'UART Encryption',                     status:'planned',  note:'ChaCha20-Poly1305, key management'                 },
 ];
 
-const statusStyle: Record<string, string> = {
+const style: Record<string, string> = {
   complete: 'color:var(--terminal)',
   next:     'color:var(--blue)',
   planned:  'color:var(--text-dim)',
 };
 
-const statusLabel: Record<string, string> = {
-  complete: 'COMPLETE',
+const label: Record<string, string> = {
+  complete: 'DONE',
   next:     'NEXT',
-  planned:  'PLANNED',
+  planned:  '...',
 };
 ---
 
-<Layout title="ROADMAP" description="GhostMesh development phases — signal forward.">
-  <div class="bg-grid" aria-hidden="true"
-    style="position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.025) 1px,transparent 1px);background-size:64px 64px;z-index:0;"></div>
+<SubLayout title="ROADMAP" section="ROADMAP"
+  classification="CLASSIFICATION: DEVELOPMENT SIGNAL / CURRENT: v0.5">
 
-  <div class="corner corner--tl" aria-hidden="true"></div>
-  <div class="corner corner--tr" aria-hidden="true"></div>
-  <div class="corner corner--bl" aria-hidden="true"></div>
-  <div class="corner corner--br" aria-hidden="true"></div>
-
-  <div class="sys-bar sys-bar--top">
-    <span class="sys-text">GHOSTMESH &gt; ROADMAP</span>
-    <a href="/" class="return-link">← BACK</a>
-  </div>
-
-  <main class="content-panel">
-    <p class="classification">CLASSIFICATION: DEVELOPMENT SIGNAL / CURRENT: v0.5</p>
-    <h1>ROADMAP</h1>
-    <p style="font-size:0.7rem;color:var(--text-dim);letter-spacing:0.15em;margin-bottom:2.5rem;">
-      Signal forward. What's done, what's next, what's coming.
-    </p>
-
-    <h2>PHASE INDEX</h2>
-    <table class="data-table" aria-label="Development phases">
-      <thead>
+  <h2>PHASE INDEX</h2>
+  <table class="data-table">
+    <thead>
+      <tr><th style="width:2.5rem;">PH</th><th>PHASE</th><th style="width:4rem;">STATUS</th><th>SIGNAL</th></tr>
+    </thead>
+    <tbody>
+      {phases.map(p => (
         <tr>
-          <th style="width:3rem;">PH</th>
-          <th>PHASE</th>
-          <th style="width:6rem;">STATUS</th>
-          <th>SIGNAL</th>
+          <td style="color:var(--text-ghost);font-size:0.62rem;">{p.num}</td>
+          <td>{p.label}</td>
+          <td style={style[p.status]}>{label[p.status]}</td>
+          <td style="color:var(--text-dim);font-size:0.68rem;">{p.note}</td>
         </tr>
-      </thead>
-      <tbody>
-        {phases.map(p => (
-          <tr>
-            <td style="color:var(--text-ghost);font-size:0.65rem;">{p.num}</td>
-            <td>{p.label}</td>
-            <td style={statusStyle[p.status]}>{statusLabel[p.status]}</td>
-            <td style="color:var(--text-dim);font-size:0.7rem;">{p.note}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+      ))}
+    </tbody>
+  </table>
 
-    <h2>CURRENT STATE — v0.5</h2>
-    <p>
-      GhostMesh is a working mesh radio terminal. It sends and receives text messages
-      over Meshtastic LoRa mesh using the full PROTO protocol. Received messages are
-      logged to SD card with RSSI and SNR. The RX history screen shows the last 16
-      received messages with signal data. All text marquee-scrolls if it doesn't fit
-      the display.
-    </p>
-    <p>
-      Confirmed end-to-end: Flipper OK → message appears on remote Heltec node.
-      Remote node message → appears in GhostMesh status bar and history.
-    </p>
+  <h2>CURRENT STATE — v0.5</h2>
+  <p>GhostMesh is a working mesh radio terminal. It sends and receives text
+  messages over Meshtastic LoRa mesh using the full PROTO protocol. Received
+  messages are logged to SD card with RSSI and SNR. Confirmed end-to-end:
+  Flipper → remote node → back to Flipper.</p>
 
-    <h2>NEXT — Phase 6</h2>
-    <p>
-      The burn-proof protocol. Software only, no new hardware required.
-    </p>
-    <p>
-      <strong>Nuke button:</strong> Sends <code style="color:var(--blue);">{"AdminMessage { factory_reset }"}</code>
-      to the Heltec via existing PROTO link. Meshtastic wipes all channel keys and reboots.
-      Gated by physical slide switch.
-    </p>
-    <p>
-      <strong>Private channel keygen:</strong> Generate a 256-bit key on the Flipper using
-      hardware RNG and push it to the Heltec — no phone app needed in the field.
-    </p>
-    <p>
-      <strong>Stealth mode:</strong> One toggle disables OLED, sets device role to ROUTER,
-      disables GPS broadcast and telemetry beaconing. The node goes dark.
-    </p>
+  <h2>NEXT — Phase 6</h2>
+  <p>Nuke button, private channel key generation from Flipper hardware RNG,
+  and stealth mode (node goes dark — ROUTER role, no GPS, no telemetry,
+  OLED off). Software only, no new hardware required.</p>
 
-    <h2>THE BACKPACK GOAL</h2>
-    <p>
-      Phases 10–11 complete the autonomous dead-drop backpack: a Heltec node that can be
-      left unattended at a location, monitors the area with multiple sensors, broadcasts
-      alerts over LoRa mesh when the zone is disturbed, and wipes itself if compromised.
-      The operator's Flipper receives alerts from miles away.
+  <h2>THE BACKPACK GOAL</h2>
+  <p>Phases 10–11 complete the autonomous dead-drop backpack: a Heltec node
+  left unattended, monitoring an area with multiple sensors, broadcasting
+  alerts over LoRa, wiping itself if compromised. No Flipper required at
+  the drop site.</p>
+
+  <div class="scene-divider">
+    <p>Full phase detail →
+      <a href="https://github.com/ComplacencyKillz/GhostMesh/blob/main/docs/roadmap.md"
+         target="_blank" rel="noopener">docs/roadmap.md</a>
     </p>
-
-    <div style="margin-top:2.5rem;">
-      <p style="font-size:0.75rem;color:var(--text-dim);">
-        Full phase detail at
-        <a href="https://github.com/ComplacencyKillz/GhostMesh/blob/main/docs/roadmap.md"
-           style="color:var(--blue);text-decoration:none;border-bottom:1px solid var(--text-ghost);"
-           target="_blank" rel="noopener">
-          github → docs/roadmap.md →
-        </a>
-      </p>
-    </div>
-  </main>
-
-  <div class="sys-bar sys-bar--bottom">
-    <span class="sys-text">ghostmesh.info</span>
-    <span class="sys-text" id="ts"></span>
   </div>
-</Layout>
 
-<script>
-  const el = document.getElementById('ts');
-  const tick = () => { if (el) el.textContent = new Date().toISOString().replace('T',' ').slice(0,19)+' UTC'; };
-  tick(); setInterval(tick, 1000);
-</script>
+</SubLayout>

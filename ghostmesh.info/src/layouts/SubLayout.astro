@@ -1,0 +1,279 @@
+---
+interface Props {
+  title: string;
+  section: string;
+  classification?: string;
+  description?: string;
+}
+
+const {
+  title,
+  section,
+  classification = 'UNLICENSED / ORIGIN: THE WASTE',
+  description = 'Transmitted outside sanctioned channels.',
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet" />
+    <title>{title} :: GHOSTMESH</title>
+    <style is:global>
+      @import '../styles/global.css';
+    </style>
+  </head>
+  <body>
+
+    <div class="crt-overlay"   aria-hidden="true"></div>
+    <div class="noise-overlay" aria-hidden="true"></div>
+
+    <!-- Video background — muted autoplay on sub-pages -->
+    <video id="sub-video" autoplay loop muted playsinline preload="auto"
+      style="position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;opacity:0.35;">
+      <source src="/video/ghostmesh.mp4" type="video/mp4" />
+    </video>
+
+    <div class="sub-vignette" aria-hidden="true"></div>
+
+    <div class="corner corner--tl" aria-hidden="true"></div>
+    <div class="corner corner--tr" aria-hidden="true"></div>
+    <div class="corner corner--bl" aria-hidden="true"></div>
+    <div class="corner corner--br" aria-hidden="true"></div>
+
+    <!-- REC indicator -->
+    <div class="rec" aria-hidden="true"><span class="rec-dot"></span>REC</div>
+
+    <!-- Return link sits just below REC -->
+    <a href="/" class="sub-return-link" aria-label="Return to GhostMesh menu">← MENU</a>
+    <a href="https://complacencykillz.me" class="sub-main-link" aria-label="Return to main menu">← MAIN</a>
+
+    <!-- Top sys bar -->
+    <div class="sys-bar sys-bar--top">
+      <span class="sys-text">GHOSTMESH &gt; {section}</span>
+    </div>
+
+    <!-- Scrollable scene panel -->
+    <main class="scene-panel">
+      <header class="scene-header">
+        <p class="scene-classify">{classification}</p>
+        <h1 class="scene-title">{title}</h1>
+      </header>
+
+      <div class="scene-body">
+        <slot />
+      </div>
+    </main>
+
+    <!-- Bottom sys bar -->
+    <div class="sys-bar sys-bar--bottom">
+      <span class="sys-text">ghostmesh.info</span>
+      <span class="sys-text" id="ts"></span>
+    </div>
+
+  </body>
+</html>
+
+<style>
+  /* ── Video + vignette ───────────────────────────────────────── */
+  .sub-vignette {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 40%,
+      rgba(0,0,0,0.55) 0%,
+      rgba(0,0,0,0.82) 100%
+    );
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  /* ── REC ────────────────────────────────────────────────────── */
+  .rec {
+    position: fixed;
+    top: 0.65rem;
+    right: 2.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--red);
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    z-index: 20;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .rec-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--red);
+    animation: rec-blink 1.8s ease-in-out infinite;
+  }
+  @keyframes rec-blink { 0%,100%{opacity:1} 50%{opacity:0.08} }
+
+  /* ── Return links below REC ─────────────────────────────────── */
+  .sub-return-link,
+  .sub-main-link {
+    position: fixed;
+    right: 2rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.18em;
+    text-decoration: none;
+    color: var(--text-dim);
+    z-index: 20;
+    transition: color 0.15s;
+  }
+  .sub-return-link { top: 2.2rem; }
+  .sub-main-link   { top: 3.4rem; }
+  .sub-return-link:hover,
+  .sub-main-link:hover { color: var(--blue); }
+
+  /* ── Scene panel — scrollable content ──────────────────────── */
+  .scene-panel {
+    position: relative;
+    z-index: 5;
+    min-height: 100vh;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 5rem 2rem 5rem;
+    overflow-y: auto;
+  }
+
+  /* Visible scrollbar */
+  .scene-panel::-webkit-scrollbar       { width: 4px; }
+  .scene-panel::-webkit-scrollbar-track { background: transparent; }
+  .scene-panel::-webkit-scrollbar-thumb { background: var(--text-dim); border-radius: 2px; }
+
+  .scene-header {
+    margin-bottom: 2.5rem;
+  }
+
+  .scene-classify {
+    font-size: 0.62rem;
+    letter-spacing: 0.22em;
+    color: var(--red);
+    margin-bottom: 0.6rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .scene-title {
+    font-size: clamp(1.6rem, 5vw, 2.4rem);
+    font-weight: 900;
+    color: var(--blue);
+    letter-spacing: 0.12em;
+    line-height: 1;
+    text-shadow: 0 0 30px rgba(0, 212, 255, 0.25);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── Scene body typography ──────────────────────────────────── */
+  .scene-body h2 {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0.2em;
+    margin: 2.5rem 0 0.8rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--text-ghost);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .scene-body p {
+    font-size: 0.8rem;
+    line-height: 1.85;
+    color: var(--text);
+    margin-bottom: 1rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .scene-body a {
+    color: var(--blue);
+    text-decoration: none;
+    border-bottom: 1px solid var(--text-ghost);
+    transition: border-color 0.15s;
+  }
+  .scene-body a:hover { border-color: var(--blue); }
+
+  /* ── Data tables ────────────────────────────────────────────── */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.72rem;
+    margin: 0.8rem 0 2rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .data-table th {
+    text-align: left;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    font-size: 0.62rem;
+    border-bottom: 1px solid var(--text-ghost);
+    padding: 0.5rem 1rem 0.5rem 0;
+  }
+  .data-table td {
+    padding: 0.55rem 1rem 0.55rem 0;
+    border-bottom: 1px solid var(--text-ghost);
+    color: var(--text);
+    vertical-align: top;
+  }
+  .data-table td:first-child { color: var(--blue); }
+
+  /* ── Code blocks ────────────────────────────────────────────── */
+  .code-block {
+    background: rgba(0, 3, 18, 0.75);
+    border: 1px solid var(--text-ghost);
+    border-left: 2px solid var(--blue);
+    padding: 1rem 1.2rem;
+    font-size: 0.72rem;
+    line-height: 1.7;
+    margin: 0.8rem 0 1.5rem;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .code-block pre { margin: 0; color: var(--text); }
+
+  /* ── Tags ───────────────────────────────────────────────────── */
+  .tag {
+    display: inline-block;
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    padding: 0.15rem 0.5rem;
+    border: 1px solid var(--text-ghost);
+    color: var(--text-dim);
+    margin-right: 0.4rem;
+    margin-bottom: 0.4rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .tag--active { border-color: var(--terminal); color: var(--terminal); }
+  .tag--warn   { border-color: var(--red);      color: var(--red); }
+
+  /* ── Divider ────────────────────────────────────────────────── */
+  .scene-divider {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--text-ghost);
+  }
+
+  .scene-divider p {
+    font-size: 0.62rem;
+    color: var(--text-ghost);
+    letter-spacing: 0.15em;
+  }
+</style>
+
+<script>
+  // Clock
+  var el = document.getElementById('ts');
+  function tick() {
+    if (el) el.textContent = new Date().toISOString().replace('T',' ').slice(0,19)+' UTC';
+  }
+  tick();
+  setInterval(tick, 1000);
+</script>
