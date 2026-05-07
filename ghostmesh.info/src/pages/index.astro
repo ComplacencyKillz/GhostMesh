@@ -1,0 +1,319 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const menuItems = [
+  { num: '01', label: 'INITIALIZE SYSTEM',  path: '/mission',   sub: 'Transmission origin'       },
+  { num: '02', label: 'HARDWARE MANIFEST',  path: '/hardware',  sub: 'Components and assembly'   },
+  { num: '03', label: 'FIRMWARE',           path: '/software',  sub: 'Build and deploy'          },
+  { num: '04', label: 'FIELD OPERATIONS',   path: '/usecases',  sub: 'Operational use cases'     },
+  { num: '05', label: 'SYSTEM LOGS',        path: '/docs',      sub: 'Documentation archive'     },
+  { num: '06', label: 'ROADMAP',            path: '/roadmap',   sub: 'Signal forward'            },
+];
+---
+
+<Layout title="GHOSTMESH" description="Transmitted outside sanctioned channels.">
+
+  <!-- Splash / warning screen -->
+  <div id="splash" role="dialog" aria-modal="true" aria-label="Transmission warning">
+    <div class="splash-warning">
+      <p class="splash-header">⚠ UNLICENSED TRANSMISSION</p>
+
+      <span class="splash-line" id="sl-1"></span>
+      <span class="splash-line" id="sl-2"></span>
+      <span class="splash-line splash-line--gap splash-line--bright" id="sl-3"></span>
+      <span class="splash-line splash-line--bright" id="sl-4"></span>
+      <span class="splash-line splash-line--gap" id="sl-5"></span>
+      <span class="splash-line" id="sl-6"></span>
+      <span class="splash-line" id="sl-7"></span>
+
+      <button id="splash-ack" aria-label="Acknowledge and enter">[ ACKNOWLEDGE ]</button>
+    </div>
+    <p class="splash-candles" id="splash-candles">// so light your candles</p>
+  </div>
+
+  <!-- Mesh network canvas background -->
+  <canvas id="mesh-canvas" aria-hidden="true" style="position:fixed;inset:0;z-index:0;opacity:0;"></canvas>
+
+  <div class="corner corner--tl" aria-hidden="true"></div>
+  <div class="corner corner--tr" aria-hidden="true"></div>
+  <div class="corner corner--bl" aria-hidden="true"></div>
+  <div class="corner corner--br" aria-hidden="true"></div>
+
+  <!-- Ambient data overlays -->
+  <div class="amb amb-1">// NODE ACTIVE<br>GHOSTMESH v0.5</div>
+  <div class="amb amb-2">MESH: ONLINE<br>FREQ: 915MHz / LoRa</div>
+  <div class="amb amb-3">CHANNEL: PRIVATE<br>ENCRYPTION: AES-256</div>
+  <div class="amb amb-4">ORIGIN: THE WASTE<br>LICENSE: NONE</div>
+
+  <main class="dvd-menu page" style="display:flex;flex-direction:column;justify-content:center;min-height:100vh;padding:0 10vw;max-width:900px;margin:0 auto;">
+
+    <div class="sys-bar sys-bar--top" aria-label="Breadcrumb navigation">
+      <span class="sys-text">COMPLACENCYKILLZ.ME &gt; SCENE SELECTION &gt; GHOSTMESH</span>
+      <a href="https://complacencykillz.me" class="return-link" aria-label="Return to main menu">← MAIN MENU</a>
+    </div>
+
+    <div style="margin-bottom:2.5rem;opacity:0;" id="title-block">
+      <h1 class="glitch" data-text="GHOSTMESH" style="font-size:clamp(2rem,6vw,3.5rem);color:var(--blue);letter-spacing:0.15em;">GHOSTMESH</h1>
+      <p style="font-size:0.7rem;letter-spacing:0.2em;color:var(--text-dim);margin-top:0.5rem;" id="tagline"></p>
+    </div>
+
+    <nav aria-label="GhostMesh sections">
+      {menuItems.map((item, i) => (
+        <button
+          class={`menu-item menu-item--${i}`}
+          aria-label={item.label}
+          data-index={i}
+          data-path={item.path}
+        >
+          <span class="item-num">{item.num}</span>
+          <span class="item-label">{item.label}</span>
+          <span class="item-sub">{item.sub}</span>
+        </button>
+      ))}
+    </nav>
+
+    <div class="sys-bar sys-bar--bottom">
+      <span class="sys-text">UNLICENSED HARDWARE PROJECT / complacencykillz.me</span>
+      <span class="sys-text" id="timestamp"></span>
+    </div>
+
+  </main>
+
+  <div class="nav-hint" aria-hidden="true">↑ ↓ NAVIGATE &nbsp;·&nbsp; ENTER ACCESS</div>
+
+</Layout>
+
+<script>
+  import gsap from 'gsap';
+
+  /* ── Mesh canvas ──────────────────────────────────────────── */
+  const canvas  = document.getElementById('mesh-canvas') as HTMLCanvasElement;
+  const ctx     = canvas.getContext('2d')!;
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const NODE_COUNT = 14;
+  interface Node { x:number; y:number; vx:number; vy:number; pulse:number; pulseSpeed:number; }
+  interface Signal { from:number; to:number; t:number; speed:number; }
+
+  const nodes: Node[] = Array.from({ length: NODE_COUNT }, () => ({
+    x: Math.random() * window.innerWidth,
+    y: Math.random() * window.innerHeight,
+    vx: (Math.random() - 0.5) * 0.25,
+    vy: (Math.random() - 0.5) * 0.25,
+    pulse: Math.random() * Math.PI * 2,
+    pulseSpeed: 0.018 + Math.random() * 0.018,
+  }));
+
+  const signals: Signal[] = [];
+  const MAX_DIST = 280;
+
+  function spawnSignal() {
+    const from = Math.floor(Math.random() * NODE_COUNT);
+    let   to   = Math.floor(Math.random() * NODE_COUNT);
+    while (to === from) to = Math.floor(Math.random() * NODE_COUNT);
+    signals.push({ from, to, t: 0, speed: 0.006 + Math.random() * 0.005 });
+  }
+
+  setInterval(spawnSignal, 1200);
+
+  function drawMesh() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Connections
+    for (let i = 0; i < NODE_COUNT; i++) {
+      for (let j = i + 1; j < NODE_COUNT; j++) {
+        const dx   = nodes[i].x - nodes[j].x;
+        const dy   = nodes[i].y - nodes[j].y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < MAX_DIST) {
+          const a = (1 - dist / MAX_DIST) * 0.12;
+          ctx.strokeStyle = `rgba(0,212,255,${a})`;
+          ctx.lineWidth   = 0.5;
+          ctx.beginPath();
+          ctx.moveTo(nodes[i].x, nodes[i].y);
+          ctx.lineTo(nodes[j].x, nodes[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Nodes
+    nodes.forEach(n => {
+      n.pulse += n.pulseSpeed;
+      const glow = 0.5 + 0.5 * Math.sin(n.pulse);
+
+      // Pulse ring
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, 4 + glow * 4, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(0,212,255,${0.08 + glow * 0.07})`;
+      ctx.lineWidth   = 1;
+      ctx.stroke();
+
+      // Core
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, 2, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(0,212,255,${0.55 + glow * 0.45})`;
+      ctx.fill();
+
+      n.x += n.vx;
+      n.y += n.vy;
+      if (n.x < 0 || n.x > canvas.width)  n.vx *= -1;
+      if (n.y < 0 || n.y > canvas.height) n.vy *= -1;
+    });
+
+    // Signal packets
+    for (let i = signals.length - 1; i >= 0; i--) {
+      const s = signals[i];
+      s.t += s.speed;
+      if (s.t >= 1) { signals.splice(i, 1); continue; }
+
+      const f = nodes[s.from], t = nodes[s.to];
+      const x = f.x + (t.x - f.x) * s.t;
+      const y = f.y + (t.y - f.y) * s.t;
+
+      // Trail
+      const ts = Math.max(0, s.t - 0.07);
+      ctx.beginPath();
+      ctx.moveTo(f.x + (t.x - f.x) * ts, f.y + (t.y - f.y) * ts);
+      ctx.lineTo(x, y);
+      ctx.strokeStyle = 'rgba(0,255,65,0.25)';
+      ctx.lineWidth   = 1.5;
+      ctx.stroke();
+
+      // Dot
+      ctx.beginPath();
+      ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,255,65,0.9)';
+      ctx.fill();
+    }
+
+    requestAnimationFrame(drawMesh);
+  }
+
+  drawMesh();
+
+  /* ── Typewriter ───────────────────────────────────────────── */
+  function typewrite(el: HTMLElement, text: string, speed = 18): Promise<void> {
+    return new Promise(resolve => {
+      let i = 0;
+      el.textContent = '';
+      const iv = setInterval(() => {
+        el.textContent += text[i++];
+        if (i >= text.length) { clearInterval(iv); resolve(); }
+      }, speed);
+    });
+  }
+
+  function delay(ms: number) { return new Promise<void>(r => setTimeout(r, ms)); }
+
+  /* ── Splash sequence ──────────────────────────────────────── */
+  const LINES: [string, string][] = [
+    ['sl-1', 'This material has not been reviewed, approved, or sanctioned'],
+    ['sl-2', 'by any government, corporation, or arcology authority.'],
+    ['sl-3', 'It carries no Listener\'s License.'],
+    ['sl-4', 'No Creativity Permit was filed.'],
+    ['sl-5', 'What you are about to access was designed in the Waste,'],
+    ['sl-6', 'assembled outside sanctioned channels,'],
+    ['sl-7', 'and broadcast so that you might at least prepare.'],
+  ];
+
+  async function runSplash() {
+    await delay(400);
+    for (const [id, text] of LINES) {
+      const el = document.getElementById(id)!;
+      await typewrite(el, text, 16);
+      await delay(id === 'sl-4' ? 500 : 120);
+    }
+    await delay(600);
+    gsap.to('#splash-ack',    { opacity: 1, duration: 0.5 });
+    gsap.to('#splash-candles',{ opacity: 1, duration: 1,   delay: 0.4 });
+  }
+
+  runSplash();
+
+  /* ── Entrance after acknowledge ───────────────────────────── */
+  function runEntrance() {
+    gsap.to(canvas, { opacity: 0.6, duration: 1.5, ease: 'power2.inOut' });
+
+    gsap.timeline({ defaults: { ease: 'power2.out' } })
+      .to('.amb-1', { opacity: 1, duration: 0.5, delay: 0.3 })
+      .to('.amb-2', { opacity: 1, duration: 0.5 }, '-=0.2')
+      .to('.amb-3', { opacity: 1, duration: 0.5 }, '-=0.3')
+      .to('.amb-4', { opacity: 1, duration: 0.5 }, '-=0.3')
+      .to('#title-block', { opacity: 1, duration: 0.4 }, '-=0.2')
+      .add(() => {
+        const el = document.getElementById('tagline')!;
+        typewrite(el, 'My strength is my knowledge. My weapons are my skills.', 28);
+      }, '-=0.1')
+      .to('.menu-item--0', { opacity: 1, x:   0, duration: 0.3, from: { x: 16 } }, '+=0.2')
+      .to('.menu-item--1', { opacity: 1, x:   0, duration: 0.3 }, '-=0.15')
+      .to('.menu-item--2', { opacity: 1, x:   0, duration: 0.3 }, '-=0.15')
+      .to('.menu-item--3', { opacity: 1, x:   0, duration: 0.3 }, '-=0.15')
+      .to('.menu-item--4', { opacity: 1, x:   0, duration: 0.3 }, '-=0.15')
+      .to('.menu-item--5', { opacity: 1, x:   0, duration: 0.3 }, '-=0.15')
+      .to('.nav-hint',     { opacity: 1, duration: 0.4 }, '-=0.1');
+
+    gsap.set('.menu-item--0,.menu-item--1,.menu-item--2,.menu-item--3,.menu-item--4,.menu-item--5', { x: 16 });
+  }
+
+  /* ── Navigation ───────────────────────────────────────────── */
+  const items = document.querySelectorAll<HTMLButtonElement>('.menu-item');
+  let cur = 0;
+
+  function select(i: number) {
+    items[cur]?.classList.remove('is-selected');
+    cur = Math.max(0, Math.min(i, items.length - 1));
+    items[cur]?.classList.add('is-selected');
+  }
+
+  function go() {
+    const p = items[cur].dataset.path;
+    if (p) window.location.href = p;
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown')  { e.preventDefault(); select(cur + 1); }
+    if (e.key === 'ArrowUp')    { e.preventDefault(); select(cur - 1); }
+    if (e.key === 'Enter')      { go(); }
+  });
+
+  items.forEach((item, i) => {
+    item.addEventListener('click',      () => { select(i); go(); });
+    item.addEventListener('mouseenter', () => select(i));
+  });
+
+  /* ── Acknowledge ──────────────────────────────────────────── */
+  const splash = document.getElementById('splash')!;
+  let dismissed = false;
+
+  function dismiss() {
+    if (dismissed) return;
+    dismissed = true;
+    gsap.to(splash, {
+      opacity: 0,
+      duration: 0.7,
+      ease: 'power2.in',
+      onComplete: () => { splash.remove(); select(0); },
+    });
+    runEntrance();
+  }
+
+  document.getElementById('splash-ack')!.addEventListener('click', dismiss);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !dismissed) dismiss();
+  });
+
+  /* ── Clock ────────────────────────────────────────────────── */
+  const tsEl = document.getElementById('timestamp');
+  function tick() {
+    if (tsEl) tsEl.textContent = new Date().toISOString().replace('T',' ').slice(0,19) + ' UTC';
+  }
+  tick();
+  setInterval(tick, 1000);
+</script>

@@ -1,0 +1,106 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const docs = [
+  { label: 'USER GUIDE',         sub: 'Screen-by-screen walkthrough',           path: 'docs/user-guide.md' },
+  { label: 'DEVELOPER GUIDE',    sub: 'Architecture and contribution guide',     path: 'docs/developer-guide.md' },
+  { label: 'HARDWARE REFERENCE', sub: 'Full BOM, GPIO allocation, power notes',  path: 'docs/hardware.md' },
+  { label: 'WIRING GUIDE',       sub: 'Pinout, connections, sensor wiring',      path: 'docs/wiring.md' },
+  { label: 'MESHTASTIC SETUP',   sub: 'Node config, channels, sensor modules',   path: 'docs/meshtastic-setup.md' },
+  { label: 'FLIPPER SETUP',      sub: 'ufbt build, deploy, troubleshoot',        path: 'docs/flipper-setup.md' },
+  { label: 'OPSEC GUIDE',        sub: 'Encryption, stealth, nuke protocol',      path: 'docs/opsec.md' },
+  { label: 'SERIAL PROTOCOL',    sub: 'PROTO field numbers and implementation',   path: 'docs/serial-modes.md' },
+  { label: 'ROADMAP',            sub: 'Phases 0–14, current status',             path: 'docs/roadmap.md' },
+  { label: 'PROTO NOTES',        sub: 'Internal protocol reference',             path: 'flipper-app/helpers/proto_notes.md' },
+];
+
+const REPO = 'https://github.com/ComplacencyKillz/GhostMesh/blob/main/';
+---
+
+<Layout title="SYSTEM LOGS" description="GhostMesh documentation archive.">
+  <div class="bg-grid" aria-hidden="true"
+    style="position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.025) 1px,transparent 1px);background-size:64px 64px;z-index:0;"></div>
+
+  <div class="corner corner--tl" aria-hidden="true"></div>
+  <div class="corner corner--tr" aria-hidden="true"></div>
+  <div class="corner corner--bl" aria-hidden="true"></div>
+  <div class="corner corner--br" aria-hidden="true"></div>
+
+  <div class="sys-bar sys-bar--top">
+    <span class="sys-text">GHOSTMESH &gt; SYSTEM LOGS</span>
+    <a href="/" class="return-link">← BACK</a>
+  </div>
+
+  <main class="content-panel">
+    <p class="classification">CLASSIFICATION: DOCUMENTATION ARCHIVE / REPOSITORY: GITHUB</p>
+    <h1>SYSTEM LOGS</h1>
+    <p style="font-size:0.7rem;color:var(--text-dim);letter-spacing:0.15em;margin-bottom:2.5rem;">
+      Documentation archive. All files live in the public repository.
+    </p>
+
+    <h2>DOCUMENT INDEX</h2>
+    <table class="data-table" aria-label="Documentation files">
+      <thead>
+        <tr><th>FILE</th><th>CONTENTS</th></tr>
+      </thead>
+      <tbody>
+        {docs.map(d => (
+          <tr>
+            <td>
+              <a href={`${REPO}${d.path}`}
+                 style="color:var(--blue);text-decoration:none;"
+                 target="_blank" rel="noopener">
+                {d.label}
+              </a>
+            </td>
+            <td style="color:var(--text-dim);">{d.sub}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+
+    <h2>REPOSITORY</h2>
+    <div class="code-block">
+      <pre>github.com/ComplacencyKillz/GhostMesh
+
+License:  MIT
+Status:   Active development
+Current:  v0.5 — PROTO mode full client</pre>
+    </div>
+
+    <h2>LOG FORMAT</h2>
+    <p>
+      Every received message is logged to the Flipper SD card:
+    </p>
+    <div class="code-block">
+      <pre>SD:/apps_data/ghostmesh/log_YYYYMMDD.csv
+
+Columns: timestamp, node_id, message, rssi, snr
+
+Example:
+2026-05-07T09:15:44,f69c,CHECKIN OK,-85,7.5
+2026-05-07T09:22:11,2f74,IN POSITION,-92,4.2</pre>
+    </div>
+
+    <h2>KML EXPORT</h2>
+    <div class="code-block">
+      <pre>python tools/log_to_kml.py log_20260507.csv
+# → log_20260507.kml (open in Google Earth or QGIS)</pre>
+    </div>
+    <p>
+      Rows with GPS coordinates (Phase 8) are plotted at real positions.
+      Signal strength is included in each placemark's data.
+    </p>
+  </main>
+
+  <div class="sys-bar sys-bar--bottom">
+    <span class="sys-text">ghostmesh.info</span>
+    <span class="sys-text" id="ts"></span>
+  </div>
+</Layout>
+
+<script>
+  const el = document.getElementById('ts');
+  const tick = () => { if (el) el.textContent = new Date().toISOString().replace('T',' ').slice(0,19)+' UTC'; };
+  tick(); setInterval(tick, 1000);
+</script>

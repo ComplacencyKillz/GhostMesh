@@ -1,0 +1,131 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="FIELD OPERATIONS" description="Authorized operational use cases for GhostMesh.">
+  <div class="bg-grid" aria-hidden="true"
+    style="position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.025) 1px,transparent 1px);background-size:64px 64px;z-index:0;"></div>
+
+  <div class="corner corner--tl" aria-hidden="true"></div>
+  <div class="corner corner--tr" aria-hidden="true"></div>
+  <div class="corner corner--bl" aria-hidden="true"></div>
+  <div class="corner corner--br" aria-hidden="true"></div>
+
+  <div class="sys-bar sys-bar--top">
+    <span class="sys-text">GHOSTMESH &gt; FIELD OPERATIONS</span>
+    <a href="/" class="return-link">← BACK</a>
+  </div>
+
+  <main class="content-panel">
+    <p class="classification">CLASSIFICATION: AUTHORIZED USE ONLY / LAB AND FIELD SCOPE</p>
+    <h1>FIELD OPERATIONS</h1>
+    <p style="font-size:0.7rem;color:var(--text-dim);letter-spacing:0.15em;margin-bottom:2.5rem;">
+      What this hardware does in the field. Scope applies to owned systems and authorized engagements only.
+    </p>
+
+    <h2>GRID-DOWN COMMUNICATIONS</h2>
+    <span class="tag tag--active">AVAILABLE NOW</span>
+    <p style="margin-top:1rem;">
+      When cell towers are down, WiFi is gone, and internet infrastructure has failed,
+      GhostMesh keeps a team coordinated. LoRa mesh radio requires no external infrastructure —
+      each node relays traffic for every other node in range. Three nodes can cover
+      kilometers of terrain.
+    </p>
+    <p>
+      Built-in profiles cover common field status: check-in, moving, hold position, medical
+      needed, shelter in place. Custom profiles via SD card cover operation-specific callouts.
+    </p>
+
+    <h2>SEARCH AND RESCUE</h2>
+    <span class="tag tag--active">AVAILABLE NOW</span>
+    <p style="margin-top:1rem;">
+      The Hiking/SAR profile provides coordination messages designed for search and rescue
+      operations: trail status, summit reached, camp reached, need water, need medical,
+      turning back. Range and battery life make this practical for multi-day operations.
+    </p>
+
+    <h2>AUTHORIZED RED TEAM COORDINATION</h2>
+    <span class="tag tag--active">AVAILABLE NOW</span>
+    <p style="margin-top:1rem;">
+      During authorized assessments where cellular and WiFi may be monitored or unavailable,
+      GhostMesh provides an out-of-band coordination channel. Traffic travels over
+      Meshtastic AES-256 mesh — no cell towers, no WiFi, no logs on infrastructure you
+      don't control.
+    </p>
+    <p>
+      Private channel required for operational use.
+      The default channel uses a public key visible to every Meshtastic node worldwide.
+      Generate a private channel with a random key before deployment.
+    </p>
+
+    <h2>DEAD-DROP SURVEILLANCE</h2>
+    <span class="tag">PLANNED — PHASE 10–11</span>
+    <p style="margin-top:1rem;">
+      Deploy the Heltec backpack at a dead-drop location. The node monitors the area
+      and broadcasts alerts over LoRa when the zone is disturbed — proximity detection
+      (HC-SR04), physical disturbance (tilt switch), or case opening (photoresistor).
+    </p>
+    <p>
+      The backpack operates fully unattended. Arm it on deployment with the physical
+      slide switch. Arm or disarm remotely from ~10m via IR. Receive alerts on your
+      Flipper miles away. If discovered: one action wipes all encryption keys.
+    </p>
+
+    <h2>OPSEC — ENCRYPTION</h2>
+    <table class="data-table" aria-label="Encryption coverage by segment">
+      <thead>
+        <tr><th>SEGMENT</th><th>ENCRYPTED</th><th>RISK</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Flipper → Heltec (UART)</td>
+          <td style="color:var(--red);">No (Phase 14 planned)</td>
+          <td>High — physical access</td>
+        </tr>
+        <tr>
+          <td>Heltec → Mesh (default channel)</td>
+          <td style="color:var(--terminal);">AES-256 — public key</td>
+          <td>Medium — visible to all nodes</td>
+        </tr>
+        <tr>
+          <td>Heltec → Mesh (private channel)</td>
+          <td style="color:var(--terminal);">AES-256 — private key</td>
+          <td>Low — opaque to outsiders</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>SCOPE STATEMENT</h2>
+    <p>
+      All features described here apply only to systems you own or have explicit written
+      authorization to test, in controlled lab or field environments, and for authorized
+      penetration testing engagements or open-source security research.
+    </p>
+    <p>
+      No malware, unauthorized access, credential theft, destructive payloads, or
+      interference with licensed radio spectrum is implemented, planned, or accepted.
+    </p>
+
+    <div style="margin-top:2.5rem;">
+      <p style="font-size:0.75rem;color:var(--text-dim);">
+        Full use case documentation at
+        <a href="https://github.com/ComplacencyKillz/GhostMesh/blob/main/docs/red-team-lab-use-cases.md"
+           style="color:var(--blue);text-decoration:none;border-bottom:1px solid var(--text-ghost);"
+           target="_blank" rel="noopener">
+          github → red-team-lab-use-cases.md →
+        </a>
+      </p>
+    </div>
+  </main>
+
+  <div class="sys-bar sys-bar--bottom">
+    <span class="sys-text">ghostmesh.info</span>
+    <span class="sys-text" id="ts"></span>
+  </div>
+</Layout>
+
+<script>
+  const el = document.getElementById('ts');
+  const tick = () => { if (el) el.textContent = new Date().toISOString().replace('T',' ').slice(0,19)+' UTC'; };
+  tick(); setInterval(tick, 1000);
+</script>

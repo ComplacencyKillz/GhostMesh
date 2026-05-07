@@ -1,0 +1,133 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="FIRMWARE" description="Build and deploy the GhostMesh Flipper Zero FAP.">
+  <div class="bg-grid" aria-hidden="true"
+    style="position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.025) 1px,transparent 1px);background-size:64px 64px;z-index:0;"></div>
+
+  <div class="corner corner--tl" aria-hidden="true"></div>
+  <div class="corner corner--tr" aria-hidden="true"></div>
+  <div class="corner corner--bl" aria-hidden="true"></div>
+  <div class="corner corner--br" aria-hidden="true"></div>
+
+  <div class="sys-bar sys-bar--top">
+    <span class="sys-text">GHOSTMESH &gt; FIRMWARE</span>
+    <a href="/" class="return-link">← BACK</a>
+  </div>
+
+  <main class="content-panel">
+    <p class="classification">CLASSIFICATION: BUILD INSTRUCTIONS / STACK: C / ASTRO / UFBT</p>
+    <h1>FIRMWARE</h1>
+    <p style="font-size:0.7rem;color:var(--text-dim);letter-spacing:0.15em;margin-bottom:2.5rem;">
+      Build and deploy the GhostMesh FAP to your Flipper Zero.
+    </p>
+
+    <h2>REQUIREMENTS</h2>
+    <p>
+      Python 3.8+, pip, and a Flipper Zero running official or compatible firmware.
+      No Meshtastic serial module configuration is needed — GhostMesh connects directly
+      to the PhoneAPI on UART0 (GPIO43/44), the same path as the official phone app.
+    </p>
+
+    <h2>INSTALL BUILD TOOL</h2>
+    <div class="code-block">
+      <pre>pip install ufbt
+ufbt --version</pre>
+    </div>
+    <p>
+      ufbt downloads the correct Flipper SDK automatically. No full firmware clone required.
+    </p>
+
+    <h2>BUILD</h2>
+    <div class="code-block">
+      <pre>git clone https://github.com/ComplacencyKillz/GhostMesh.git
+cd GhostMesh/flipper-app
+ufbt</pre>
+    </div>
+    <p>
+      First run downloads the SDK (~1 min). Subsequent builds are fast.
+      Output: <code style="color:var(--blue);">dist/ghostmesh.fap</code>
+    </p>
+
+    <h2>DEPLOY</h2>
+    <p>
+      <span class="tag tag--active">USB</span>
+      With Flipper connected via USB and qFlipper closed:
+    </p>
+    <div class="code-block">
+      <pre>ufbt launch</pre>
+    </div>
+    <p>
+      <span class="tag">MANUAL</span>
+      Copy <code style="color:var(--blue);">dist/ghostmesh.fap</code> to
+      <code style="color:var(--blue);">SD:/apps/Tools/</code> via qFlipper or SD card reader.
+    </p>
+
+    <h2>RUN</h2>
+    <p>
+      <strong>Apps → Tools → GhostMesh</strong>
+    </p>
+    <p>
+      Title bar shows <code style="color:var(--text-dim);">...</code> during startup handshake
+      (~3 seconds), then <code style="color:var(--terminal);">RDY</code> when connected.
+      Select a profile, navigate messages, press OK to send.
+    </p>
+
+    <h2>CUSTOM PROFILES</h2>
+    <p>
+      Create <code style="color:var(--blue);">SD:/apps_data/ghostmesh/profiles.yaml</code>:
+    </p>
+    <div class="code-block">
+      <pre>name: My Profile
+- CHECKIN OK
+- IN POSITION
+- ABORT
+- EXFIL NOW
+
+name: Grid Down Custom
+- NEED ASSISTANCE
+- MOVING
+- SHELTER IN PLACE</pre>
+    </div>
+    <p>
+      Up to 5 custom profiles alongside 3 built-ins. Max 12 messages per profile,
+      22 characters per message. Printable ASCII only.
+    </p>
+
+    <h2>MESHTASTIC SETUP</h2>
+    <p>
+      Flash your Heltec at
+      <a href="https://flasher.meshtastic.org" style="color:var(--blue);text-decoration:none;border-bottom:1px solid var(--text-ghost);" target="_blank" rel="noopener">flasher.meshtastic.org</a>.
+      Select <strong>Heltec WiFi LoRa 32 V3</strong>, set your region, connect via Bluetooth
+      to configure. No serial module settings needed.
+    </p>
+    <p>
+      For operational use, generate a private channel with a random key.
+      The default channel uses a public key visible to every Meshtastic node.
+      See the <a href="/usecases" style="color:var(--blue);text-decoration:none;border-bottom:1px solid var(--text-ghost);">OPSEC notes</a>.
+    </p>
+
+    <div style="margin-top:2.5rem;">
+      <p style="font-size:0.75rem;color:var(--text-dim);">
+        Full build guide and troubleshooting in the
+        <a href="https://github.com/ComplacencyKillz/GhostMesh/blob/main/docs/flipper-setup.md"
+           style="color:var(--blue);text-decoration:none;border-bottom:1px solid var(--text-ghost);"
+           target="_blank" rel="noopener">
+          documentation archive →
+        </a>
+      </p>
+    </div>
+  </main>
+
+  <div class="sys-bar sys-bar--bottom">
+    <span class="sys-text">ghostmesh.info</span>
+    <span class="sys-text" id="ts"></span>
+  </div>
+</Layout>
+
+<script>
+  const el = document.getElementById('ts');
+  const tick = () => { if (el) el.textContent = new Date().toISOString().replace('T',' ').slice(0,19)+' UTC'; };
+  tick(); setInterval(tick, 1000);
+</script>

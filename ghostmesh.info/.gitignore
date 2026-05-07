@@ -1,0 +1,4 @@
+node_modules/
+dist/
+.astro/
+parameters.ghostmeshinfo.yaml

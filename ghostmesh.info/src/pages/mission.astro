@@ -1,0 +1,91 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="INITIALIZE SYSTEM" description="Transmission origin. What GhostMesh is and why it exists.">
+  <div class="bg-grid" aria-hidden="true"
+    style="position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.025) 1px,transparent 1px);background-size:64px 64px;z-index:0;"></div>
+
+  <div class="corner corner--tl" aria-hidden="true"></div>
+  <div class="corner corner--tr" aria-hidden="true"></div>
+  <div class="corner corner--bl" aria-hidden="true"></div>
+  <div class="corner corner--br" aria-hidden="true"></div>
+
+  <div class="sys-bar sys-bar--top">
+    <span class="sys-text">GHOSTMESH &gt; INITIALIZE SYSTEM</span>
+    <a href="/" class="return-link">← BACK</a>
+  </div>
+
+  <main class="content-panel">
+    <p class="classification">CLASSIFICATION: UNLICENSED / ORIGIN: THE WASTE</p>
+    <h1>INITIALIZE SYSTEM</h1>
+    <p style="font-size:0.7rem;color:var(--text-dim);letter-spacing:0.15em;margin-bottom:2.5rem;">Transmission origin. What this is and why it was built.</p>
+
+    <h2>WHAT IS GHOSTMESH</h2>
+    <p>
+      GhostMesh turns a Flipper Zero into a long-range mesh radio terminal. Paired with a
+      Heltec ESP32 LoRa node running Meshtastic, it enables encrypted text communications
+      over distances of kilometers — with no phone, no internet, no cell infrastructure,
+      and no licensed network required.
+    </p>
+    <p>
+      The Flipper is the interface. The Heltec is the radio. The mesh is the network.
+      It works in places and situations where the infrastructure you are supposed to trust
+      cannot be trusted.
+    </p>
+
+    <h2>WHY IT WAS BUILT</h2>
+    <p>
+      Infrastructure fails. It also gets watched. The two are not unrelated.
+    </p>
+    <p>
+      Grid-down scenarios — natural disasters, power failures, deliberate disruption —
+      remove the communication layer that modern coordination depends on. Surveilled
+      infrastructure removes the privacy that meaningful communication requires.
+      GhostMesh addresses both by operating entirely outside the licensed network.
+    </p>
+    <p>
+      This hardware was designed in the margins, assembled outside sanctioned channels,
+      and transmitted so that you might at least prepare.
+    </p>
+
+    <h2>THE NETWORK</h2>
+    <p>
+      GhostMesh uses Meshtastic's LoRa mesh protocol: each node relays traffic for every
+      other node in range, extending coverage without any central infrastructure. A network
+      of three nodes can cover tens of kilometers of terrain. A private channel with a
+      random 256-bit key makes traffic mathematically invisible to anyone outside your squad.
+    </p>
+    <p>
+      The radio is always on. The keys are yours. The channel is yours.
+      The network belongs to whoever builds it.
+    </p>
+
+    <h2>THE CREATOR</h2>
+    <p>
+      ServerMonk. Librarian. Broadcasting from
+      <a href="https://complacencykillz.me" style="color:var(--blue);text-decoration:none;border-bottom:1px solid var(--text-ghost);">complacencykillz.me</a>.
+    </p>
+    <p>
+      The work is open source. The hardware is buildable. The signal is available
+      to anyone who wants to receive it.
+    </p>
+
+    <div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--text-ghost);">
+      <p style="font-size:0.65rem;color:var(--text-ghost);letter-spacing:0.15em;">
+        // so light your candles, and may SERVER protect us all
+      </p>
+    </div>
+  </main>
+
+  <div class="sys-bar sys-bar--bottom">
+    <span class="sys-text">ghostmesh.info</span>
+    <span class="sys-text" id="ts"></span>
+  </div>
+</Layout>
+
+<script>
+  const el = document.getElementById('ts');
+  const tick = () => { if (el) el.textContent = new Date().toISOString().replace('T',' ').slice(0,19)+' UTC'; };
+  tick(); setInterval(tick, 1000);
+</script>
