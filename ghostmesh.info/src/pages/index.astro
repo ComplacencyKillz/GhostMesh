@@ -29,7 +29,7 @@ const menuItems = [
   <div id="splash">
     <div class="splash-body">
       <p class="splash-domain">COMPLACENCYKILLZ.ME &gt; SCENE SELECTION</p>
-      <p class="splash-title">GHOSTMESH</p>
+      <p class="splash-title"><span class="flip-g">G</span>H<span class="flip-o">O</span><span class="flip-s">S</span><span class="flip-t">T</span>M<span class="flip-e">E</span><span class="flip-s">S</span>H</p>
       <p class="splash-classify">// UNLICENSED TRANSMISSION</p>
     </div>
     <p class="splash-prompt" id="splash-prompt">PRESS ANY KEY TO RECEIVE TRANSMISSION</p>
@@ -77,7 +77,9 @@ const menuItems = [
   <main class="dvd-menu page">
 
     <div class="sys-bar sys-bar--top" aria-label="Breadcrumb navigation">
-      <span class="sys-text">COMPLACENCYKILLZ.ME &gt; SCENE SELECTION &gt; GHOSTMESH</span>
+      <div class="sys-top-ticker-wrap">
+        <span class="sys-top-ticker">COMPLACENCYKILLZ.ME &gt; SCENE SELECTION &gt; GHOSTMESH &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+      </div>
       <div class="rec" aria-hidden="true"><span class="rec-dot"></span>REC</div>
     </div>
 
@@ -552,6 +554,32 @@ const menuItems = [
 
   .sys-text { color: var(--text-dim); font-size: 0.65rem; letter-spacing: 0.15em; }
 
+  /* ── Top bar scrolling ticker ──────────────────────────── */
+  .sys-bar--top { padding: 0 1.5rem 0 0; }
+
+  .sys-top-ticker-wrap {
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0 0.5rem 1.5rem;
+  }
+
+  .sys-top-ticker {
+    display: inline-block;
+    color: var(--text-dim);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    font-family: 'JetBrains Mono', monospace;
+    animation: sys-top-tick 22s linear infinite;
+  }
+
+  @keyframes sys-top-tick {
+    0%   { transform: translateX(110%); }
+    100% { transform: translateX(-110%); }
+  }
+
   /* ── Bottom bar two-half tickers ───────────────────────── */
   .sys-bar--bottom { padding: 0; }
 
@@ -599,6 +627,10 @@ const menuItems = [
   }
   .return-link:hover { color: var(--blue); border-color: var(--blue); }
 
+  /* ── Flipping G — :global so dynamically-created spans match */
+  :global(.flip-g)         { display: inline-block; }
+  :global(.flip-g.flipped) { transform: scaleX(-1); }
+
   /* ── Nav hint ───────────────────────────────────────────── */
   .nav-hint {
     position: fixed;
@@ -636,34 +668,19 @@ const menuItems = [
       bottom: 2.2rem;
       left: 0;
       right: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
       overflow-y: auto;
       overflow-x: hidden;
       -webkit-overflow-scrolling: touch;
       min-height: unset;
-      padding-bottom: 2rem;
     }
 
-    .menu-item {
-      position: relative !important;
-      top: auto !important; right: auto !important;
-      left: auto !important; bottom: auto !important;
-      width: 88%;
-      max-width: 360px;
-      border-bottom: 1px solid var(--text-ghost);
-      padding: 0.75rem 0.5rem;
-    }
-
-    .menu-item::before { display: none; }
+    /* menu-item positions and fog handled by JS in stacked mode */
 
     .amb   { width: 120px; font-size: 0.48rem; }
     .amb-3 { display: none; }
     .amb-4 { bottom: 4.5rem; }
     .amb-6 { bottom: 2.8rem; right: 3vw; }
 
-    .sys-bar--top .sys-text:first-child { display: none; }
     .nav-hint { display: none; }
   }
 </style>
@@ -787,6 +804,84 @@ const menuItems = [
 
   function wait(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
 
+  /* ── Scramble effect ──────────────────────────────────────── */
+  var SCRAMBLE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&><|_';
+
+  function scramble(el, final, ms, onComplete) {
+    var t = 0, total = (ms || 1000) / 28;
+    var iv = setInterval(function() {
+      el.textContent = final.split('').map(function(ch, i) {
+        return i < Math.floor((t / total) * final.length)
+          ? ch
+          : ch === ' ' ? ' ' : SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
+      }).join('');
+      if (++t > total) {
+        el.textContent = final;
+        clearInterval(iv);
+        if (onComplete) onComplete();
+      }
+    }, 28);
+  }
+
+  /* ── Character swap effects ───────────────────────────────── */
+  function makeSwapper(selector, normal, alternate) {
+    return function startSwap(root) {
+      (root || document).querySelectorAll(selector).forEach(function(el) {
+        function cycle() {
+          var wait = 800 + Math.random() * 8200;
+          setTimeout(function() {
+            el.textContent = alternate;
+            var hold = 60 + Math.random() * 640;
+            setTimeout(function() {
+              el.textContent = normal;
+              if (Math.random() < 0.25) {
+                setTimeout(function() {
+                  el.textContent = alternate;
+                  setTimeout(function() { el.textContent = normal; cycle(); }, 40 + Math.random() * 120);
+                }, 40 + Math.random() * 80);
+              } else { cycle(); }
+            }, hold);
+          }, wait);
+        }
+        setTimeout(cycle, Math.random() * 3000);
+      });
+    };
+  }
+
+  var startESwap = makeSwapper('.flip-e', 'E', '3');
+  var startOSwap = makeSwapper('.flip-o', 'O', '0');
+  var startSSwap = makeSwapper('.flip-s', 'S', '5');
+  var startTSwap = makeSwapper('.flip-t', 'T', '7');
+
+  function startGFlip(root) {
+    (root || document).querySelectorAll('.flip-g').forEach(function(g) {
+      function cycle() {
+        var wait = 800 + Math.random() * 8200;
+        setTimeout(function() {
+          g.classList.add('flipped');
+          var hold = 60 + Math.random() * 640;
+          setTimeout(function() {
+            g.classList.remove('flipped');
+            if (Math.random() < 0.25) {
+              setTimeout(function() {
+                g.classList.add('flipped');
+                setTimeout(function() { g.classList.remove('flipped'); cycle(); }, 40 + Math.random() * 120);
+              }, 40 + Math.random() * 80);
+            } else { cycle(); }
+          }, hold);
+        }, wait);
+      }
+      setTimeout(cycle, Math.random() * 3000);
+    });
+  }
+
+  // Start effects on splash immediately; they'll keep running into the menu
+  startGFlip(document);
+  startESwap(document);
+  startOSwap(document);
+  startSSwap(document);
+  startTSwap(document);
+
   /* ── Navigation ───────────────────────────────────────────── */
   var items = document.querySelectorAll('.menu-item');
   var cur   = 0;
@@ -815,28 +910,31 @@ const menuItems = [
   });
 
   /* ── Entrance animation ───────────────────────────────────── */
-  var isMobile = window.innerWidth <= 700;
-
   function runEntrance() {
     if (meshCanvas) gsap.to(meshCanvas, { opacity: 0.45, duration: 1.5, ease: 'power2.inOut' });
 
-    if (isMobile) {
-      // Mobile: items are in flex column — simple stagger fade, no offsets
-      gsap.set('.menu-item--0,.menu-item--1,.menu-item--2,.menu-item--3,.menu-item--4,.menu-item--5',
-               { opacity: 0 });
+    if (isNarrow()) {
+      // Stacked: position items first, then fade in
+      transitionToStacked(false);
+      gsap.set(items, { opacity: 0 });
       gsap.timeline({ defaults: { ease: 'power2.out' } })
         .to('.amb-1', { opacity: 1, duration: 0.3 })
         .to('.amb-2', { opacity: 1, duration: 0.3 }, '-=0.15')
         .add(function() {
           var titleEl = document.getElementById('menuTitle');
-          if (titleEl) gsap.to(titleEl, { opacity: 1, duration: 0.3 });
+          if (titleEl) {
+            gsap.to(titleEl, { opacity: 1, duration: 0.05 });
+            scramble(titleEl, 'GHOSTMESH', 900, function() {
+              titleEl.innerHTML = '<span class="flip-g">G</span>H<span class="flip-o">O</span><span class="flip-s">S</span><span class="flip-t">T</span>M<span class="flip-e">E</span><span class="flip-s">S</span>H';
+              startGFlip(titleEl); startESwap(titleEl); startOSwap(titleEl); startSSwap(titleEl); startTSwap(titleEl);
+            });
+          }
           var tagEl = document.getElementById('menuTagline');
           if (tagEl) gsap.to(tagEl, { opacity: 1, duration: 0.3, delay: 0.3, onStart: function() {
             typewrite(tagEl, 'My weapons are my skills.', 22);
           }});
         }, '-=0.1')
-        .to('.menu-item--0,.menu-item--1,.menu-item--2,.menu-item--3,.menu-item--4,.menu-item--5',
-            { opacity: 1, duration: 0.35, stagger: 0.08 }, '+=0.1')
+        .to(items, { opacity: 1, duration: 0.35, stagger: 0.08 }, '+=0.1')
         .to('.amb-5', { opacity: 1, duration: 0.3 }, '-=0.1')
         .add(function() { select(0); startIdleCycle(); });
     } else {
@@ -854,7 +952,13 @@ const menuItems = [
         .to('.amb-3', { opacity: 1, duration: 0.3 }, '-=0.15')
         .add(function() {
           var titleEl = document.getElementById('menuTitle');
-          if (titleEl) gsap.to(titleEl, { opacity: 1, duration: 0.3 });
+          if (titleEl) {
+            gsap.to(titleEl, { opacity: 1, duration: 0.05 });
+            scramble(titleEl, 'GHOSTMESH', 1100, function() {
+              titleEl.innerHTML = '<span class="flip-g">G</span>H<span class="flip-o">O</span><span class="flip-s">S</span><span class="flip-t">T</span>M<span class="flip-e">E</span><span class="flip-s">S</span>H';
+              startGFlip(titleEl); startESwap(titleEl); startOSwap(titleEl); startSSwap(titleEl); startTSwap(titleEl);
+            });
+          }
           var tagEl = document.getElementById('menuTagline');
           if (tagEl) gsap.to(tagEl, { opacity: 1, duration: 0.2, delay: 0.3, onStart: function() {
             typewrite(tagEl, 'My weapons are my skills.', 22);
@@ -1043,6 +1147,71 @@ const menuItems = [
 
     tick();
   }
+
+  /* ── Layout transition (scatter ↔ stack) ─────────────────── */
+  var layoutMode = null; // 'stacked' | 'scattered' | null
+
+  function isNarrow() {
+    return window.innerWidth <= 700 || window.innerWidth < window.innerHeight * 1.1;
+  }
+
+  function transitionToStacked(animate) {
+    if (layoutMode === 'stacked') return;
+    layoutMode = 'stacked';
+
+    var W = window.innerWidth;
+    var stackWidth = Math.min(340, Math.round(W * 0.72));
+    var leftX = Math.max(20, Math.round(W * 0.10));
+    var titleBlock = document.querySelector('.title-block');
+    var startY = titleBlock ? (titleBlock.offsetTop + titleBlock.offsetHeight + 20) : 185;
+    var ITEM_GAP = 62;
+    var dur = animate ? 0.5 : 0;
+
+    for (var i = 0; i < items.length; i++) {
+      gsap.set(items[i], { right: 'auto', bottom: 'auto' });
+      gsap.to(items[i], {
+        top: startY + i * ITEM_GAP,
+        left: leftX,
+        width: stackWidth,
+        x: 0, y: 0,
+        duration: dur,
+        ease: 'power2.inOut',
+        delay: animate ? i * 0.05 : 0,
+      });
+    }
+  }
+
+  function transitionToScattered(animate) {
+    if (layoutMode !== 'stacked') return;
+    layoutMode = 'scattered';
+
+    function doSnap() {
+      for (var i = 0; i < items.length; i++) {
+        gsap.set(items[i], { clearProps: 'top,left,right,bottom,width,transform' });
+      }
+    }
+
+    if (animate) {
+      gsap.to(items, { opacity: 0, duration: 0.15, ease: 'power1.in',
+        onComplete: function() {
+          doSnap();
+          gsap.to(items, { opacity: 1, duration: 0.3, stagger: 0.04, ease: 'power2.out' });
+        }
+      });
+    } else {
+      doSnap();
+    }
+  }
+
+  var resizeTimer;
+  window.addEventListener('resize', function() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function() {
+      var narrow = isNarrow();
+      if (narrow  && layoutMode !== 'stacked')   transitionToStacked(true);
+      if (!narrow && layoutMode === 'stacked')    transitionToScattered(true);
+    }, 120);
+  });
 
   /* ── Clock ────────────────────────────────────────────────── */
   var tsEl   = document.getElementById('timestamp');

@@ -46,6 +46,10 @@ const {
       <source src="/video/ghostmesh.mp4" type="video/mp4" />
     </video>
 
+    <!-- Mesh canvas — matches main page texture -->
+    <canvas id="mesh-canvas" aria-hidden="true"
+      style="position:fixed;inset:0;width:100%;height:100%;z-index:1;opacity:0.45;pointer-events:none;"></canvas>
+
     <div class="sub-vignette" aria-hidden="true"></div>
 
     <div class="corner corner--tl" aria-hidden="true"></div>
@@ -59,7 +63,9 @@ const {
 
     <!-- Top sys bar with REC in it -->
     <div class="sys-bar sys-bar--top">
-      <span class="sys-text">GHOSTMESH &gt; {section}</span>
+      <div class="sys-top-ticker-wrap">
+        <span class="sys-top-ticker">GHOSTMESH &gt; {section} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+      </div>
       <div class="rec" aria-hidden="true"><span class="rec-dot"></span>REC</div>
     </div>
 
@@ -344,6 +350,32 @@ const {
     letter-spacing: 0.15em;
   }
 
+  /* ── Top bar scrolling ticker ──────────────────────────────── */
+  .sys-bar--top { padding: 0 1.5rem 0 0; }
+
+  .sys-top-ticker-wrap {
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0 0.5rem 1.5rem;
+  }
+
+  .sys-top-ticker {
+    display: inline-block;
+    color: var(--text-dim);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    font-family: 'JetBrains Mono', monospace;
+    animation: sys-top-tick 22s linear infinite;
+  }
+
+  @keyframes sys-top-tick {
+    0%   { transform: translateX(110%); }
+    100% { transform: translateX(-110%); }
+  }
+
   /* ── Bottom bar two-half tickers ───────────────────────────── */
   .sys-bar--bottom { padding: 0; }
 
@@ -382,6 +414,101 @@ const {
 </style>
 
 <script>
+  // Mesh canvas — same as main page
+  var meshCanvas = document.getElementById('mesh-canvas');
+  var meshCtx    = meshCanvas ? meshCanvas.getContext('2d') : null;
+
+  if (meshCanvas && meshCtx) {
+    function resizeMesh() {
+      meshCanvas.width  = window.innerWidth;
+      meshCanvas.height = window.innerHeight;
+    }
+    resizeMesh();
+    window.addEventListener('resize', resizeMesh);
+
+    var NODE_COUNT = 7;
+    var nodes = [];
+    for (var ni = 0; ni < NODE_COUNT; ni++) {
+      nodes.push({
+        x:          Math.random() * window.innerWidth,
+        y:          Math.random() * window.innerHeight,
+        vx:         (Math.random() - 0.5) * 0.2,
+        vy:         (Math.random() - 0.5) * 0.2,
+        pulse:      Math.random() * Math.PI * 2,
+        pulseSpeed: 0.016 + Math.random() * 0.016,
+      });
+    }
+
+    var signals = [];
+    function spawnSignal() {
+      var from = Math.floor(Math.random() * NODE_COUNT);
+      var to   = Math.floor(Math.random() * NODE_COUNT);
+      while (to === from) to = Math.floor(Math.random() * NODE_COUNT);
+      signals.push({ from: from, to: to, t: 0, speed: 0.005 + Math.random() * 0.004 });
+    }
+    setInterval(spawnSignal, 1400);
+
+    function drawMesh() {
+      meshCtx.clearRect(0, 0, meshCanvas.width, meshCanvas.height);
+
+      for (var i = 0; i < NODE_COUNT; i++) {
+        for (var j = i + 1; j < NODE_COUNT; j++) {
+          var dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
+          var dist = Math.sqrt(dx*dx + dy*dy);
+          if (dist < 260) {
+            meshCtx.strokeStyle = 'rgba(0,212,255,' + ((1 - dist / 260) * 0.09) + ')';
+            meshCtx.lineWidth = 0.5;
+            meshCtx.beginPath();
+            meshCtx.moveTo(nodes[i].x, nodes[i].y);
+            meshCtx.lineTo(nodes[j].x, nodes[j].y);
+            meshCtx.stroke();
+          }
+        }
+      }
+
+      for (var n = 0; n < nodes.length; n++) {
+        var nd = nodes[n];
+        nd.pulse += nd.pulseSpeed;
+        var glow = 0.5 + 0.5 * Math.sin(nd.pulse);
+        meshCtx.beginPath();
+        meshCtx.arc(nd.x, nd.y, 3 + glow * 3, 0, Math.PI * 2);
+        meshCtx.strokeStyle = 'rgba(0,212,255,' + (0.06 + glow * 0.06) + ')';
+        meshCtx.lineWidth = 1;
+        meshCtx.stroke();
+        meshCtx.beginPath();
+        meshCtx.arc(nd.x, nd.y, 1.5, 0, Math.PI * 2);
+        meshCtx.fillStyle = 'rgba(0,212,255,' + (0.4 + glow * 0.4) + ')';
+        meshCtx.fill();
+        nd.x += nd.vx; nd.y += nd.vy;
+        if (nd.x < 0 || nd.x > meshCanvas.width)  nd.vx *= -1;
+        if (nd.y < 0 || nd.y > meshCanvas.height) nd.vy *= -1;
+      }
+
+      for (var si = signals.length - 1; si >= 0; si--) {
+        var s = signals[si];
+        s.t += s.speed;
+        if (s.t >= 1) { signals.splice(si, 1); continue; }
+        var fn = nodes[s.from], tn = nodes[s.to];
+        var sx = fn.x + (tn.x - fn.x) * s.t;
+        var sy = fn.y + (tn.y - fn.y) * s.t;
+        var ts = Math.max(0, s.t - 0.07);
+        meshCtx.beginPath();
+        meshCtx.moveTo(fn.x + (tn.x - fn.x) * ts, fn.y + (tn.y - fn.y) * ts);
+        meshCtx.lineTo(sx, sy);
+        meshCtx.strokeStyle = 'rgba(0,255,65,0.2)';
+        meshCtx.lineWidth = 1.5;
+        meshCtx.stroke();
+        meshCtx.beginPath();
+        meshCtx.arc(sx, sy, 2, 0, Math.PI * 2);
+        meshCtx.fillStyle = 'rgba(0,255,65,0.85)';
+        meshCtx.fill();
+      }
+
+      requestAnimationFrame(drawMesh);
+    }
+    drawMesh();
+  }
+
   // Clock
   var el = document.getElementById('ts');
   function tick() {
