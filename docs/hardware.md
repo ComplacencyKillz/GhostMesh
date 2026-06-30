@@ -41,8 +41,8 @@ header into a breadboard-friendly form. Required for sensor connections.
 [Flipper battery]  ──►  [Flipper Zero]       (independent — do not share)
 [Heltec battery]   ──►  [Heltec ESP32-S3]    (independent — do not share)
                               │
-                         [GPIO26 Vext]  ──► [External sensor 3.3V rail]
-                                            (software power gate)
+                         [GPIO36 Vext]  ──► [OLED + external 3.3V rail]
+                                            (software power gate — drives the OLED too)
 ```
 
 **Never connect Flipper 3.3V or 5V to Heltec Vcc.** The Flipper's 3.3V regulator cannot
@@ -66,10 +66,12 @@ custom Meshtastic modules.
 | 18 | ❌ I2C bus 1 SCL | OLED display (hardwired) |
 | 19 | ❌ USB D- | ESP32-S3 native USB |
 | 20 | ❌ USB D+ | ESP32-S3 native USB |
-| 21 | ✅ Likely free | HC-SR04 Trigger (verify against board silkscreen) |
-| 26 | ⚠️ Vext control | External 3.3V enable — drive HIGH to power sensors |
-| 35 | ✅ Free | GPS UART1 RX (BN-220 TX) |
-| 36 | ✅ Free | GPS UART1 TX (BN-220 RX — optional for GPS config) |
+| 21 | ❌ OLED reset | Hardwired OLED reset — NOT free. Reassign HC-SR04 trigger elsewhere (e.g. 38/39/40) |
+| 26 | ✅ Free (role unconfirmed) | NOT Vext — Vext is GPIO36. Verify before use |
+| 33 | ✅ Free — confirmed | GPS UART1 TX (Heltec → BN-220 RX) |
+| 34 | ✅ Free — confirmed | GPS UART1 RX (BN-220 TX → Heltec) |
+| 35 | ❌ Onboard LED | White user LED — does NOT work as a UART RX |
+| 36 | ❌ Vext control | Powers OLED + external 3.3V rail (Meshtastic `VEXT_ENABLE`, active LOW) |
 | 41 | ❌ I2C bus 2 SDA | Sensor I2C bus (BME280, MAX17048 via Qwiic hub) |
 | 42 | ❌ I2C bus 2 SCL | Sensor I2C bus |
 | 43 | ❌ UART0 TX | Meshtastic PhoneAPI → Flipper |
@@ -89,9 +91,9 @@ custom Meshtastic modules.
 |-----------|-----------|----------|-------------|-------|
 | BME280 (temp/humidity/pressure) | I2C via Qwiic hub | 0x76 | Bus 2 (41/42) | 7 |
 | MAX17048 (LiPo fuel gauge) | I2C via Qwiic hub | 0x36 | Bus 2 (41/42) | 9 |
-| BN-220 GPS module | UART1, 9600 baud | — | GPIO35 (RX), GPIO36 (TX) | 8 |
+| BN-220 GPS module | UART1, 9600 baud | — | GPIO34 (RX), GPIO33 (TX) | 8 |
 | STEMMA QT 5-port passive hub | — | — | GPIO41/42 | 7 |
-| HC-SR04 ultrasonic sensor | Digital GPIO | — | GPIO21 (trig), GPIO47 (echo) | 11 |
+| HC-SR04 ultrasonic sensor | Digital GPIO | — | GPIO38 (trig — was 21, which is OLED reset), GPIO47 (echo) | 11 |
 | SW-520D tilt switch | Digital GPIO | — | GPIO2 | 10 |
 | Slide switch — backpack arm/disarm | Digital GPIO | — | GPIO4 | 10 |
 | Photoresistor (light tamper) | ADC | — | GPIO5 | 10 |
@@ -160,7 +162,7 @@ UART0 (GPIO43 TX / GPIO44 RX):
         ├── Flipper PROTO frames (ToRadio / FromRadio protobuf)
         └── Heltec ASCII sentinels (TAMPER_LIGHT, PROX, JAMMER, IR_ARM, IR_SEND_n)
 
-UART1 (GPIO35 RX / GPIO36 TX):
+UART1 (GPIO34 RX / GPIO33 TX):
   └── BN-220 GPS module (NMEA-0183, 9600 baud)
         └── Meshtastic reads and parses for position beaconing
 ```

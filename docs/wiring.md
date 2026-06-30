@@ -157,23 +157,28 @@ MAX17048 JST-PH 2-pin ──► Heltec battery JST-PH 2-pin
 
 Do NOT connect sensors to GPIO17/18 — that is the OLED bus and is hardwired to the board.
 
-### BN-220 GPS (Heltec UART1 — GPIO35/36)
+### BN-220 GPS (Heltec UART1 — GPIO34 RX / GPIO33 TX)
 
 ```
-BN-220 TX  ──► Heltec GPIO35   (UART1 RX)
-BN-220 RX  ──► Heltec GPIO36   (UART1 TX — optional, only needed to reconfigure GPS)
-BN-220 VCC ──► Heltec 3.3V rail via GPIO26 Vext enable
-BN-220 GND ──► Heltec GND
+BN-220 TX  (white) ──► Heltec GPIO34   (UART1 RX — Heltec receives GPS NMEA)
+BN-220 RX  (green) ──► Heltec GPIO33   (UART1 TX — optional, only to reconfigure GPS)
+BN-220 VCC (red)   ──► Heltec 3V3       (always-on rail)
+BN-220 GND (black) ──► Heltec GND
 ```
 
-GPIO26 (Vext) controls the Heltec's external 3.3V rail. Drive GPIO26 HIGH in firmware to
-power the GPS. Leave LOW when GPS is not needed to save battery. Cold-start acquisition:
-30–90 seconds. Always-on draws 20–40mA.
+**Do NOT use GPIO35/36** (the original docs were wrong): on the Heltec V3, GPIO35 is the
+onboard LED (won't receive UART) and GPIO36 is Vext (powers the OLED — driving it flickers
+the screen). Confirmed working pins are **34 (RX) / 33 (TX)**.
 
-### HC-SR04 Ultrasonic (Heltec GPIO21/47)
+Wire colors above are for this BN-220 batch — Beitian varies, so verify yours (red=VCC and
+black=GND are universal; swap white/green if no data appears). For battery savings you can
+later gate GPS power via Vext (GPIO36, active LOW) — deliberately, since it also drives the
+OLED. Cold-start acquisition: 30–90 seconds (needs sky view). Always-on draws 20–40mA.
+
+### HC-SR04 Ultrasonic (Heltec GPIO38 trig / GPIO47 echo)
 
 ```
-HC-SR04 Trig ──► Heltec GPIO21
+HC-SR04 Trig ──► Heltec GPIO38   (NOT 21 — that's the OLED reset)
 HC-SR04 Echo ──► Heltec GPIO47
 HC-SR04 VCC  ──► 5V (from USB pin when USB-powered) or 3.3V (verify your module)
 HC-SR04 GND  ──► Heltec GND
@@ -182,7 +187,7 @@ HC-SR04 GND  ──► Heltec GND
 **Voltage note:** Standard HC-SR04 requires 5V for full 4m range. The Heltec 5V pin is
 only live when USB is connected. If operating on battery only, use a 3.3V-tolerant clone
 (verify the data sheet for your specific module) or add a small boost converter.
-Verify GPIO21 is free on your board revision before soldering.
+GPIO21 is the OLED reset on the Heltec V3 — do NOT use it for the trigger. GPIO38 is free.
 
 ### Photoresistor / Light Tamper (Heltec GPIO5 ADC)
 

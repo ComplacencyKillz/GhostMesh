@@ -101,7 +101,7 @@ in the app. No custom firmware needed for these:
 | Sensor | Meshtastic setting | Path in app |
 |--------|--------------------|-------------|
 | BME280 (temp/humidity/pressure) | Enable Environment Telemetry | Module Config → Telemetry → Environment |
-| BN-220 GPS | Enable External GPS, set UART1 pins 35/36 | Module Config → GPS |
+| BN-220 GPS | Enable GPS, set GPS Receive GPIO=34, Transmit GPIO=33 | Module Config → Position → Advanced |
 
 See [docs/hardware.md](hardware.md) for full sensor wiring and GPIO assignments.
 

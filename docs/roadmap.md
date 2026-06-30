@@ -131,16 +131,18 @@ BME280 support is built into Meshtastic 2.7.x.
 
 **New hardware:** BN-220 GPS module
 
-Wire BN-220 to Heltec UART1 (GPIO35=RX, GPIO36=TX). Power GPS via Heltec GPIO26 (Vext
-enable pin — software power gating for GPS-on-demand to save battery). Configure
-"External GPS" in Meshtastic Module Config. No custom Heltec firmware needed.
+Wire BN-220 to Heltec UART1 (GPIO34=RX, GPIO33=TX — **confirmed working**; the original
+35/36 are wrong: GPIO35 is the onboard LED and won't receive UART, GPIO36 is Vext and
+powers the OLED). Power the GPS from the always-on 3.3V rail for bring-up. Enable GPS in
+Meshtastic Position config (Receive GPIO=34, Transmit GPIO=33). No custom Heltec firmware needed.
 
-**GPS power note:** The BN-220 draws 20–40mA continuously. Use GPIO26 (Vext) as a
-software-controlled power switch. Enable GPS only when wardriving or when position logging
-is explicitly armed. Cold-start fix time: 30–90 seconds. Hot-start: ~1 second.
+**GPS power note:** The BN-220 draws 20–40mA continuously. For battery savings you can later
+gate it via Vext (GPIO36, active LOW) — but Vext also powers the OLED, so toggle it
+deliberately. For bring-up, power from the always-on 3.3V rail. Cold-start fix time: 30–90
+seconds (needs sky view); hot-start ~1 second.
 
-- [ ] Hardware: BN-220 TX → GPIO35, BN-220 VCC → Heltec 3.3V rail via Vext
-- [ ] Meshtastic config: UART1, pins 35/36, 9600 baud, GPS module enabled
+- [x] Hardware: BN-220 TX (white) → GPIO34, RX (green) → GPIO33, VCC (red) → 3.3V, GND (black) → GND
+- [x] Meshtastic config: GPS ENABLED, Receive GPIO=34, Transmit GPIO=33, 9600 baud (auto-detected)
 - [ ] FAP: decode `Position` FromRadio packet (lat/lon/alt/timestamp)
 - [ ] FAP: decode `NodeInfo` FromRadio packet (node ID, long name, short name)
 - [ ] CSV: lat_deg, lon_deg, alt_m columns now populated → `log_to_kml.py` gets real positions
@@ -211,14 +213,14 @@ motor via AO3400 + 1N4007 (pin 6). FAP changes only — no Heltec firmware neede
 
 ## Phase 11 — Dead-Drop Surveillance ⏳
 
-**New hardware:** HC-SR04 ultrasonic sensor (Heltec GPIO21 trigger, GPIO47 echo)
+**New hardware:** HC-SR04 ultrasonic sensor (Heltec GPIO38 trigger — NOT 21, which is the OLED reset; GPIO47 echo)
 
 **Voltage note:** Standard HC-SR04 requires 5V. Verify your specific module's data sheet —
 some 3.3V-compatible clones exist. If 5V required and Heltec USB is not connected, you
 need a small boost converter or swap for a JSN-SR04T (3.3V tolerant). Heltec's 5V pin
 is only live when USB-powered.
 
-- [ ] Hardware: Trigger → GPIO21, Echo → GPIO47; power from appropriate rail
+- [ ] Hardware: Trigger → GPIO38 (21 is the OLED reset — do not use), Echo → GPIO47; power from appropriate rail
 - [ ] Custom Heltec module: poll HC-SR04 at 1Hz; threshold 200cm; on trigger →
   broadcast `PERSON_DETECTED` mesh packet + send `PROX\n` ASCII sentinel to Flipper
 - [ ] FAP: receive `PERSON_DETECTED` packet from mesh; log to CSV with timestamp;
@@ -246,7 +248,7 @@ Leverages all installed hardware for intelligence gathering.
 ### 12.3 Advanced Wardriving
 - [ ] Wardriving mode captures NodeInfo from all channels the node can hear
 - [ ] KML export shows color-coded signal strength heatmap per node
-- [ ] Optional: Heltec Vext (GPIO26) power cycles the GPS to force position refresh on demand
+- [ ] Optional: Heltec Vext (GPIO36, active LOW — also powers the OLED) power cycles the GPS to force position refresh on demand
 
 ---
 
@@ -310,7 +312,7 @@ UART link using ChaCha20-Poly1305 (AEAD: encrypts + authenticates each frame).
 
 ### Dual UART Architecture (Heltec)
 - UART0 (GPIO43/44): Meshtastic PhoneAPI — Flipper connection, PROTO frames
-- UART1 (GPIO35/36): GPS — NMEA input from BN-220
+- UART1 (GPIO34 RX / GPIO33 TX): GPS — NMEA input from BN-220
 
 ### I2C Bus Architecture (Heltec)
 - Bus 1 (GPIO17/18): OLED display — hardwired to board, do not attach hub here

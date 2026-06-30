@@ -54,12 +54,12 @@ Flipper GND                  ────  Heltec GND
 |-----------|-----------|-------------|-------|
 | BME280 (temp/humidity/pressure) | I2C bus 2 | 0x76 — GPIO41/42 | 7 |
 | MAX17048 (LiPo fuel gauge) | I2C bus 2 | 0x36 — GPIO41/42 | 9 |
-| BN-220 GPS | UART1 9600 baud | GPIO35 RX / 36 TX | 8 |
+| BN-220 GPS | UART1 9600 baud | GPIO34 RX / 33 TX | 8 |
 | SW-520D tilt switch | GPIO | GPIO2 | 10 |
 | Slide switch (arm/disarm) | GPIO | GPIO4 | 10 |
 | Photoresistor (light tamper) | ADC | GPIO5 | 10 |
 | IR receiver (NEC remote) | GPIO | GPIO48 | 10 |
-| HC-SR04 ultrasonic | GPIO | GPIO21 trig / 47 echo | 11 |
+| HC-SR04 ultrasonic | GPIO | GPIO38 trig (21 = OLED reset) / 47 echo | 11 |
 | STEMMA QT 5-port passive hub | I2C passthrough | GPIO41/42 | 7 |
 
 **On Flipper ProtoBoard (operator controls):**
@@ -90,7 +90,9 @@ Bus 2 — GPIO41 SDA / GPIO42 SCL
 - `1`: Battery ADC
 - `41–42`: I2C bus 2
 - `43–44`: UART0 (PhoneAPI ↔ Flipper)
-- `26`: Vext (external 3.3V rail enable — software gated)
+- `21`: OLED reset (hardwired — not free; do not use for HC-SR04 trigger)
+- `35`: onboard white LED (does NOT work as a UART RX)
+- `36`: Vext — powers the OLED + external 3.3V rail (software gated, active LOW). GPIO26 is NOT Vext.
 
 ---
 
