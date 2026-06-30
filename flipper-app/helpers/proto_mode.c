@@ -17,6 +17,8 @@
 
 // Meshtastic PortNum values
 #define PORTNUM_TEXT_MESSAGE 1
+#define PORTNUM_POSITION     3
+#define PORTNUM_TELEMETRY    67
 
 // Broadcast node ID
 #define MESH_BROADCAST_ADDR 0xFFFFFFFFu
@@ -184,7 +186,8 @@ static void decode_data(const uint8_t* buf, size_t len,
 
 static void decode_mesh_packet(const uint8_t* buf, size_t len,
                                 uint32_t* from_out,
-                                const uint8_t** text_out, size_t* text_len_out,
+                                uint8_t* portnum_out,
+                                const uint8_t** payload_out, size_t* payload_len_out,
                                 int16_t* rssi_out, float* snr_out) {
     size_t pos = 0;
     while(pos < len) {
@@ -215,21 +218,142 @@ static void decode_mesh_packet(const uint8_t* buf, size_t len,
             uint64_t blen;
             if(!read_varint(buf, len, &pos, &blen)) break;
             if(pos + blen > len) break;
-            if(field == 4) {  // decoded = Data
-                uint8_t portnum = 0;
-                const uint8_t* payload = NULL;
-                size_t payload_len = 0;
-                decode_data(buf + pos, (size_t)blen, &portnum, &payload, &payload_len);
-                if(portnum == PORTNUM_TEXT_MESSAGE && payload) {
-                    *text_out     = payload;
-                    *text_len_out = payload_len;
-                }
+            if(field == 4) {  // decoded = Data — surface portnum + payload for dispatch
+                decode_data(buf + pos, (size_t)blen,
+                            portnum_out, payload_out, payload_len_out);
             }
             pos += (size_t)blen;
         } else {
             if(!skip_field(buf, len, &pos, wire)) break;
         }
     }
+}
+
+// ── Telemetry / Position payload decoders ───────────────────────────────────
+//
+// Field numbers confirmed by serializing with the meshtastic Python library:
+//   Telemetry.device_metrics=2(bytes), environment_metrics=3(bytes)
+//   DeviceMetrics.battery_level=1(varint; 0-100, 101=powered), voltage=2(f32)
+//   EnvironmentMetrics.temperature=1, relative_humidity=2, barometric_pressure=3 (all f32)
+//   Position.latitude_i=1(sfixed32, deg*1e7), longitude_i=2(sfixed32), altitude=3(varint, m)
+
+static float read_float_le(const uint8_t* b) {
+    uint32_t raw = (uint32_t)b[0] | ((uint32_t)b[1] << 8)
+                 | ((uint32_t)b[2] << 16) | ((uint32_t)b[3] << 24);
+    float f;
+    memcpy(&f, &raw, sizeof(f));
+    return f;
+}
+
+static int32_t read_i32_le(const uint8_t* b) {
+    uint32_t raw = (uint32_t)b[0] | ((uint32_t)b[1] << 8)
+                 | ((uint32_t)b[2] << 16) | ((uint32_t)b[3] << 24);
+    return (int32_t)raw;
+}
+
+static void decode_device_metrics(const uint8_t* buf, size_t len, ProtoTelemetry* t) {
+    t->has_device = true;
+    size_t pos = 0;
+    while(pos < len) {
+        uint64_t tag;
+        if(!read_varint(buf, len, &pos, &tag)) break;
+        uint32_t field = (uint32_t)(tag >> 3);
+        uint32_t wire  = (uint32_t)(tag & 0x7);
+        if(wire == PB_WIRE_VARINT) {
+            uint64_t v;
+            if(!read_varint(buf, len, &pos, &v)) break;
+            if(field == 1) t->battery_level = (uint8_t)v;
+        } else if(wire == 5) {
+            if(pos + 4 > len) break;
+            if(field == 2) t->voltage = read_float_le(buf + pos);
+            pos += 4;
+        } else {
+            if(!skip_field(buf, len, &pos, wire)) break;
+        }
+    }
+}
+
+static void decode_environment_metrics(const uint8_t* buf, size_t len, ProtoTelemetry* t) {
+    t->has_env = true;
+    size_t pos = 0;
+    while(pos < len) {
+        uint64_t tag;
+        if(!read_varint(buf, len, &pos, &tag)) break;
+        uint32_t field = (uint32_t)(tag >> 3);
+        uint32_t wire  = (uint32_t)(tag & 0x7);
+        if(wire == 5) {
+            if(pos + 4 > len) break;
+            float f = read_float_le(buf + pos);
+            if(field == 1)      t->temperature = f;
+            else if(field == 2) t->humidity    = f;
+            else if(field == 3) t->pressure    = f;
+            pos += 4;
+        } else {
+            if(!skip_field(buf, len, &pos, wire)) break;
+        }
+    }
+}
+
+static void decode_telemetry(const uint8_t* buf, size_t len, ProtoTelemetry* t) {
+    size_t pos = 0;
+    while(pos < len) {
+        uint64_t tag;
+        if(!read_varint(buf, len, &pos, &tag)) break;
+        uint32_t field = (uint32_t)(tag >> 3);
+        uint32_t wire  = (uint32_t)(tag & 0x7);
+        if(wire == PB_WIRE_BYTES) {
+            uint64_t blen;
+            if(!read_varint(buf, len, &pos, &blen)) break;
+            if(blen > (uint64_t)(len - pos)) break;
+            if(field == 2)      decode_device_metrics(buf + pos, (size_t)blen, t);
+            else if(field == 3) decode_environment_metrics(buf + pos, (size_t)blen, t);
+            pos += (size_t)blen;
+        } else {
+            if(!skip_field(buf, len, &pos, wire)) break;
+        }
+    }
+}
+
+static void decode_position(const uint8_t* buf, size_t len, ProtoPosition* p) {
+    size_t pos = 0;
+    while(pos < len) {
+        uint64_t tag;
+        if(!read_varint(buf, len, &pos, &tag)) break;
+        uint32_t field = (uint32_t)(tag >> 3);
+        uint32_t wire  = (uint32_t)(tag & 0x7);
+        if(wire == 5) {
+            if(pos + 4 > len) break;
+            if(field == 1)      p->latitude_i  = read_i32_le(buf + pos);
+            else if(field == 2) p->longitude_i = read_i32_le(buf + pos);
+            pos += 4;
+        } else if(wire == PB_WIRE_VARINT) {
+            uint64_t v;
+            if(!read_varint(buf, len, &pos, &v)) break;
+            if(field == 3) p->altitude = (int32_t)(uint32_t)v;
+        } else {
+            if(!skip_field(buf, len, &pos, wire)) break;
+        }
+    }
+}
+
+// MyNodeInfo.my_node_num = field 1 (varint) — confirmed via meshtastic Python lib.
+static uint32_t decode_my_node_info(const uint8_t* buf, size_t len) {
+    uint32_t node_num = 0;
+    size_t pos = 0;
+    while(pos < len) {
+        uint64_t tag;
+        if(!read_varint(buf, len, &pos, &tag)) break;
+        uint32_t field = (uint32_t)(tag >> 3);
+        uint32_t wire  = (uint32_t)(tag & 0x7);
+        if(wire == PB_WIRE_VARINT) {
+            uint64_t v;
+            if(!read_varint(buf, len, &pos, &v)) break;
+            if(field == 1) node_num = (uint32_t)v;
+        } else {
+            if(!skip_field(buf, len, &pos, wire)) break;
+        }
+    }
+    return node_num;
 }
 
 // ── RX state machine ──────────────────────────────────────────────────────────
@@ -249,6 +373,13 @@ struct ProtoMode {
     UartHelper*    uart;
     ProtoRxCallback rx_cb;
     void*          rx_ctx;
+    ProtoTelemetryCallback telemetry_cb;
+    void*          telemetry_ctx;
+    ProtoPositionCallback  position_cb;
+    void*          position_ctx;
+
+    // Local node ID from MyNodeInfo (0 = not yet known)
+    uint32_t       my_node_num;
 
     // True once config_complete_id is received — only then will we send packets
     bool           connected;
@@ -320,26 +451,45 @@ static void on_rx_byte(uint8_t byte, void* ctx) {
                     // HIGH-3: subtraction form avoids size_t truncation of 64-bit blen.
                     if(blen > (uint64_t)(len - pos)) break;
 
-                    if(field == 2 && p->rx_cb) {  // FromRadio.packet = MeshPacket (field 2)
+                    if(field == 2) {  // FromRadio.packet = MeshPacket (field 2)
                         uint32_t from_node = 0;
-                        const uint8_t* text = NULL;
-                        size_t text_len = 0;
+                        uint8_t  portnum = 0;
+                        const uint8_t* payload = NULL;
+                        size_t payload_len = 0;
                         int16_t rssi = 0;
                         float snr = 0.0f;
-                        decode_mesh_packet(buf + pos, (size_t)blen,
-                                           &from_node, &text, &text_len, &rssi, &snr);
-                        if(text && text_len > 0) {
+                        decode_mesh_packet(buf + pos, (size_t)blen, &from_node,
+                                           &portnum, &payload, &payload_len, &rssi, &snr);
+
+                        if(portnum == PORTNUM_TEXT_MESSAGE && payload && payload_len > 0
+                           && p->rx_cb) {
                             // LOW-2: mask limits to 4 hex chars; sender[8] is sufficient.
                             char sender[8];
                             snprintf(sender, sizeof(sender), "%04lx",
                                      (unsigned long)(from_node & 0xFFFF));
                             char text_buf[64];
-                            size_t copy = text_len < sizeof(text_buf) - 1
-                                              ? text_len : sizeof(text_buf) - 1;
-                            memcpy(text_buf, text, copy);
+                            size_t copy = payload_len < sizeof(text_buf) - 1
+                                              ? payload_len : sizeof(text_buf) - 1;
+                            memcpy(text_buf, payload, copy);
                             text_buf[copy] = '\0';
                             p->rx_cb(sender, text_buf, rssi, snr, p->rx_ctx);
+
+                        } else if(portnum == PORTNUM_TELEMETRY && payload && p->telemetry_cb) {
+                            ProtoTelemetry t;
+                            memset(&t, 0, sizeof(t));
+                            t.from = from_node;
+                            decode_telemetry(payload, payload_len, &t);
+                            p->telemetry_cb(&t, p->telemetry_ctx);
+
+                        } else if(portnum == PORTNUM_POSITION && payload && p->position_cb) {
+                            ProtoPosition pkt;
+                            memset(&pkt, 0, sizeof(pkt));
+                            pkt.from = from_node;
+                            decode_position(payload, payload_len, &pkt);
+                            p->position_cb(&pkt, p->position_ctx);
                         }
+                    } else if(field == 3) {  // FromRadio.my_info = MyNodeInfo
+                        p->my_node_num = decode_my_node_info(buf + pos, (size_t)blen);
                     }
                     // HIGH-3: safe cast — blen <= len - pos guaranteed by guard above.
                     pos += (size_t)blen;
@@ -402,12 +552,28 @@ void proto_mode_free(ProtoMode* p) {
     free(p);
 }
 
+void proto_mode_set_telemetry_callback(ProtoMode* p, ProtoTelemetryCallback cb, void* context) {
+    if(!p) return;
+    p->telemetry_cb  = cb;
+    p->telemetry_ctx = context;
+}
+
+void proto_mode_set_position_callback(ProtoMode* p, ProtoPositionCallback cb, void* context) {
+    if(!p) return;
+    p->position_cb  = cb;
+    p->position_ctx = context;
+}
+
 bool proto_mode_is_active(const ProtoMode* p) {
     return p && uart_helper_is_active(p->uart);
 }
 
 bool proto_mode_is_connected(const ProtoMode* p) {
     return p && p->connected;
+}
+
+uint32_t proto_mode_get_local_node(const ProtoMode* p) {
+    return p ? p->my_node_num : 0;
 }
 
 size_t proto_mode_send_text(ProtoMode* p, const char* text) {

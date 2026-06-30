@@ -30,6 +30,22 @@ typedef struct {
     float rx_snr;
     volatile bool rx_updated;
 
+    // Battery % from device telemetry (latest device_metrics; written from ISR)
+    volatile uint8_t rx_battery;    // 0-100, or 101 = powered/external
+    volatile bool    battery_valid;
+
+    // Environment telemetry (latest environment_metrics; written from ISR)
+    volatile float rx_temp;
+    volatile float rx_humidity;
+    volatile float rx_pressure;
+    volatile bool  env_valid;
+
+    // GPS position (latest Position packet; written from ISR)
+    volatile int32_t rx_lat_i;   // deg * 1e7
+    volatile int32_t rx_lon_i;
+    volatile int32_t rx_alt;     // meters
+    volatile bool    pos_valid;
+
     // RX history ring buffer — newest entry at index 0; only written from main loop
     char rx_history_lines[RX_HISTORY_MAX][84];
     uint8_t rx_history_count;
@@ -71,6 +87,34 @@ static void on_rx_text(const char* sender, const char* text,
     app->rx_updated = true;
 }
 
+// Telemetry callback — also ISR context, store only (see proto_notes.md).
+// Only the locally-attached Heltec's metrics drive the title bar / sensor screen;
+// other mesh nodes broadcast their own device/env metrics, which we ignore.
+static void on_telemetry(const ProtoTelemetry* t, void* ctx) {
+    GhostMeshApp* app = ctx;
+    if(t->from != proto_mode_get_local_node(app->proto)) return;
+    if(t->has_device) {
+        app->rx_battery    = t->battery_level;
+        app->battery_valid = true;
+    }
+    if(t->has_env) {
+        app->rx_temp     = t->temperature;
+        app->rx_humidity = t->humidity;
+        app->rx_pressure = t->pressure;
+        app->env_valid   = true;
+    }
+}
+
+// Position callback — also ISR context, store only. Local node only (like telemetry).
+static void on_position(const ProtoPosition* p, void* ctx) {
+    GhostMeshApp* app = ctx;
+    if(p->from != proto_mode_get_local_node(app->proto)) return;
+    app->rx_lat_i  = p->latitude_i;
+    app->rx_lon_i  = p->longitude_i;
+    app->rx_alt    = p->altitude;
+    app->pos_valid = true;
+}
+
 // ── Input callback ────────────────────────────────────────────────────────
 
 static void on_input(InputKey key, InputType type, void* ctx) {
@@ -90,6 +134,14 @@ static void on_input(InputKey key, InputType type, void* ctx) {
         if(app->screen == GhostMeshScreenMessages && app->rx_history_count > 0) {
             app->rx_history_scroll = 0;
             app->screen = GhostMeshScreenRxHistory;
+        }
+        return;
+    }
+
+    // Long-press Up on the message screen opens the Sensor screen.
+    if(key == InputKeyUp && type == InputTypeLong) {
+        if(app->screen == GhostMeshScreenMessages) {
+            app->screen = GhostMeshScreenSensors;
         }
         return;
     }
@@ -163,7 +215,7 @@ static void on_input(InputKey key, InputType type, void* ctx) {
             break;
         }
 
-    } else {  // GhostMeshScreenRxHistory
+    } else if(app->screen == GhostMeshScreenRxHistory) {
         switch(key) {
         case InputKeyUp:
             if(app->rx_history_scroll > 0) app->rx_history_scroll--;
@@ -179,6 +231,9 @@ static void on_input(InputKey key, InputType type, void* ctx) {
         default:
             break;
         }
+
+    } else {  // GhostMeshScreenSensors
+        if(key == InputKeyBack) app->screen = GhostMeshScreenMessages;
     }
 }
 
@@ -192,6 +247,8 @@ static GhostMeshApp* ghostmesh_alloc(void) {
 
     app->mutex = furi_mutex_alloc(FuriMutexTypeNormal);
     app->proto = proto_mode_alloc(GHOSTMESH_UART_BAUD, on_rx_text, app);
+    proto_mode_set_telemetry_callback(app->proto, on_telemetry, app);
+    proto_mode_set_position_callback(app->proto, on_position, app);
 
     app->profile_count = profile_load_builtins(app->profiles);
     app->profile_count += profile_load_yaml(
@@ -247,6 +304,16 @@ int32_t ghostmesh_app(void* p) {
         state.scroll_tick      = scroll_tick++;
         state.screen           = app->screen;
         state.uart_active      = proto_mode_is_connected(app->proto);
+        state.battery_level    = app->rx_battery;
+        state.battery_valid    = app->battery_valid;
+        state.env_valid        = app->env_valid;
+        state.temperature      = app->rx_temp;
+        state.humidity         = app->rx_humidity;
+        state.pressure         = app->rx_pressure;
+        state.pos_valid        = app->pos_valid;
+        state.latitude_i       = app->rx_lat_i;
+        state.longitude_i      = app->rx_lon_i;
+        state.altitude         = app->rx_alt;
         state.profile_selected = app->profile_sel;
         state.profile_scroll   = app->profile_scroll;
 
@@ -285,7 +352,8 @@ int32_t ghostmesh_app(void* p) {
                          "%.7s: %.73s", app->rx_sender, app->rx_text_buf);
             }
 
-            log_rx_message(app->rx_sender, app->rx_text_buf, app->rx_rssi, app->rx_snr, &dt);
+            log_rx_message(app->rx_sender, app->rx_text_buf, app->rx_rssi, app->rx_snr, &dt,
+                           app->pos_valid, app->rx_lat_i, app->rx_lon_i);
             app->rx_updated = false;
         }
 

@@ -20,7 +20,8 @@ static void sanitize_csv_field(char* dst, const char* src, size_t dst_size) {
 }
 
 void log_rx_message(const char* sender, const char* text,
-                    int16_t rssi, float snr, const DateTime* dt) {
+                    int16_t rssi, float snr, const DateTime* dt,
+                    bool has_pos, int32_t lat_i, int32_t lon_i) {
     char path[64];
     snprintf(path, sizeof(path), "%s/log_%04u%02u%02u.csv",
              LOG_DIR, (unsigned)dt->year, (unsigned)dt->month, (unsigned)dt->day);
@@ -43,19 +44,29 @@ void log_rx_message(const char* sender, const char* text,
     }
 
     if(!existed) {
-        const char* hdr = "timestamp,node_id,message,rssi,snr\n";
+        const char* hdr = "timestamp,node_id,message,lat,lon,rssi,snr\n";
         storage_file_write(f, hdr, strlen(hdr));
     }
 
     char safe_text[48];
     sanitize_csv_field(safe_text, text, sizeof(safe_text));
 
-    char row[128];
+    // Last-known GPS fix → lat/lon columns (deg*1e7 → degrees); blank if no fix.
+    char lat_s[20], lon_s[20];
+    if(has_pos) {
+        snprintf(lat_s, sizeof(lat_s), "%.7f", (double)lat_i / 10000000);
+        snprintf(lon_s, sizeof(lon_s), "%.7f", (double)lon_i / 10000000);
+    } else {
+        lat_s[0] = '\0';
+        lon_s[0] = '\0';
+    }
+
+    char row[160];
     int n = snprintf(row, sizeof(row),
-                     "%04u-%02u-%02uT%02u:%02u:%02u,%s,\"%s\",%d,%.1f\n",
+                     "%04u-%02u-%02uT%02u:%02u:%02u,%s,\"%s\",%s,%s,%d,%.1f\n",
                      (unsigned)dt->year, (unsigned)dt->month, (unsigned)dt->day,
                      (unsigned)dt->hour, (unsigned)dt->minute, (unsigned)dt->second,
-                     sender, safe_text, (int)rssi, (double)snr);
+                     sender, safe_text, lat_s, lon_s, (int)rssi, (double)snr);
 
     if(n > 0 && (size_t)n < sizeof(row)) {
         storage_file_write(f, row, (uint32_t)n);

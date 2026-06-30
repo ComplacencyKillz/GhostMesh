@@ -49,6 +49,7 @@ print(mp.SerializeToString().hex())   # → 15 ff ff ff ff (field 2, fixed32)
 | Field | Number | Wire |
 |-------|--------|------|
 | `packet` (MeshPacket) | **2** | bytes |
+| `my_info` (MyNodeInfo) | **3** | bytes — `MyNodeInfo.my_node_num` = field 1, varint (local node ID) |
 | `config_complete_id` | **7** | varint |
 | `rebooted` | 8 | varint (bool) |
 
@@ -70,6 +71,30 @@ print(mp.SerializeToString().hex())   # → 15 ff ff ff ff (field 2, fixed32)
 
 > **Note:** `to` and `from` use `fixed32` wire type (type 7 in the descriptor, wire type 5), NOT varint. Using the wrong wire type causes the firmware to silently drop the packet.
 
+### Telemetry (`TELEMETRY_APP` = 67)
+
+`Data.payload` for portnum 67 is a serialized `Telemetry`. Confirmed via meshtastic Python lib serialization.
+
+| Message | Field | Number | Wire |
+|---------|-------|--------|------|
+| `Telemetry` | `device_metrics` | 2 | bytes |
+| `Telemetry` | `environment_metrics` | 3 | bytes |
+| `DeviceMetrics` | `battery_level` | 1 | varint (0–100; **101 = powered / no battery**) |
+| `DeviceMetrics` | `voltage` | 2 | fixed32 (float) |
+| `EnvironmentMetrics` | `temperature` | 1 | fixed32 (float, °C) |
+| `EnvironmentMetrics` | `relative_humidity` | 2 | fixed32 (float, %RH) |
+| `EnvironmentMetrics` | `barometric_pressure` | 3 | fixed32 (float, hPa) |
+
+### Position (`POSITION_APP` = 3)
+
+`Data.payload` for portnum 3 is a serialized `Position`.
+
+| Field | Number | Wire | Notes |
+|-------|--------|------|-------|
+| `latitude_i` | 1 | sfixed32 | degrees × 1e7 |
+| `longitude_i` | 2 | sfixed32 | degrees × 1e7 |
+| `altitude` | 3 | varint (int32) | meters |
+
 ---
 
 ## UART Callback Context
@@ -84,7 +109,7 @@ print(mp.SerializeToString().hex())   # → 15 ff ff ff ff (field 2, fixed32)
 
 ## Known Limitations
 
-- Only `TEXT_MESSAGE_APP` packets are decoded on receive. Other portnums (telemetry, position, admin) are decoded but not surfaced to the UI yet.
+- `TEXT_MESSAGE_APP`, `TELEMETRY_APP`, and `POSITION_APP` are decoded and delivered via callbacks (`proto_mode_set_telemetry_callback` / `proto_mode_set_position_callback`). The app must register those callbacks and surface the data in the UI / CSV. Admin and other portnums are still skipped.
 - Sender display uses the last 4 hex digits of the node ID (`from & 0xFFFF`), e.g. `f69c: Hello`. Long names would require parsing a `NodeInfo` FromRadio frame, which arrives during the config exchange but is currently not stored.
 - The config exchange (~47 frames, ~1 KB) is received and processed by the UART callback state machine. The first 46 frames are decoded and discarded; only `config_complete_id` matters.
 

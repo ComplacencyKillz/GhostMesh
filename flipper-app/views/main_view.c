@@ -14,7 +14,7 @@
 //
 // TITLE_CHARS: visible chars in the FontPrimary title region (x=2 to x=~99).
 //   FontPrimary averages ~9 px/char; 11 chars × 9 px = 99 px, safely before
-//   the status label that starts at x=107.
+//   the status label that starts at x=104.
 //
 // LIST_CHARS / STATUS_CHARS: conservative visible-char estimate for FontSecondary
 //   list rows and the status bar.  Erring small ensures scrolling goes far
@@ -32,7 +32,7 @@
 // Short status labels that leave room for the title on the same line.
 #define STATUS_RDY  "RDY"
 #define STATUS_WAIT "..."
-#define STATUS_X    107u   // x position of the status label
+#define STATUS_X    104u   // x position of the status label (room for the battery %)
 
 struct MainView {
     ViewPort* view_port;
@@ -71,13 +71,36 @@ static void copy_window(char* dst, const char* src, uint8_t max_chars) {
     dst[max_chars] = '\0';
 }
 
+// ── Title-bar status label ────────────────────────────────────────────────────
+//
+// Shows connection state, upgrading to the Heltec battery % once device_metrics
+// telemetry arrives:  "..." (connecting) → "RDY" (connected) → "77%" / "PWR".
+// "PWR" = battery_level 101 (running on external/USB power, no battery reading).
+
+static void draw_status_label(Canvas* canvas, const MainViewState* s) {
+    char buf[16];
+    const char* label;
+    if(!s->uart_active) {
+        label = STATUS_WAIT;
+    } else if(!s->battery_valid) {
+        label = STATUS_RDY;
+    } else if(s->battery_level > 100) {
+        label = "PWR";
+    } else {
+        snprintf(buf, sizeof(buf), "%u%%", (unsigned)s->battery_level);
+        label = buf;
+    }
+    canvas_set_font(canvas, FontSecondary);
+    canvas_draw_str(canvas, STATUS_X, 9, label);
+}
+
 // ── Profile selection draw ───────────────────────────────────────────────────
 
 static void draw_profile_screen(Canvas* canvas, const MainViewState* s) {
     canvas_set_font(canvas, FontPrimary);
     canvas_draw_str(canvas, 2, 9, "GhostMesh");
     canvas_set_font(canvas, FontSecondary);
-    canvas_draw_str(canvas, STATUS_X, 9, s->uart_active ? STATUS_RDY : STATUS_WAIT);
+    draw_status_label(canvas, s);
     canvas_draw_line(canvas, 0, 11, 127, 11);
 
     canvas_set_font(canvas, FontSecondary);
@@ -118,7 +141,7 @@ static void draw_message_screen(Canvas* canvas, const MainViewState* s) {
     canvas_set_font(canvas, FontPrimary);
     canvas_draw_str(canvas, 2, 9, title);
     canvas_set_font(canvas, FontSecondary);
-    canvas_draw_str(canvas, STATUS_X, 9, s->uart_active ? STATUS_RDY : STATUS_WAIT);
+    draw_status_label(canvas, s);
     canvas_draw_line(canvas, 0, 11, 127, 11);
 
     canvas_set_font(canvas, FontSecondary);
@@ -178,7 +201,7 @@ static void draw_rx_history_screen(Canvas* canvas, const MainViewState* s) {
     canvas_set_font(canvas, FontPrimary);
     canvas_draw_str(canvas, 2, 9, "RX History");
     canvas_set_font(canvas, FontSecondary);
-    canvas_draw_str(canvas, STATUS_X, 9, s->uart_active ? STATUS_RDY : STATUS_WAIT);
+    draw_status_label(canvas, s);
     canvas_draw_line(canvas, 0, 11, 127, 11);
 
     canvas_set_font(canvas, FontSecondary);
@@ -212,6 +235,40 @@ static void draw_rx_history_screen(Canvas* canvas, const MainViewState* s) {
     canvas_draw_str(canvas, 2, 63, "BACK: Return");
 }
 
+// ── Sensors draw (environment telemetry) ──────────────────────────────────────
+
+static void draw_sensors_screen(Canvas* canvas, const MainViewState* s) {
+    canvas_set_font(canvas, FontPrimary);
+    canvas_draw_str(canvas, 2, 9, "Sensors");
+    draw_status_label(canvas, s);
+    canvas_draw_line(canvas, 0, 11, 127, 11);
+
+    canvas_set_font(canvas, FontSecondary);
+    char line[32];
+
+    if(s->env_valid) {
+        snprintf(line, sizeof(line), "Temp:  %.1f C", (double)s->temperature);
+        canvas_draw_str(canvas, 4, (uint8_t)(LIST_Y + ROW_H - 2), line);
+        snprintf(line, sizeof(line), "Humid: %.0f%%", (double)s->humidity);
+        canvas_draw_str(canvas, 4, (uint8_t)(LIST_Y + 2 * ROW_H - 2), line);
+        snprintf(line, sizeof(line), "Press: %.1f hPa", (double)s->pressure);
+        canvas_draw_str(canvas, 4, (uint8_t)(LIST_Y + 3 * ROW_H - 2), line);
+    } else {
+        canvas_draw_str(canvas, 4, (uint8_t)(LIST_Y + ROW_H - 2), "Env: no telemetry");
+    }
+
+    // GPS rows (4th + 5th lines)
+    if(s->pos_valid) {
+        snprintf(line, sizeof(line), "GPS %.4f,%.4f",
+                 (double)s->latitude_i / 10000000, (double)s->longitude_i / 10000000);
+        canvas_draw_str(canvas, 4, (uint8_t)(LIST_Y + 4 * ROW_H - 2), line);
+        snprintf(line, sizeof(line), "Alt: %ld m", (long)s->altitude);
+        canvas_draw_str(canvas, 4, (uint8_t)(LIST_Y + 5 * ROW_H - 2), line);
+    } else {
+        canvas_draw_str(canvas, 4, (uint8_t)(LIST_Y + 4 * ROW_H - 2), "GPS: no fix");
+    }
+}
+
 // ── ViewPort callbacks ───────────────────────────────────────────────────────
 
 static void draw_cb(Canvas* canvas, void* ctx) {
@@ -222,8 +279,10 @@ static void draw_cb(Canvas* canvas, void* ctx) {
         draw_profile_screen(canvas, &mv->state);
     } else if(mv->state.screen == GhostMeshScreenMessages) {
         draw_message_screen(canvas, &mv->state);
-    } else {
+    } else if(mv->state.screen == GhostMeshScreenRxHistory) {
         draw_rx_history_screen(canvas, &mv->state);
+    } else {
+        draw_sensors_screen(canvas, &mv->state);
     }
     furi_mutex_release(mv->mutex);
 }

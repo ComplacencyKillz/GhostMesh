@@ -10,8 +10,9 @@
 
 typedef enum {
     GhostMeshScreenProfile,    // profile picker on launch
-    GhostMeshScreenMessages,   // canned message list; long-press Down → history
+    GhostMeshScreenMessages,   // canned message list; long-press Down → history, Up → sensors
     GhostMeshScreenRxHistory,  // last 16 received messages; BACK returns
+    GhostMeshScreenSensors,    // temp/humidity/pressure telemetry; BACK returns
 } GhostMeshScreen;
 
 typedef struct {
@@ -19,6 +20,22 @@ typedef struct {
 
     // ── Always relevant ──────────────────────────────────────────────
     bool uart_active;  // true = handshake complete; title bar shows "RDY" vs "..."
+
+    // Battery from device telemetry — shown in the title bar (PWR if 101/powered)
+    bool    battery_valid;   // a device_metrics packet has been seen
+    uint8_t battery_level;   // 0-100, or 101 = powered/external
+
+    // Environment telemetry — shown on the Sensors screen
+    bool  env_valid;     // an environment_metrics packet has been seen
+    float temperature;   // degC
+    float humidity;      // %RH
+    float pressure;      // hPa
+
+    // GPS position — shown on the Sensors screen, logged to CSV
+    bool    pos_valid;     // a Position packet has been seen
+    int32_t latitude_i;    // degrees * 1e7
+    int32_t longitude_i;   // degrees * 1e7
+    int32_t altitude;      // meters
 
     // ── Profile selection (GhostMeshScreenProfile) ───────────────────
     const char** profile_names;  // array of profile name strings
