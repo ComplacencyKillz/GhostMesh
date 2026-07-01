@@ -43,12 +43,12 @@ See [docs/meshtastic-setup.md](docs/meshtastic-setup.md) for full setup and priv
 ### 2. Wire the devices
 
 ```
-Flipper U_TX (pin 13)  →  Heltec GPIO44  (labeled "RX" on board)
-Flipper U_RX (pin 14)  →  Heltec GPIO43  (labeled "TX" on board)
+Flipper U_TX (pin 13)  →  Heltec GPIO7  (Serial module RX)
+Flipper U_RX (pin 14)  →  Heltec GPIO6  (Serial module TX)
 Flipper GND            →  Heltec GND
 ```
 
-**Do not connect power rails.** Each device runs from its own battery. See [docs/wiring.md](docs/wiring.md).
+Then configure the Meshtastic **Serial module**: PROTO mode, RX 7, TX 6, 115200, override-console OFF. (Not GPIO43/44 — the CP2102 USB bridge clamps those on battery.) **Do not connect power rails** — each device runs from its own battery. See [docs/wiring.md](docs/wiring.md) and [docs/meshtastic-setup.md](docs/meshtastic-setup.md).
 
 ### 3. Build and install
 
@@ -132,7 +132,7 @@ ghostmesh/
 
 ## Protocol
 
-GhostMesh connects to Meshtastic's **PhoneAPI on UART0** (GPIO43/44) — the same interface used by the official phone app and Python library over USB. Packets use Meshtastic's binary PROTO framing (`0x94 0xC3` magic bytes + protobuf payload). All protobuf field numbers are confirmed against meshtastic Python library v2.7.8.
+GhostMesh connects over the Meshtastic **Serial module in PROTO mode** (GPIO7 RX / GPIO6 TX), which exposes the same StreamAPI protobuf stream the phone app and Python library use. Packets use Meshtastic's binary PROTO framing (`0x94 0xC3` magic bytes + protobuf payload). All protobuf field numbers are confirmed against meshtastic Python library v2.7.8. (Earlier builds used the PhoneAPI on UART0/GPIO43-44, but the CP2102 USB bridge clamps those pins on battery — 6/7 works untethered.)
 
 See [docs/serial-modes.md](docs/serial-modes.md) for the complete protocol reference.
 

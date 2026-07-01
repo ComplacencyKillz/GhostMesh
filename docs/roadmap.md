@@ -64,11 +64,12 @@ Full Meshtastic PROTO protocol — hand-coded protobuf encoder/decoder, no exter
 - `FromRadio.packet` decoder: extracts sender ID (fixed32) and text payload
 - `ToRadio` encoder: correct field 2 fixed32 for `to`, field 9 for `hop_limit`
 - RF noise immunity: 0x94 0xC3 framing rejects spurious LoRa-induced UART bytes
-- Connects to PhoneAPI on UART0 (GPIO43/44) — no SerialModule dependency
+- Connects over the Meshtastic Serial module (PROTO mode) on GPIO7/6
 
-**Confirmed working 2026-05-05:**
+**Confirmed working 2026-05-05** (TX/RX over the mesh), **and on battery 2026-07-01** (Serial module on GPIO7/6):
 - TX: Flipper OK → message appears on second Heltec node ✓
 - RX: message from second node → displayed in GhostMesh status bar ✓
+- Runs on the Heltec's own battery with no USB tether (moved off UART0/43-44 — the CP2102 clamps those unless USB-powered) ✓
 
 ---
 
@@ -77,7 +78,7 @@ Full Meshtastic PROTO protocol — hand-coded protobuf encoder/decoder, no exter
 Software-only phase. No new hardware required. Establishes the burn-proof protocol.
 
 ### 6.1 Nuke Button
-Send `AdminMessage { factory_reset: true }` via the existing PROTO PhoneAPI connection.
+Send `AdminMessage { factory_reset: true }` via the existing PROTO (Serial module) connection.
 Meshtastic processes this natively — wipes all AES channel keys and reboots. No custom
 Heltec firmware needed.
 
@@ -301,8 +302,8 @@ UART link using ChaCha20-Poly1305 (AEAD: encrypts + authenticates each frame).
 
 ### Implementation
 - [ ] FAP: ChaCha20-Poly1305 encrypt every UART TX frame; decrypt + authenticate every RX
-- [ ] Heltec custom firmware: decrypt incoming frames → pass to Meshtastic PhoneAPI;
-  encrypt outgoing PhoneAPI frames → send over UART
+- [ ] Heltec custom firmware: decrypt incoming frames → pass to Meshtastic's internal StreamAPI;
+  encrypt outgoing StreamAPI frames → send over the Serial module UART (GPIO6/7)
 - [ ] Frame format: `[nonce 12B][ciphertext][poly1305 tag 16B]`
 - [ ] Counter-based nonce: 64-bit monotonic counter prevents nonce reuse across reboots
 
@@ -310,8 +311,9 @@ UART link using ChaCha20-Poly1305 (AEAD: encrypts + authenticates each frame).
 
 ## Architecture Notes
 
-### Dual UART Architecture (Heltec)
-- UART0 (GPIO43/44): Meshtastic PhoneAPI — Flipper connection, PROTO frames
+### UART Architecture (Heltec)
+- Serial module PROTO (GPIO7 RX / GPIO6 TX): **Flipper connection** — StreamAPI PROTO frames
+- UART0 (GPIO43/44): CP2102 USB console — flashing/debug only (clamps on battery; not the Flipper link)
 - UART1 (GPIO34 RX / GPIO33 TX): GPS — NMEA input from BN-220
 
 ### I2C Bus Architecture (Heltec)
@@ -319,7 +321,7 @@ UART link using ChaCha20-Poly1305 (AEAD: encrypts + authenticates each frame).
 - Bus 2 (GPIO41/42): Sensor bus — BME280 (0x76) + MAX17048 (0x36) via STEMMA QT hub
 
 ### UART Communication Architecture (Flipper ↔ Heltec)
-- PROTO frames: all Meshtastic PhoneAPI traffic (ToRadio / FromRadio protobuf)
+- PROTO frames: all Meshtastic StreamAPI traffic over the Serial module (ToRadio / FromRadio protobuf)
 - ASCII sentinels: local Heltec sensor events that don't go through Meshtastic
   (`TAMPER_LIGHT\n`, `PROX\n`, `JAMMER\n`, `IR_ARM\n`, `IR_SEND_n\n`)
 - Flipper FAP handles both on the same UART stream; distinguishes by frame header (0x94 0xC3 = PROTO, anything else = sentinel)
@@ -338,7 +340,7 @@ over LoRa, or protect itself.
 |---------|-----------------|----------------------|
 | BME280 telemetry | ✅ built-in | — |
 | BN-220 GPS | ✅ built-in | — |
-| Private channel config | ✅ via PhoneAPI | — |
+| Private channel config | ✅ via PROTO AdminMessage | — |
 | Factory reset (nuke) | ✅ AdminMessage | — |
 | Disable beaconing | ✅ via config | — |
 | Tilt switch tamper alert | ❌ | Custom module |

@@ -41,12 +41,15 @@ import SubLayout from '../layouts/SubLayout.astro';
   </table>
 
   <h2>BASE WIRING — 3 WIRES</h2>
-  <div class="code-block"><pre>Flipper U_TX (pin 13)  →  Heltec GPIO44  (labeled "RX")
-Flipper U_RX (pin 14)  →  Heltec GPIO43  (labeled "TX")
+  <div class="code-block"><pre>Flipper U_TX (pin 13)  →  Heltec GPIO7  (Serial module RX)
+Flipper U_RX (pin 14)  →  Heltec GPIO6  (Serial module TX)
 Flipper GND            →  Heltec GND
 
 DO NOT connect power rails.
 Each device runs from its own battery.</pre></div>
+  <p>Runs the Meshtastic Serial module in PROTO mode (RX 7, TX 6, 115200,
+  override-console off). Not GPIO43/44 — the CP2102 USB bridge clamps those on
+  battery, so the old link died the moment you unplugged the cable.</p>
 
   <h2>POWER ARCHITECTURE</h2>
   <p>No shared power between devices. The Flipper's 3.3V regulator cannot source

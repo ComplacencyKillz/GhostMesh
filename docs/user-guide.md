@@ -195,9 +195,10 @@ RSSI of `0` means the packet did not arrive over radio (local echo or phone app 
 
 | Symptom | Likely cause | Fix |
 |---------|-------------|-----|
-| Title bar shows `...` indefinitely | No UART connection | Check TX/RX wires; verify Heltec is powered |
+| Title bar shows `...` indefinitely | No UART connection, or Serial module not set to PROTO on 7/6 | Check TX/RX wires (Flipper 13→Heltec 7, 14→Heltec 6); verify the Meshtastic Serial module is enabled in PROTO mode |
+| Title bar reaches `...` only when the Heltec is plugged into USB | Wired to GPIO43/44 (CP2102 clamps them on battery) | Move the Heltec-side wires to GPIO7/6 |
 | OK button sends but nothing heard on mesh | Heltec not transmitting | Check antenna connected; verify Meshtastic region |
-| Received messages not appearing | RX wire not connected | Check Flipper pin 14 → Heltec GPIO43 |
+| Received messages not appearing | RX wire not connected | Check Flipper pin 14 → Heltec GPIO6 |
 | Custom profiles not loading | Wrong SD path or YAML syntax | File must be at `SD:/apps_data/ghostmesh/profiles.yaml` |
 | App crashes on launch | Stack issue | Close all other Flipper apps; restart Flipper |
 | Log file not created | SD card issue | Verify SD card seated; check available space |

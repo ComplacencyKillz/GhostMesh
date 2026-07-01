@@ -42,8 +42,8 @@ hardware RNG and push it to the Heltec over the existing PROTO link — no phone
 ## UART Security
 
 The serial connection between the Flipper and Heltec is plaintext. If your hardware is
-captured while powered, an adversary with a logic analyzer on GPIO43/44 can read all
-traffic in real time. Mitigations:
+captured while powered, an adversary with a logic analyzer on the Flipper link (Heltec
+GPIO6/7) can read all traffic in real time. Mitigations:
 
 - **Never leave the rig powered and unattended** (unless intentionally deployed as a dead-drop)
 - **Use the nuke button** (Phase 6) — one key combo wipes all channel keys from the Heltec instantly

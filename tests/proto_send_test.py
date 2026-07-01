@@ -193,8 +193,11 @@ def main():
         sys.exit(1)
 
     # Pulse DTR to reset, then start reading IMMEDIATELY — do not flush.
-    # The node sends FromRadio{rebooted:true} during boot on UART0 (PhoneAPI).
+    # The node sends FromRadio{rebooted:true} during boot over the Serial module link.
     # The meshtastic library reads this while booting; we must do the same.
+    # NOTE: DTR only resets the ESP32 over a DIRECT CP2102/USB connection. Through the
+    # Flipper USB-UART bridge (to the Serial module on GPIO6/7) DTR does not reach the
+    # Heltec reset line — reset the Heltec manually, or rely on want_config self-retry.
     print("Resetting device via DTR...")
     s.setDTR(False)
     time.sleep(0.1)

@@ -15,8 +15,8 @@ header into a breadboard-friendly form. Required for sensor connections.
 
 | Flipper Label | Header Pin | Function |
 |---------------|-----------|----------|
-| U_TX | 13 | USART1 TX → Heltec GPIO44 |
-| U_RX | 14 | USART1 RX ← Heltec GPIO43 |
+| U_TX | 13 | USART1 TX → Heltec GPIO7 (Serial module RX) |
+| U_RX | 14 | USART1 RX ← Heltec GPIO6 (Serial module TX) |
 | GND | 8 or 18 | Ground reference (shared with Heltec) |
 | PB2 | 15 | Slide switch (arming gate) |
 | PB3 | 16 | SW-520D tilt switch (tamper detection) |
@@ -31,7 +31,7 @@ header into a breadboard-friendly form. Required for sensor connections.
 - **Radio:** SX1262 LoRa transceiver
 - **Frequency:** 915 MHz (US/AU band)
 - **Antenna:** 915 MHz whip, SMA or IPEX connector
-- **USB:** USB-C + CP2102 UART bridge — powered from Heltec battery always-on
+- **USB:** USB-C + CP2102 UART bridge on UART0/GPIO43-44 — **powered from USB (5V VBUS), NOT the battery.** When the Heltec runs on battery (USB out) the CP2102 is unpowered and clamps GPIO43/44, which is why the Flipper link uses GPIO6/7 instead (see [wiring.md](wiring.md))
 - **Battery:** JST-PH connector for LiPo
 - **Display:** 0.96" OLED (128×64), managed by Meshtastic firmware
 
@@ -60,7 +60,8 @@ custom Meshtastic modules.
 | 2 | ✅ Free | SW-520D tilt switch (tamper — backpack moved/disturbed) |
 | 4 | ✅ Free | Slide switch (physical arm/disarm when deploying backpack) |
 | 5 | ✅ Free (ADC1_CH4) | Photoresistor (light tamper — case opened) |
-| 7 | ✅ Confirmed free | Reserve / available |
+| 6 | ❌ Serial module TX | **GhostMesh Flipper link** — Heltec → Flipper (to Flipper pin 14 RX) |
+| 7 | ❌ Serial module RX | **GhostMesh Flipper link** — Flipper → Heltec (from Flipper pin 13 TX) |
 | 8–14 | ❌ SX1262 LoRa SPI | NSS, SCK, MOSI, MISO, RST, BUSY, DIO1 |
 | 17 | ❌ I2C bus 1 SDA | OLED display (hardwired) |
 | 18 | ❌ I2C bus 1 SCL | OLED display (hardwired) |
@@ -74,8 +75,8 @@ custom Meshtastic modules.
 | 36 | ❌ Vext control | Powers OLED + external 3.3V rail (Meshtastic `VEXT_ENABLE`, active LOW) |
 | 41 | ❌ I2C bus 2 SDA | Sensor I2C bus (BME280, MAX17048 via Qwiic hub) |
 | 42 | ❌ I2C bus 2 SCL | Sensor I2C bus |
-| 43 | ❌ UART0 TX | Meshtastic PhoneAPI → Flipper |
-| 44 | ❌ UART0 RX | Meshtastic PhoneAPI ← Flipper |
+| 43 | ⚠️ UART0 TX / CP2102 | USB console (flash/debug). **NOT the Flipper link** — CP2102 clamps it on battery |
+| 44 | ⚠️ UART0 RX / CP2102 | USB console (flash/debug). **NOT the Flipper link** — CP2102 clamps it on battery |
 | 47 | ✅ Free | HC-SR04 Echo |
 | 48 | ✅ Free | IR receiver (NEC decode — remote arm/disarm ~10m) |
 
@@ -157,10 +158,14 @@ I2C muxing), so all devices share the same bus with distinct addresses.
 ## UART Architecture
 
 ```
-UART0 (GPIO43 TX / GPIO44 RX):
-  └── Meshtastic PhoneAPI
+Serial module — PROTO (GPIO7 RX / GPIO6 TX):   ← GhostMesh Flipper link
+  └── Meshtastic StreamAPI over the Serial module
         ├── Flipper PROTO frames (ToRadio / FromRadio protobuf)
-        └── Heltec ASCII sentinels (TAMPER_LIGHT, PROX, JAMMER, IR_ARM, IR_SEND_n)
+        └── Heltec ASCII sentinels (TAMPER_LIGHT, PROX, JAMMER, IR_ARM, IR_SEND_n)  [future custom-firmware phases]
+
+UART0 (GPIO43 TX / GPIO44 RX):
+  └── CP2102 USB console — flashing + debug over USB only
+        (NOT the Flipper link — unpowered CP2102 clamps these on battery)
 
 UART1 (GPIO34 RX / GPIO33 TX):
   └── BN-220 GPS module (NMEA-0183, 9600 baud)

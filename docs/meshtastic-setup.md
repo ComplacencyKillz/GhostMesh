@@ -19,11 +19,23 @@
 
 ---
 
-## Serial Module — No Configuration Required
+## Serial Module — Required Configuration
 
-GhostMesh connects directly to Meshtastic's **PhoneAPI on UART0** (the same path used by the official Meshtastic Python library and the phone app over USB). This is always active and requires no special configuration.
+GhostMesh connects over the Meshtastic **Serial module in PROTO mode** on free GPIO pins. This is **required** — set it under **Module Config → Serial**. (Do this over the Meshtastic **web client over USB** — `client.meshtastic.org` → Serial — it's far more reliable than Bluetooth, which times out on config screens.)
 
-The **Module Config → Serial** settings in the Meshtastic app configure a separate GPIO-based serial module that GhostMesh does not use. You can leave these at defaults or disable the serial module — it has no effect on GhostMesh.
+| Field | Value |
+|-------|-------|
+| Serial enabled | **ON** |
+| Serial mode | **PROTO** |
+| RX | **7** |
+| TX | **6** |
+| Serial baud rate | **115200** |
+| Override console serial port | **OFF** |
+| Echo enabled | OFF |
+
+Save → the node reboots with the PROTO stream on GPIO7 (RX) / GPIO6 (TX), matching the wires in [wiring.md](wiring.md).
+
+> **Why not UART0 / GPIO43-44 (the old PhoneAPI path)?** Earlier builds connected to the PhoneAPI on UART0, but the **CP2102 USB bridge shares those pins** and clamps them when the Heltec is on battery (USB unplugged) — so that link only worked while USB-powered, which is no good for a deployed backpack. The Serial module on free pins 6/7 has no CP2102 in the way and works on pure battery. The old "SerialModule PROTO is unreliable" advice was a misdiagnosis of that same CP2102 clamp on 43/44.
 
 ---
 
@@ -58,8 +70,8 @@ For basic testing, the default channel is fine.
 - Heltec OLED shows node name, battery %, and ChUtil
 
 When GhostMesh connects:
-1. The Flipper title bar shows `...` for a few seconds (config handshake in progress)
-2. It changes to `RDY` when the ~47-frame config exchange completes
+1. The Flipper title bar shows `...` for a few seconds (config handshake in progress; the request self-retries every ~2 s until the node answers)
+2. It changes to `RDY` when the ~47-frame config exchange completes, then to the node's battery `%` (or `PWR` when on external power) once the battery level is read from the config
 3. The OK button becomes active
 
 ---
@@ -113,11 +125,12 @@ See [docs/hardware.md](hardware.md) for full sensor wiring and GPIO assignments.
 
 | GPIO | Status | Reason |
 |------|--------|--------|
-| 44 | ✓ Used by GhostMesh (UART0 RX) | PhoneAPI RX — connect Flipper TX here |
-| 43 | ✓ Used by GhostMesh (UART0 TX) | PhoneAPI TX — connect Flipper RX here |
+| 7 | ✓ Used by GhostMesh (Serial module RX) | connect Flipper TX (pin 13) here |
+| 6 | ✓ Used by GhostMesh (Serial module TX) | connect Flipper RX (pin 14) here |
+| 43/44 | Avoid for the Flipper link | UART0 / CP2102 USB console — clamps on battery (USB debug only) |
 | 41/42 | Unavailable | Claimed by I2C bus 2 (`sda=41 scl=42`) at Meshtastic boot |
 | 19/20 | Unavailable | ESP32-S3 USB D-/D+ |
 | 8–14 | Unavailable | SX1262 LoRa SPI + IRQ/RST/BUSY |
 | 1 | Unavailable | Battery ADC |
 
-**The Meshtastic SerialModule PROTO mode via GPIO does not work reliably in Meshtastic 2.7.x.** GhostMesh bypasses the SerialModule entirely by connecting to UART0 (GPIO43/44), which is where the PhoneAPI lives permanently.
+**GhostMesh runs the Serial module in PROTO mode on GPIO7/6.** An earlier version of this doc claimed the SerialModule PROTO mode "does not work reliably" and used UART0/GPIO43/44 instead — that was a **misdiagnosis**. The SerialModule was originally configured on GPIO43/44, where the CP2102 USB bridge clamps the lines whenever the Heltec is on battery. On free pins (6/7) with no CP2102, PROTO mode is reliable and works on pure battery. Confirmed 2026-07-01.

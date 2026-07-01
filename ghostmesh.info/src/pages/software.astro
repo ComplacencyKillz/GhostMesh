@@ -13,8 +13,8 @@ import SubLayout from '../layouts/SubLayout.astro';
 
   <h2>REQUIREMENTS</h2>
   <p>Python 3.8+, pip, and a Flipper Zero running official or compatible firmware.
-  No Meshtastic serial module configuration is needed — GhostMesh connects directly
-  to the PhoneAPI on UART0 (GPIO43/44).</p>
+  On the Heltec, enable the Meshtastic Serial module in PROTO mode (RX GPIO7, TX GPIO6,
+  115200, override-console off) — that is the link GhostMesh speaks over.</p>
 
   <h2>INSTALL BUILD TOOL</h2>
   <div class="code-block"><pre>pip install ufbt

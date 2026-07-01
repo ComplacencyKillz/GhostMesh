@@ -36,13 +36,16 @@ The Heltec backpack is designed to operate fully unattended. The Flipper is a li
 ### Core Wiring (3 wires)
 
 ```
-Flipper pin 13 (U_TX / PA9)  ──→  Heltec GPIO44  (UART0 RX)
-Flipper pin 14 (U_RX / PA10) ←──  Heltec GPIO43  (UART0 TX)
+Flipper pin 13 (U_TX / PA9)  ──→  Heltec GPIO7  (Serial module RX)
+Flipper pin 14 (U_RX / PA10) ←──  Heltec GPIO6  (Serial module TX)
 Flipper GND                  ────  Heltec GND
 ```
 
 **Baud rate:** 115200, 8N1
-**Protocol:** Meshtastic PhoneAPI — PROTO binary framing
+**Protocol:** Meshtastic Serial module in PROTO mode — PROTO binary framing (StreamAPI)
+**Meshtastic config (required):** Module Config → Serial → enabled, mode PROTO, RX 7, TX 6, 115200, override-console OFF
+
+> **Not GPIO43/44.** UART0 (43/44) shares the CP2102 USB bridge, which clamps those pins when the Heltec is on battery — so the old PhoneAPI-on-UART0 link only worked on USB power. GPIO6/7 have no CP2102 and work on pure battery. Confirmed 2026-07-01.
 
 **Power rule:** Never connect Flipper 3.3V or 5V to Heltec. The Flipper's regulator cannot source the 200–500mA the ESP32-S3 draws. Both devices run independent LiPo batteries.
 
@@ -88,17 +91,20 @@ Bus 2 — GPIO41 SDA / GPIO42 SCL
 - `17–18`: I2C bus 1 (OLED)
 - `19–20`: USB D-/D+
 - `1`: Battery ADC
+- `6–7`: Serial module (PROTO) ↔ Flipper — GPIO6 TX, GPIO7 RX
 - `41–42`: I2C bus 2
-- `43–44`: UART0 (PhoneAPI ↔ Flipper)
+- `43–44`: UART0 / CP2102 USB console — do NOT use for the Flipper link (clamps on battery)
 - `21`: OLED reset (hardwired — not free; do not use for HC-SR04 trigger)
 - `35`: onboard white LED (does NOT work as a UART RX)
 - `36`: Vext — powers the OLED + external 3.3V rail (software gated, active LOW). GPIO26 is NOT Vext.
 
 ---
 
-## Protocol: PROTO / Meshtastic PhoneAPI
+## Protocol: PROTO / Meshtastic Serial Module
 
-GhostMesh connects directly to Meshtastic's **PhoneAPI on UART0** (GPIO43/44). This is the same interface the official phone app uses. It is always available and requires no SerialModule configuration. The Meshtastic SerialModule PROTO mode is not used — it does not work reliably in firmware 2.7.15 via GPIO.
+GhostMesh connects to the Meshtastic **Serial module in PROTO mode** on GPIO7 (RX) / GPIO6 (TX). PROTO mode exposes the same StreamAPI protobuf stream the phone app and Python library use — `want_config`/`config_complete`, `ToRadio`/`FromRadio`. It **requires** config (Module Config → Serial: enabled, PROTO, RX 7, TX 6, 115200, override-console OFF).
+
+> This reverses an earlier design that used the PhoneAPI on UART0 (GPIO43/44) and claimed "SerialModule PROTO doesn't work reliably." That was a misdiagnosis of the CP2102 clamp: the SerialModule had been configured on 43/44, where the USB bridge kills the signal on battery. On free pins 6/7 it works on pure battery. See `docs/wiring.md` and `flipper-app/helpers/proto_notes.md`.
 
 ### Frame Format
 
@@ -113,7 +119,7 @@ The `0x94 0xC3` magic bytes provide RF noise immunity — random LoRa-induced UA
 1. FAP sends `ToRadio { want_config_id: 42 }`
 2. Node replies with ~47 config frames
 3. Node sends `FromRadio { config_complete_id: 42 }` — handshake complete
-4. FAP sets `connected = true`, title bar changes from `...` to `RDY`
+4. FAP sets `connected = true`, title bar changes from `...` to `RDY`, then to the node's battery `%` (or `PWR` on external power) — read from the local node's `NodeInfo` during config. The `want_config` request re-sends every ~2 s until `config_complete` arrives, so a missed request self-heals.
 
 ### Key Field Numbers (Meshtastic 2.7.x)
 

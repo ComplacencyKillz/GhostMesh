@@ -391,6 +391,47 @@ struct ProtoMode {
     uint8_t        rx_buf[PROTO_MAX_PAYLOAD];
 };
 
+// NodeInfo.num = field 1 (varint), device_metrics = field 6 (bytes, DeviceMetrics).
+// During the want_config handshake the node sends a NodeInfo for itself, so we can
+// surface the local battery % the instant we connect instead of waiting for the next
+// (potentially 30-min) live telemetry broadcast. Only the local node's metrics are
+// forwarded — num must match my_node_num, which my_info (field 3) sets earlier in the
+// same config dump. Reuses the telemetry callback path, so ghostmesh.c needs no change.
+static void decode_node_info(const uint8_t* buf, size_t len, ProtoMode* p) {
+    if(!p->telemetry_cb) return;
+    uint32_t num = 0;
+    bool has_dm = false;
+    ProtoTelemetry t;
+    memset(&t, 0, sizeof(t));
+    size_t pos = 0;
+    while(pos < len) {
+        uint64_t tag;
+        if(!read_varint(buf, len, &pos, &tag)) break;
+        uint32_t field = (uint32_t)(tag >> 3);
+        uint32_t wire  = (uint32_t)(tag & 0x7);
+        if(wire == PB_WIRE_VARINT) {
+            uint64_t v;
+            if(!read_varint(buf, len, &pos, &v)) break;
+            if(field == 1) num = (uint32_t)v;
+        } else if(wire == PB_WIRE_BYTES) {
+            uint64_t blen;
+            if(!read_varint(buf, len, &pos, &blen)) break;
+            if(blen > (uint64_t)(len - pos)) break;
+            if(field == 6) {  // device_metrics — fills has_device + battery_level
+                decode_device_metrics(buf + pos, (size_t)blen, &t);
+                has_dm = true;
+            }
+            pos += (size_t)blen;
+        } else {
+            if(!skip_field(buf, len, &pos, wire)) break;
+        }
+    }
+    if(has_dm && num != 0 && num == p->my_node_num) {
+        t.from = num;
+        p->telemetry_cb(&t, p->telemetry_ctx);
+    }
+}
+
 static void on_rx_byte(uint8_t byte, void* ctx) {
     ProtoMode* p = ctx;
 
@@ -490,6 +531,9 @@ static void on_rx_byte(uint8_t byte, void* ctx) {
                         }
                     } else if(field == 3) {  // FromRadio.my_info = MyNodeInfo
                         p->my_node_num = decode_my_node_info(buf + pos, (size_t)blen);
+                    } else if(field == 4) {  // FromRadio.node_info = NodeInfo
+                        // Local node's NodeInfo carries battery — show it on connect.
+                        decode_node_info(buf + pos, (size_t)blen, p);
                     }
                     // HIGH-3: safe cast — blen <= len - pos guaranteed by guard above.
                     pos += (size_t)blen;
@@ -570,6 +614,11 @@ bool proto_mode_is_active(const ProtoMode* p) {
 
 bool proto_mode_is_connected(const ProtoMode* p) {
     return p && p->connected;
+}
+
+void proto_mode_request_config(ProtoMode* p) {
+    if(!p) return;
+    send_want_config_id(p);
 }
 
 uint32_t proto_mode_get_local_node(const ProtoMode* p) {

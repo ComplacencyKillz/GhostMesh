@@ -10,18 +10,21 @@ The Flipper Zero connects to the Heltec ESP32 LoRa V3 board over **3 wires only*
 
 | Signal | Flipper Proto Board | Heltec ESP32 LoRa V3 |
 |--------|--------------------|-----------------------|
-| UART TX (Flipper → Heltec) | **U_TX / GPIO pin 13** | **GPIO44** (bottom row, labeled "RX") |
-| UART RX (Heltec → Flipper) | **U_RX / GPIO pin 14** | **GPIO43** (bottom row, labeled "TX") |
+| UART TX (Flipper → Heltec) | **U_TX / GPIO pin 13** | **GPIO7** (Serial module RX) |
+| UART RX (Heltec → Flipper) | **U_RX / GPIO pin 14** | **GPIO6** (Serial module TX) |
 | Ground reference | **GND** | **GND** |
 | Power | — NOT CONNECTED — | — NOT CONNECTED — |
 
-> **Why GPIO7 for RX and not the pad labeled "RX" (GPIO44)?**
-> GhostMesh uses Meshtastic's PhoneAPI which lives permanently on UART0 (GPIO43/44).
-> This is the same interface used by the official meshtastic Python library and the phone app
-> via the CP2102 USB bridge. Connecting the Flipper directly to GPIO43/44 accesses the PhoneAPI
-> without any special Meshtastic serial module configuration.
-> GPIO44 = UART0 RX (Flipper TX connects here). GPIO43 = UART0 TX (Flipper RX connects here).
-> The labeled "RX" and "TX" pads on the Heltec board are exactly these pins.
+This link runs the Meshtastic **Serial module in PROTO mode** on free GPIO pins — see [Meshtastic Setup](meshtastic-setup.md) for the required config (enable, mode PROTO, RX 7, TX 6, 115200, override-console OFF).
+
+> **Why GPIO7/6 and NOT the pads labeled "RX"/"TX" (GPIO44/43)?**
+> GPIO43/44 are UART0 — but on the Heltec V3 the **CP2102 USB-UART bridge is wired to those
+> exact pins**. The CP2102 is powered from USB; with the Heltec on **battery** (USB unplugged),
+> the unpowered bridge **clamps GPIO43/44 to ground** and the Flipper can no longer drive them.
+> The old "PhoneAPI on 43/44" wiring therefore only worked while the Heltec was plugged into
+> USB power — useless for a deployed, battery-powered backpack.
+> Free pins **GPIO7 (RX) and GPIO6 (TX)** have no CP2102 on them, so the Serial module's PROTO
+> stream reaches the Flipper on pure battery. Confirmed working on battery 2026-07-01.
 
 ---
 
@@ -32,8 +35,8 @@ The Flipper Zero connects to the Heltec ESP32 LoRa V3 board over **3 wires only*
 │       Flipper Zero           │         │   Heltec WiFi LoRa 32 V3     │
 │    (via Prototype Board)     │         │     (Meshtastic firmware)     │
 │                              │         │                              │
-│  U_TX / GPIO 13  ───────────────────►  GPIO44  (bottom row, "RX" pad)│
-│  U_RX / GPIO 14  ◄───────────────────  GPIO43  (bottom row, "TX" pad)│
+│  U_TX / GPIO 13  ───────────────────►  GPIO7   (Serial module RX)    │
+│  U_RX / GPIO 14  ◄───────────────────  GPIO6   (Serial module TX)    │
 │  GND             ───────────────────── GND                           │
 │                              │         │                              │
 │  [5V  → NOT connected]       │         │  [VCC → own battery]        │
@@ -50,7 +53,7 @@ The Flipper Zero connects to the Heltec ESP32 LoRa V3 board over **3 wires only*
 
 1. **Do NOT connect 5V or 3.3V rails between the devices** — each device runs from its own battery. Sharing power risks damaging the Flipper's GPIO or the ESP32.
 
-2. **Do NOT connect power while either device is powered via USB** — if the Heltec is plugged into USB during development, keep the Heltec USB connected only to the computer, not to the Flipper.
+2. **Only TX/RX/GND cross between the devices — never a power pin.** Each may be run from USB during development; that's fine on the GPIO6/7 link (no CP2102 on those pins, so no bus contention with the USB console). Just never wire one board's 5V/3.3V to the other.
 
 3. **GND must be shared** — the TX/RX signals are referenced to ground. Without a shared GND, UART will not work.
 
@@ -74,20 +77,25 @@ Flipper GPIO Header (top view, pin 1 on left):
   1   0   3   0   9   10  2   3   8
 ```
 
-- **Pin 13 = PA9 = USART1_TX** → connect to Heltec **GPIO44** (bottom row "RX" labeled pad)
-- **Pin 14 = PA10 = USART1_RX** → connect to Heltec **GPIO43** (bottom row "TX" pad)
+- **Pin 13 = PA9 = USART1_TX** → connect to Heltec **GPIO7** (Serial module RX)
+- **Pin 14 = PA10 = USART1_RX** → connect to Heltec **GPIO6** (Serial module TX)
 - **Pin 8 or 18 = GND** → connect to Heltec GND
+
+> The Flipper side is fixed by the STM32 — USART1 is always pins 13/14. Only the **Heltec-side**
+> pins moved (off 43/44 onto 6/7); do **not** use the pads labeled "TX"/"RX" on the Heltec.
 
 ---
 
 ## Confirmed GPIO Pin Status (Heltec V3, Meshtastic 2.7.x)
 
-Determined from Meshtastic 2.7.15 boot log analysis:
+The GhostMesh UART link uses the Serial module on **GPIO7 (RX) / GPIO6 (TX)**. GPIO43/44 are deliberately avoided — see the CP2102 note in the Connection Table.
 
-| GPIO | Status | Claimed by |
-|------|--------|-----------|
-| 43 | USED — safe for UART1 TX output | UART0 TX (shared output works) |
-| 44 | UNAVAILABLE for UART1 RX | UART0 RX — conflict kills receive |
+| GPIO | Status for GhostMesh | Claimed by |
+|------|---------------------|-----------|
+| **7** | **USED — Serial module RX** (Flipper TX lands here) | GhostMesh |
+| **6** | **USED — Serial module TX** (Flipper RX reads here) | GhostMesh |
+| 43 | AVOID — CP2102 clamps it on battery | UART0 TX / CP2102 USB console (debug only) |
+| 44 | AVOID — CP2102 clamps it on battery | UART0 RX / CP2102 USB console (debug only) |
 | 41 | UNAVAILABLE | I2C bus 2 SDA (`i2cInit: sda=41 scl=42`) |
 | 42 | UNAVAILABLE | I2C bus 2 SCL |
 | 17 | UNAVAILABLE | I2C bus 1 SDA (OLED) |
@@ -96,27 +104,27 @@ Determined from Meshtastic 2.7.15 boot log analysis:
 | 19 | UNAVAILABLE | USB D- (ESP32-S3 native USB) |
 | 20 | UNAVAILABLE | USB D+ |
 | 1 | UNAVAILABLE | Battery ADC |
-| **7** | **FREE — confirmed working** | Nothing — UART1 RX works cleanly |
+
+> GPIO43/44 still carry the Meshtastic USB console over the CP2102 — fine for flashing/debug
+> over USB, just not usable as the Flipper link on battery.
 
 ---
 
 ## End-to-End Verification
 
-Verified 2026-05-03 using Python `pyserial` on Windows:
+**Confirmed working 2026-07-01**, GhostMesh FAP ↔ Heltec on **battery** (no USB):
 
-```python
-import serial, time
-s = serial.Serial('COM3', 115200, timeout=2)
-time.sleep(1)
-s.write(b'CHECKIN OK\n')
-s.close()
-```
+- FAP reaches `RDY` and shows the node's battery `%` — the `want_config`/`config_complete` handshake completes over the Serial module PROTO stream on GPIO7/6.
+- TX (Flipper OK button → mesh) and RX (incoming mesh text in the status bar) both work.
+- The link holds steadily on battery power alone — the deployable configuration.
 
-- Heltec OLED **ChUtil** increased from 0% → 6% confirming LoRa radio transmitted
-- Echo bytes returned confirming GPIO7 RX → Meshtastic serial module → GPIO43 TX path alive
-- Flipper TX loopback (pin 13 → pin 14) confirmed Flipper UART bridge works in both directions
+Diagnostic tests that isolated the earlier failure (kept here as a reference troubleshooting ladder):
 
-**To fully verify mesh delivery end-to-end**, a second Meshtastic node (any Heltec V3 + battery + 915 MHz antenna + phone) will receive "CHECKIN OK" in the Meshtastic app Messages view when the Python script or FAP sends it.
+- **Flipper loopback** — GPIO → USB-UART Bridge, jumper pin 13 → pin 14, PuTTY echoes typed characters (and stops when the jumper is pulled). Confirms the Flipper's USART1 (pins 13/14) works.
+- **Node serial** — `client.meshtastic.org` → Serial over the Heltec's USB (CP2102) connects and reads the node. Confirms the node's PROTO/StreamAPI is healthy.
+- **The tell:** the web client would connect over the Heltec's *own USB* but not *through the Flipper* on 43/44 while on battery — the CP2102-clamp signature that drove the move to GPIO6/7.
+
+**To verify mesh delivery**, a second Meshtastic node (any Heltec V3 + battery + 915 MHz antenna + phone) receives GhostMesh's sent message in the Meshtastic app Messages view.
 
 ---
 
@@ -261,8 +269,9 @@ Coin vibration motor (haptic alert — incoming messages):
 
 | Symptom | Likely Cause | Fix |
 |---------|-------------|-----|
-| No bytes received by Flipper | TX/RX reversed | Swap the TX and RX wires |
+| Stuck on `...`, connects only when Heltec is on USB power | Wired to GPIO43/44 — CP2102 clamps them on battery | Move the Heltec-side wires to **GPIO7 (RX) / GPIO6 (TX)** |
+| Stuck on `...` on battery even on 6/7 | Serial module off, wrong mode, or wrong pins | Meshtastic → Serial: enabled, mode **PROTO**, RX **7**, TX **6**, 115200, override-console OFF |
+| No bytes received by Flipper | TX/RX reversed | Swap the TX and RX wires (Flipper 13→Heltec 7, Flipper 14→Heltec 6) |
 | Byte counts increase but all garbage | Baud mismatch | Verify both sides at 115200 |
 | No data at all | Missing GND | Confirm GND wire is connected |
-| Heltec not responding | Serial module disabled | Enable serial in Meshtastic app |
 | Flipper app shows UART ERROR | UART already acquired | Ensure no other Flipper app is using USART1 |

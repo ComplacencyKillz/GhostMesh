@@ -8,28 +8,29 @@ Validate the hardware path and PROTO protocol connection between the Flipper Zer
 
 ## Confirmed Working Configuration
 
-Verified 2026-05-05.
+Verified on battery 2026-07-01.
 
 | Parameter | Value |
 |-----------|-------|
-| Flipper TX wire | Pin 13 (U_TX) → Heltec **GPIO44** (bottom row, "RX" labeled pad) |
-| Flipper RX wire | Pin 14 (U_RX) → Heltec **GPIO43** (bottom row, "TX" labeled pad) |
+| Flipper TX wire | Pin 13 (U_TX) → Heltec **GPIO7** (Serial module RX) |
+| Flipper RX wire | Pin 14 (U_RX) → Heltec **GPIO6** (Serial module TX) |
 | GND | Flipper GND → Heltec GND |
-| Protocol | Meshtastic PROTO via PhoneAPI on UART0 |
+| Protocol | Meshtastic PROTO via the **Serial module** (StreamAPI) |
 | Baud | 115200 |
-| Meshtastic serial module | Not used — leave at defaults or disabled |
+| Meshtastic serial module | **Required** — enabled, mode PROTO, RX 7, TX 6, 115200, override-console OFF |
 
-> GhostMesh uses the PhoneAPI on UART0, not the Meshtastic serial module. No serial module configuration is required or relevant.
+> GhostMesh uses the Serial module in PROTO mode on GPIO7/6 — **not** UART0/GPIO43-44. The CP2102 USB bridge clamps 43/44 on battery, so that path only worked on USB power. Configure the Serial module (best over the web client on USB — Bluetooth config screens time out).
 
 ---
 
 ## Pre-Test Checklist
 
-- [ ] Flipper U_TX (pin 13) → Heltec **GPIO44** ("RX" labeled pad, UART0 RX)
-- [ ] Flipper U_RX (pin 14) → Heltec **GPIO43** ("TX" labeled pad, UART0 TX)
+- [ ] Flipper U_TX (pin 13) → Heltec **GPIO7** (Serial module RX)
+- [ ] Flipper U_RX (pin 14) → Heltec **GPIO6** (Serial module TX)
 - [ ] GND connected between both boards
 - [ ] No 5V or 3.3V shared between boards
-- [ ] Heltec powered from its own battery
+- [ ] **Serial module configured**: enabled, PROTO, RX 7, TX 6, 115200, override-console OFF
+- [ ] Heltec powered from its own battery (USB out — the deployable case)
 - [ ] Flipper powered from its own battery
 - [ ] Meshtastic running on Heltec (visible in phone app with battery %)
 - [ ] Second Meshtastic node powered and in range (for full end-to-end tests)
@@ -53,16 +54,16 @@ Verified 2026-05-05.
 
 ## Test 2: Heltec TX → Flipper RX (boot log)
 
-**Goal:** Confirm the GPIO43 → Flipper RX → PuTTY path is alive.
+**Goal:** Confirm the GPIO6 (Serial module TX) → Flipper RX → PuTTY path is alive.
 
 **Steps:**
-1. Reconnect wires (GPIO44 and GPIO43)
+1. Reconnect wires (Flipper 13 → GPIO7, Flipper 14 → GPIO6)
 2. Enable PuTTY session logging: **Session → Logging → All session output → `log.txt`**
 3. Connect PuTTY to the Flipper COM port at 115200
 4. Unplug and replug the Heltec battery while PuTTY is connected
 5. Open `log.txt`
 
-**Pass criteria:** ESP32 boot ROM messages and Meshtastic startup log appear in the file. This confirms the GPIO43 → Flipper RX direction is working.
+**Pass criteria:** ESP32 boot ROM messages and Meshtastic startup log appear in the file. This confirms the GPIO6 (Serial module TX) → Flipper RX direction is working. (Note: raw ESP boot-ROM text comes out on UART0/GPIO43 regardless of config; the *Meshtastic* PROTO stream is what should be on GPIO6.)
 
 ---
 
@@ -148,9 +149,12 @@ Verified 2026-05-05.
 
 | Symptom | Likely Cause | Resolution |
 |---------|-------------|-----------|
-| `PROTO:...` never becomes `PROTO:RDY` | Meshtastic phone app connected via BLE and consuming PhoneAPI | Close Meshtastic app on phone, restart FAP |
-| `PROTO:...` stuck — no handshake | Wire not connected to GPIO44, or bad solder joint | Check Flipper TX → GPIO44 connection |
-| Boot log appears (Test 2) but nothing received in FAP | Flipper TX → GPIO44 path broken | Verify GPIO44 wire; try Test 1 loopback first |
+| `PROTO:...` connects only when the Heltec is on **USB power** | Wired to GPIO43/44 — the CP2102 clamps those on battery | **Move the Heltec-side wires to GPIO7 (RX) / GPIO6 (TX)** and set the Serial module to PROTO on 7/6 |
+| `PROTO:...` never becomes `PROTO:RDY` on battery | Serial module off / wrong mode / wrong pins | Web client over USB → Serial: enabled, PROTO, RX 7, TX 6, 115200, override-console OFF |
+| `PROTO:...` never becomes `PROTO:RDY` | Meshtastic phone app connected via BLE and holding the StreamAPI | Disconnect the Meshtastic app / turn off phone BLE, restart FAP |
+| `PROTO:...` stuck — no handshake | Wire not connected to GPIO7, or bad solder joint | Check Flipper TX (pin 13) → GPIO7 connection |
+| Boot log appears (Test 2) but nothing received in FAP | Flipper TX → GPIO7 path broken, or Serial module not on 7/6 | Verify GPIO7 wire and Serial-module pins; try Test 1 loopback first |
+| Isolating node vs Flipper | — | Web client over the Heltec's own USB connects but the FAP won't = CP2102 clamp / wire; move to 6/7 |
 | `PROTO:RDY` shows but OK does nothing | Profile screen still selected (need to pick a profile first, then OK sends from message screen) | Select profile with OK, then navigate messages |
 | Message not appearing on second node | Nodes out of range, wrong channel, or ChUtil at airtime limit | Bring nodes closer, confirm LongFast channel |
 | Custom YAML profiles not showing | File missing, wrong path, or parse error | Confirm path `SD:/apps_data/ghostmesh/profiles.yaml`; check file has valid `name:` and `- ` lines |

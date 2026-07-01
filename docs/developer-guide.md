@@ -206,7 +206,7 @@ can:
 - Listen for incoming mesh packets and react
 - Read local hardware (I2C sensors, GPIOs) on a timer
 - Broadcast mesh packets autonomously
-- Send ASCII sentinel strings to the Flipper over UART0
+- Send ASCII sentinel strings to the Flipper over the Serial module UART (GPIO6/7)
 
 The FAP parses both PROTO frames and ASCII sentinels on the same UART stream,
 distinguishing them by the `0x94 0xC3` frame header. Anything without that header is

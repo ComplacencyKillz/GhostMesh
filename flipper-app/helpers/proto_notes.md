@@ -9,11 +9,13 @@ GhostMesh uses a hand-coded minimal protobuf encoder/decoder in `proto_mode.c/.h
 ## Protocol Path
 
 ```
-Flipper USART1 TX (pin 13)  →  Heltec GPIO44 (UART0 RX)  →  PhoneAPI
-Heltec GPIO43 (UART0 TX)    →  Flipper USART1 RX (pin 14) →  proto_mode decoder
+Flipper USART1 TX (pin 13)     →  Heltec GPIO7 (Serial module RX)  →  Meshtastic StreamAPI
+Heltec GPIO6 (Serial module TX) →  Flipper USART1 RX (pin 14)      →  proto_mode decoder
 ```
 
-GhostMesh connects to the **PhoneAPI on UART0**, not to the Meshtastic SerialModule. This is the same interface used by the Meshtastic phone app and Python library over USB. No Meshtastic serial module configuration is required.
+GhostMesh talks to the Meshtastic **Serial module in PROTO mode** on free GPIO pins (**RX = 7, TX = 6**, 115200 baud). PROTO mode exposes the same StreamAPI protobuf stream — `ToRadio`/`FromRadio`, `want_config`/`config_complete` — used by the phone app and Python library. It **requires** Meshtastic config: *Module Config → Serial* → enabled, mode **PROTO**, RX **7**, TX **6**, baud **115200**, *override console serial port* **OFF**.
+
+> **Why not UART0 / GPIO43-44 (the original path)?** Earlier builds connected to the PhoneAPI on UART0 (GPIO43/44). That path is abandoned: on the Heltec V3 the **CP2102 USB-UART bridge shares GPIO43/44**, and when the Heltec runs on battery (USB unplugged) the *unpowered* CP2102 clamps those lines — so the Flipper can't drive them and the link only worked while the Heltec was USB-powered (useless for field deployment). Free pins 6/7 have no CP2102 on them, so PROTO works on pure battery. See the closing section for the full story.
 
 ---
 
@@ -26,7 +28,9 @@ Node sends  → FromRadio { config_complete_id: 42 }  ← FAP sets connected=tru
 FAP ready   → ToRadio { packet: MeshPacket { ... } } can now be sent
 ```
 
-The Flipper title bar shows `...` during handshake and `RDY` when connected.
+The Flipper title bar shows `...` during handshake, then `RDY` when connected. It switches to the local node's battery `%` (or `PWR` when the node reports `battery_level == 101`, i.e. on external power) as soon as the battery level is known — see the NodeInfo note under Telemetry.
+
+The `want_config` request is re-sent every ~2 s until `config_complete` arrives (`proto_mode_request_config` from the main loop), so a request the node misses at startup self-heals instead of hanging on `...`.
 
 ---
 
@@ -50,8 +54,17 @@ print(mp.SerializeToString().hex())   # → 15 ff ff ff ff (field 2, fixed32)
 |-------|--------|------|
 | `packet` (MeshPacket) | **2** | bytes |
 | `my_info` (MyNodeInfo) | **3** | bytes — `MyNodeInfo.my_node_num` = field 1, varint (local node ID) |
+| `node_info` (NodeInfo) | **4** | bytes — see NodeInfo below (decoded for local battery on connect) |
 | `config_complete_id` | **7** | varint |
 | `rebooted` | 8 | varint (bool) |
+
+### NodeInfo (FromRadio field 4)
+| Field | Number | Wire | Notes |
+|-------|--------|------|-------|
+| `num` | 1 | varint | node ID — matched against `my_node_num` to isolate the local node |
+| `device_metrics` (DeviceMetrics) | **6** | bytes | same `DeviceMetrics` as Telemetry; `battery_level` = field 1 |
+
+> The node sends its own `NodeInfo` during the `want_config` handshake, so `decode_node_info` pulls the local `battery_level` out of it and shows the `%` the instant we connect — otherwise the title would sit on `RDY` until the next live telemetry broadcast (which can be 30 min out on a long device-metrics interval).
 
 ### MeshPacket
 | Field | Number | Wire | Notes |
@@ -110,11 +123,17 @@ print(mp.SerializeToString().hex())   # → 15 ff ff ff ff (field 2, fixed32)
 ## Known Limitations
 
 - `TEXT_MESSAGE_APP`, `TELEMETRY_APP`, and `POSITION_APP` are decoded and delivered via callbacks (`proto_mode_set_telemetry_callback` / `proto_mode_set_position_callback`). The app must register those callbacks and surface the data in the UI / CSV. Admin and other portnums are still skipped.
-- Sender display uses the last 4 hex digits of the node ID (`from & 0xFFFF`), e.g. `f69c: Hello`. Long names would require parsing a `NodeInfo` FromRadio frame, which arrives during the config exchange but is currently not stored.
-- The config exchange (~47 frames, ~1 KB) is received and processed by the UART callback state machine. The first 46 frames are decoded and discarded; only `config_complete_id` matters.
+- Sender display uses the last 4 hex digits of the node ID (`from & 0xFFFF`), e.g. `f69c: Hello`. `NodeInfo` frames are now parsed (`decode_node_info`) but only the local node's `device_metrics.battery_level` is extracted — the `User.long_name` is still not stored, so long sender names are not shown.
+- The config exchange (~47 frames, ~1 KB) is received and processed by the UART callback state machine. Most frames are decoded and discarded; `my_info` (local node ID), the local `node_info` (battery), and `config_complete_id` are the ones that matter.
 
 ---
 
-## Why Not the SerialModule PROTO Mode?
+## Why the Serial Module PROTO Mode (and why UART0 was abandoned)
 
-The Meshtastic SerialModule PROTO mode (configured via Module Config → Serial in the app) was tested and does not work reliably in Meshtastic 2.7.15 via GPIO UART. Even the official meshtastic Python library times out when connecting through the SerialModule path. The PhoneAPI on UART0 (GPIO43/44) is reliable and is the correct path for full-featured PROTO clients.
+GhostMesh now uses the Meshtastic **Serial module in PROTO mode** on GPIO7 (RX) / GPIO6 (TX). An earlier note here claimed the Serial module PROTO mode "does not work reliably" and that the PhoneAPI on UART0 (GPIO43/44) was the correct path. **That conclusion was a misdiagnosis** — the real culprit was the pins, not the module:
+
+- On the Heltec V3 the **CP2102 USB-UART bridge is wired to UART0 (GPIO43/44)** — the same pads the Flipper was connected to.
+- The CP2102 is powered from USB. With the Heltec on **battery** (USB unplugged), the unpowered CP2102 **clamps GPIO43/44 to ground**, so nothing external can drive a valid signal into the ESP32. The PhoneAPI link only ever worked while the Heltec was plugged into USB power — and the Serial module PROTO experiments that "failed" had *also* been configured on 43/44, so they hit the exact same clamp.
+- **Confirmed 2026-07-01:** plugging the Heltec into any USB power (even a dumb charger) made the old 43/44 link connect instantly; on battery it never did. Moving the Serial module to **free pins (6/7), which have no CP2102 on them**, makes PROTO connect on pure battery — the deployable configuration.
+
+The `want_config` / `config_complete` handshake and everything else in this document is identical either way; only the Heltec-side pins and the required Serial-module config changed. The Flipper side is unchanged (USART1, pins 13/14).

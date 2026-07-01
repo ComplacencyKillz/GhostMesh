@@ -2,9 +2,11 @@
 
 ## What GhostMesh Uses
 
-GhostMesh communicates with the Heltec node using Meshtastic's **PROTO serial protocol** via the **PhoneAPI on UART0 (GPIO43/44)**. This is the same interface used by the official Meshtastic Python library and the Meshtastic phone app over USB.
+GhostMesh communicates with the Heltec node using Meshtastic's **PROTO serial protocol**, served by the Meshtastic **Serial module in PROTO mode** on **GPIO7 (RX) / GPIO6 (TX)**. PROTO mode exposes the same StreamAPI protobuf stream the official Meshtastic Python library and phone app use.
 
-No special Meshtastic serial module configuration is required. The PhoneAPI is permanently available on UART0 regardless of the serial module settings in the Meshtastic app.
+This **requires** Serial-module config (*Module Config → Serial*: enabled, mode PROTO, RX 7, TX 6, 115200, override-console OFF) — see [meshtastic-setup.md](meshtastic-setup.md).
+
+> **Not UART0 / GPIO43-44.** Earlier builds used the PhoneAPI on UART0, but the CP2102 USB bridge shares those pins and clamps them when the Heltec runs on battery, so that link only worked on USB power. The Serial module on free pins 6/7 works on pure battery. See [wiring.md](wiring.md) for the full CP2102 story.
 
 ---
 
@@ -26,7 +28,7 @@ All packets use Meshtastic's binary framing:
 
 On startup the FAP sends a `ToRadio { want_config_id: 42 }` packet. The node responds with ~47 `FromRadio` configuration frames (node info, channels, config, module config, known nodes, file manifest) followed by `FromRadio { config_complete_id: 42 }`. Once that is received the connection is ready and text messages can be sent.
 
-The Flipper title bar shows `...` during the handshake and `RDY` once connected.
+The Flipper title bar shows `...` during the handshake (the request re-sends every ~2 s until answered), `RDY` once connected, then the node's battery `%` (or `PWR` on external power) once the level is read from the config exchange.
 
 ---
 
@@ -46,6 +48,8 @@ Determined from the meshtastic Python library (v2.7.8) by serializing known mess
 | Field | Number | Wire type | Notes |
 |-------|--------|-----------|-------|
 | `packet` (MeshPacket) | 2 | bytes | incoming mesh message |
+| `my_info` (MyNodeInfo) | 3 | bytes | `my_node_num` (field 1) = local node ID, for filtering |
+| `node_info` (NodeInfo) | 4 | bytes | local node's `device_metrics` (field 6) → battery `%` on connect |
 | `config_complete_id` | 7 | varint | signals handshake complete |
 | `rebooted` | 8 | varint (bool) | node just rebooted |
 
@@ -76,11 +80,11 @@ Determined from the meshtastic Python library (v2.7.8) by serializing known mess
 
 ---
 
-## What the Meshtastic App Serial Module Setting Does
+## The Meshtastic App Serial Module Setting
 
-The Meshtastic app's **Module Config → Serial** settings configure a separate *SerialModule* UART on the GPIO pins you specify. GhostMesh does **not** use the SerialModule. GhostMesh connects directly to UART0 (GPIO43/44), bypassing the SerialModule entirely.
+The Meshtastic app's **Module Config → Serial** settings put a *SerialModule* UART on the GPIO pins you specify. **GhostMesh depends on this** — it must be set to PROTO mode on GPIO7 (RX) / GPIO6 (TX) at 115200 with *override console* off. Without it, the Flipper link is dead.
 
-You can leave the serial module at its default settings or disable it — it has no effect on GhostMesh operation.
+(This reverses earlier docs that said the SerialModule "has no effect on GhostMesh." That held only while GhostMesh used the UART0 PhoneAPI — which was abandoned because the CP2102 clamps GPIO43/44 on battery.)
 
 ---
 

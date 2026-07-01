@@ -66,6 +66,12 @@ bool proto_mode_is_active(const ProtoMode* proto);
 // completed. Sends are blocked until this returns true.
 bool proto_mode_is_connected(const ProtoMode* proto);
 
+// Re-send the want_config handshake request. The first request is sent
+// automatically at alloc; call this periodically while proto_mode_is_connected()
+// is still false so a missed or dropped request self-heals — the node isn't
+// always listening the instant the FAP launches. This is what the phone app does.
+void proto_mode_request_config(ProtoMode* proto);
+
 // The local node's own ID (MyNodeInfo.my_node_num), learned during the config
 // handshake. Returns 0 until known. Use it to filter telemetry/position to the
 // locally-attached node and ignore other mesh nodes' metrics.

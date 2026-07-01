@@ -293,6 +293,7 @@ int32_t ghostmesh_app(void* p) {
     // the draw callback never reads a dead stack frame.
     const char* history_ptrs[RX_HISTORY_MAX];
     uint8_t scroll_tick = 0;
+    uint8_t config_retry_tick = 0;
 
     MainViewState state = {0};
     state.visible_rows  = VISIBLE_ROWS;
@@ -304,6 +305,17 @@ int32_t ghostmesh_app(void* p) {
         state.scroll_tick      = scroll_tick++;
         state.screen           = app->screen;
         state.uart_active      = proto_mode_is_connected(app->proto);
+
+        // Handshake self-heal: the initial want_config (sent once at alloc) is
+        // lost if the node isn't listening the instant the FAP launches. Re-request
+        // every ~2s until connected — mirrors what the Meshtastic phone app does.
+        if(state.uart_active) {
+            config_retry_tick = 0;
+        } else if(++config_retry_tick >= 10) {  // 10 ticks * 200ms = 2s
+            proto_mode_request_config(app->proto);
+            config_retry_tick = 0;
+        }
+
         state.battery_level    = app->rx_battery;
         state.battery_valid    = app->battery_valid;
         state.env_valid        = app->env_valid;
