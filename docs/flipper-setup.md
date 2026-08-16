@@ -49,7 +49,7 @@ The built FAP will be in `flipper-app/dist/`.
 
 ### Option 1: Copy via qFlipper or SD card
 
-1. Copy `flipper-app/dist/ghostmesh.fap` to your SD card at `apps/Tools/GhostMesh.fap`
+1. Copy `flipper-app/dist/ghostmesh.fap` to your SD card at `apps/Tools/ghostmesh.fap`
 2. On the Flipper: **Apps → Tools → GhostMesh**
 
 ### Option 2: Deploy via USB with ufbt
@@ -104,7 +104,7 @@ ufbt update
 | `ufbt: command not found` | pip install path not in PATH | Use `python -m ufbt` or add pip scripts dir to PATH |
 | Compile error: unknown type | SDK version mismatch | Run `ufbt update` to refresh the SDK |
 | `UART acquire failed` at runtime | Another app holds USART1 | Exit any other UART app on the Flipper before running GhostMesh |
-| FAP not visible in Apps menu | Wrong SD card path | Confirm the FAP is at `SD:/apps/Tools/GhostMesh.fap` |
+| FAP not visible in Apps menu | Wrong SD card path | Confirm the FAP is at `SD:/apps/Tools/ghostmesh.fap` |
 | Flipper reboots on FAP launch | Stack overflow | Increase `stack_size` in `application.fam` (currently `2 * 1024`) |
 
 ---

@@ -118,7 +118,7 @@ ghostmesh/
 │   │   ├── uart_helper.h/.c    USART1 init and async RX/TX
 │   │   └── proto_notes.md      Protocol implementation reference
 │   └── views/
-│       └── main_view.h/.c      Three-screen UI
+│       └── main_view.h/.c      Four-screen UI (Profile/Messages/RX history/Sensors)
 ├── examples/
 │   └── profiles.yaml           Documented custom profile template
 ├── tests/
@@ -148,7 +148,7 @@ See [docs/opsec.md](docs/opsec.md) for the full encryption picture, private chan
 
 ## Roadmap
 
-Current version: **v0.5** — PROTO mode full client, SD logging, RX history, marquee scroll.
+Current version: **v0.8** — PROTO client, SD logging, RX history, marquee scroll, plus BME280 environmental telemetry and BN-220 GPS position on the Sensors screen, and battery % in the title bar. (Phase 6 security baseline skipped; Phase 9 MAX17048 wired but not yet read.)
 
 Planned phases include GPS + wardriving, environmental telemetry, tamper detection, dead-drop surveillance, remote payload execution, and UART encryption. See [docs/roadmap.md](docs/roadmap.md).
 

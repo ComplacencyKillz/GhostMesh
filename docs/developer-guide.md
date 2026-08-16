@@ -13,7 +13,7 @@ helpers/
   profile_manager.c/.h — built-in profiles, SD card YAML loader
   log_manager.c/.h   — SD card CSV append
 views/
-  main_view.c/.h     — three-screen UI, marquee logic, ViewPort callbacks
+  main_view.c/.h     — four-screen UI, marquee logic, ViewPort callbacks
 ```
 
 ---
@@ -73,9 +73,10 @@ snapshot, and calls `main_view_update()` each tick.
 
 ```c
 typedef enum {
-    GhostMeshScreenProfile,    // profile picker
-    GhostMeshScreenMessages,   // canned message list
-    GhostMeshScreenRxHistory,  // last 16 received messages
+    GhostMeshScreenProfile,    // profile picker on launch
+    GhostMeshScreenMessages,   // canned message list; long-press Down → history, Up → sensors
+    GhostMeshScreenRxHistory,  // last 16 received messages; BACK returns
+    GhostMeshScreenSensors,    // temp/humidity/pressure + GPS; BACK returns
 } GhostMeshScreen;
 ```
 
@@ -88,8 +89,8 @@ input in the `on_input` callback in `ghostmesh.c`.
 app state directly. Navigation keys fire on `InputTypePress`, `InputTypeRepeat`, and
 `InputTypeLong`. Action keys fire on `InputTypePress` only.
 
-Long-press Down opens the RX history screen. This pattern can be extended for future
-screens.
+From the Message screen, long-press Down opens the RX history screen and long-press Up opens
+the Sensors screen. This pattern can be extended for future screens.
 
 ---
 
@@ -115,8 +116,9 @@ packet sets `connected = true`.
 
 A byte-level state machine in `on_rx_byte` (proto_mode.c) synchronizes on the
 `0x94 0xC3` magic bytes, reads the 2-byte length, accumulates the payload, then
-decodes the FromRadio protobuf. Only `TEXT_MESSAGE_APP` packets surface to the
-application via the `ProtoRxCallback`.
+decodes the FromRadio protobuf. `TEXT_MESSAGE_APP` packets surface via the `ProtoRxCallback`;
+`TELEMETRY_APP` (67) and `POSITION_APP` (3) surface via the optional `ProtoTelemetryCallback`
+and `ProtoPositionCallback`.
 
 ### Adding a new FromRadio packet type
 
@@ -195,9 +197,10 @@ Each phase gets its own branch: `phase-N-short-description`. All changes for tha
 land on the branch before merging to main. The roadmap (`docs/roadmap.md`) tracks what
 each phase covers and what requires custom Meshtastic firmware vs. FAP-only changes.
 
-Phases 6+ introduce custom Meshtastic modules on the Heltec. These live in a separate
-`heltec-firmware/` directory (to be created in Phase 9) and build with PlatformIO against
-the Meshtastic firmware repo.
+Phases 9+ introduce custom Meshtastic modules on the Heltec. Their source lives in the
+`heltec-firmware/` directory in this repo (module `.cpp/.h` plus build notes). To build,
+drop them into a checkout of the Meshtastic firmware at the pinned tag and compile with
+PlatformIO for the `heltec-v3` environment. See `heltec-firmware/README.md` for the steps.
 
 ### The Heltec module system
 
@@ -206,11 +209,13 @@ can:
 - Listen for incoming mesh packets and react
 - Read local hardware (I2C sensors, GPIOs) on a timer
 - Broadcast mesh packets autonomously
-- Send ASCII sentinel strings to the Flipper over the Serial module UART (GPIO6/7)
 
-The FAP parses both PROTO frames and ASCII sentinels on the same UART stream,
-distinguishing them by the `0x94 0xC3` frame header. Anything without that header is
-treated as a sentinel (`TAMPER\n`, `PROX\n`, `JAMMER\n`, `IR_ARM\n`, etc.).
+Sensor events (tamper, proximity, jammer, etc.) are broadcast as ordinary **mesh packets**
+over LoRa — typically a short text message such as `TAMPER`. They reach the Flipper as
+normal `FromRadio` PROTO frames on the existing GPIO6/7 link, so the FAP's PROTO decoder
+already handles them; there is no separate serial "sentinel" protocol. Broadcasting over the
+mesh (rather than the wire) is what lets a deployed backpack alert the operator when the
+Flipper is nowhere near it.
 
 ---
 

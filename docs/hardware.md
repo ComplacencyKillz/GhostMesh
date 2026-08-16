@@ -18,10 +18,9 @@ header into a breadboard-friendly form. Required for sensor connections.
 | U_TX | 13 | USART1 TX → Heltec GPIO7 (Serial module RX) |
 | U_RX | 14 | USART1 RX ← Heltec GPIO6 (Serial module TX) |
 | GND | 8 or 18 | Ground reference (shared with Heltec) |
-| PB2 | 15 | Slide switch (arming gate) |
-| PB3 | 16 | SW-520D tilt switch (tamper detection) |
-| PA7 | 5 | Active buzzer via PN2222 transistor |
-| PA6 | 6 | Vibration motor via AO3400 MOSFET + 1N4007 flyback diode |
+| PB2 | 6 | Slide switch (arming gate) |
+| PA7 | 2 | Active buzzer via PN2222 transistor |
+| PA6 | 3 | Vibration motor via AO3400 MOSFET + 1N4007 flyback diode |
 
 ---
 
@@ -67,7 +66,7 @@ custom Meshtastic modules.
 | 18 | ❌ I2C bus 1 SCL | OLED display (hardwired) |
 | 19 | ❌ USB D- | ESP32-S3 native USB |
 | 20 | ❌ USB D+ | ESP32-S3 native USB |
-| 21 | ❌ OLED reset | Hardwired OLED reset — NOT free. Reassign HC-SR04 trigger elsewhere (e.g. 38/39/40) |
+| 21 | ❌ OLED reset | Hardwired OLED reset — NOT free (HC-SR04 trigger uses GPIO38 instead) |
 | 26 | ✅ Free (role unconfirmed) | NOT Vext — Vext is GPIO36. Verify before use |
 | 33 | ✅ Free — confirmed | GPS UART1 TX (Heltec → BN-220 RX) |
 | 34 | ✅ Free — confirmed | GPS UART1 RX (BN-220 TX → Heltec) |
@@ -104,12 +103,12 @@ custom Meshtastic modules.
 
 | Component | Interface | Flipper Pin | Phase |
 |-----------|-----------|-------------|-------|
-| Slide switch — operator arming gate | Digital GPIO | 15 (PB2) | 10 |
-| Active buzzer | Digital GPIO via PN2222 | 5 (PA7) | 10 |
-| Coin vibration motor (3V) | Digital GPIO via AO3400 | 6 (PA6) | 10 |
-| AO3400 N-MOSFET (SOT-23) | — | Gate: pin 6 | 10 |
+| Slide switch — operator arming gate | Digital GPIO | 6 (PB2) | 10 |
+| Active buzzer | Digital GPIO via PN2222 | 2 (PA7) | 10 |
+| Coin vibration motor (3V) | Digital GPIO via AO3400 | 3 (PA6) | 10 |
+| AO3400 N-MOSFET (SOT-23) | — | Gate: pin 3 (PA6) | 10 |
 | 1N4007 diode | — | Across motor | 10 |
-| PN2222 NPN transistor | — | Base: pin 5 | 10 |
+| PN2222 NPN transistor | — | Base: pin 2 (PA7) | 10 |
 
 ### From Elegoo Super Starter Kit (relevant components)
 
@@ -159,9 +158,8 @@ I2C muxing), so all devices share the same bus with distinct addresses.
 
 ```
 Serial module — PROTO (GPIO7 RX / GPIO6 TX):   ← GhostMesh Flipper link
-  └── Meshtastic StreamAPI over the Serial module
-        ├── Flipper PROTO frames (ToRadio / FromRadio protobuf)
-        └── Heltec ASCII sentinels (TAMPER_LIGHT, PROX, JAMMER, IR_ARM, IR_SEND_n)  [future custom-firmware phases]
+  └── Meshtastic StreamAPI over the Serial module (ToRadio / FromRadio protobuf only)
+        └── Sensor alerts arrive here too — as FromRadio mesh packets, not a separate protocol
 
 UART0 (GPIO43 TX / GPIO44 RX):
   └── CP2102 USB console — flashing + debug over USB only
@@ -194,7 +192,7 @@ UART1 (GPIO34 RX / GPIO33 TX):
 └─────────────────────────────────────────────────────────────────┘
                               │ (when Flipper is connected)
                               │ UART 115200
-                              │ PROTO frames + ASCII sentinels
+                              │ PROTO frames (ToRadio / FromRadio)
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  OPERATOR (carried in the field)                                │

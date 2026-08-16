@@ -2,12 +2,12 @@
 
 ## Overview
 
-GhostMesh has three screens. You start at the Profile screen every time the app launches.
+GhostMesh has four screens. You start at the Profile screen every time the app launches.
 
 ```
-Profile screen  →[OK]→  Message screen  →[long Down]→  RX History screen
-                                         ←[BACK]←
-     ↑[BACK exits app]                       ↑[BACK returns to messages]
+Profile screen ─[OK]→ Message screen ─[long Down]→ RX History screen
+(BACK exits app)          │      ↑                   (BACK returns)
+                          └─[long Up]→ Sensors screen (BACK returns)
 ```
 
 ---
@@ -36,8 +36,9 @@ The first screen you see. Lists all loaded profiles (3 built-ins + up to 5 custo
 | BACK | Exit GhostMesh |
 
 **Status indicator (top right):**
-- `...` — handshake in progress (~3 seconds on startup)
-- `RDY` — connected to Meshtastic node, ready to send
+- `...` — handshake in progress (self-retries every ~2 s until the node answers)
+- `RDY` — connected to the Meshtastic node, ready to send
+- `77%` / `PWR` — the node's battery level once known (`PWR` = on external/USB power)
 
 Profile names longer than the display width marquee-scroll automatically.
 
@@ -66,6 +67,7 @@ The main operating screen. Shows the canned messages for the loaded profile.
 | OK | Send the highlighted message over the mesh |
 | BACK | Return to Profile screen |
 | Long-press DOWN | Open RX History screen (only when messages have been received) |
+| Long-press UP | Open Sensors screen (BME280 telemetry + GPS) |
 
 **Status bar (bottom):**
 - `TX:N  [OK] Send` — no messages received yet; shows TX byte count
@@ -104,6 +106,31 @@ Each entry shows the sender's node ID (last 4 hex digits), RSSI in dBm (when ava
 
 ---
 
+## Sensors Screen
+
+Opened with long-press Up from the Message screen. Shows the latest environmental telemetry and GPS position reported by the local Heltec node.
+
+```
+┌────────────────────────────┐
+│ Sensors               77%  │
+├────────────────────────────┤
+│ Temp:  23.4 C              │
+│ Humid: 41%                 │
+│ Press: 1013.2 hPa          │
+│ GPS 37.0432,-76.3263       │
+│ Alt: 27 m                  │
+└────────────────────────────┘
+```
+
+- Temp / Humid / Press come from the BME280 (Environment Telemetry). Shown once an `environment_metrics` packet has been received; blank until then.
+- The GPS line shows the last-known fix, or `GPS: no fix` before the node has a lock.
+
+| Button | Action |
+|--------|--------|
+| BACK | Return to Message screen |
+
+---
+
 ## SD Card Logging
 
 Every received message is automatically appended to a dated CSV file on the Flipper SD card:
@@ -112,14 +139,16 @@ Every received message is automatically appended to a dated CSV file on the Flip
 SD:/apps_data/ghostmesh/log_YYYYMMDD.csv
 ```
 
-**CSV columns:** `timestamp, node_id, message, rssi, snr`
+**CSV columns:** `timestamp, node_id, message, lat, lon, rssi, snr`
 
 Example:
 ```
-timestamp,node_id,message,rssi,snr
-2026-05-06T14:32:01,f69c,CHECKIN OK,-85,7.5
-2026-05-06T14:33:44,2f74,MOVING,-92,4.2
+timestamp,node_id,message,lat,lon,rssi,snr
+2026-05-06T14:32:01,f69c,CHECKIN OK,37.0432650,-76.3262981,-85,7.5
+2026-05-06T14:33:44,2f74,MOVING,,,-92,4.2
 ```
+
+`lat` / `lon` hold the local node's last-known GPS fix (degrees), or are left blank when there is no fix yet.
 
 A new file is created each day. The file header is written automatically on first creation.
 
@@ -129,7 +158,7 @@ A new file is created each day. The file header is written automatically on firs
 python tools/log_to_kml.py log_20260506.csv
 ```
 
-This generates `log_20260506.kml` which you can open in Google Earth or QGIS. Rows with `lat` and `lon` columns are plotted at their actual position (requires Phase 8 GPS integration). Rows without position are included as placemarks at 0,0 with a note.
+This generates `log_20260506.kml` which you can open in Google Earth or QGIS. Rows with `lat`/`lon` populated are plotted at their reported position; rows logged before a GPS fix have blank coordinates and are placed at 0,0 with a note.
 
 ---
 

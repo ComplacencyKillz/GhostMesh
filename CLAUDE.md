@@ -36,8 +36,8 @@ The Heltec backpack is designed to operate fully unattended. The Flipper is a li
 ### Core Wiring (3 wires)
 
 ```
-Flipper pin 13 (U_TX / PA9)  ──→  Heltec GPIO7  (Serial module RX)
-Flipper pin 14 (U_RX / PA10) ←──  Heltec GPIO6  (Serial module TX)
+Flipper pin 13 (U_TX / USART1 TX)  ──→  Heltec GPIO7  (Serial module RX)
+Flipper pin 14 (U_RX / USART1 RX)  ←──  Heltec GPIO6  (Serial module TX)
 Flipper GND                  ────  Heltec GND
 ```
 
@@ -69,9 +69,9 @@ Flipper GND                  ────  Heltec GND
 
 | Component | Interface | GPIO | Phase |
 |-----------|-----------|------|-------|
-| Slide switch (arming gate) | GPIO | pin 15 / PB2 | 10 |
-| Active buzzer via PN2222 | GPIO | pin 5 / PA7 | 10 |
-| Vibration motor via AO3400 + 1N4007 | GPIO | pin 6 / PA6 | 10 |
+| Slide switch (arming gate) | GPIO | pin 6 / PB2 | 10 |
+| Active buzzer via PN2222 | GPIO | pin 2 / PA7 | 10 |
+| Vibration motor via AO3400 + 1N4007 | GPIO | pin 3 / PA6 | 10 |
 
 ### I2C Bus Architecture (Heltec)
 
@@ -175,7 +175,7 @@ flipper-app/
 │   ├── log_manager.c/.h         — SD card CSV append
 │   └── proto_notes.md           — Protocol field number reference
 └── views/
-    └── main_view.c/.h           — Three-screen UI, marquee scrolling, ViewPort draw callback
+    └── main_view.c/.h           — Four-screen UI (Profile/Messages/RX history/Sensors), marquee scrolling, ViewPort draw callback
 ```
 
 ### Key Design Decisions
@@ -194,7 +194,7 @@ flipper-app/
 ### Logging
 
 - SD path: `/ext/apps_data/ghostmesh/log_YYYYMMDD.csv`
-- Fields: `timestamp, node_id, message, rssi, snr` (Phase 8 adds `lat, lon`)
+- Fields: `timestamp, node_id, message, lat, lon, rssi, snr`
 - Convert to KML: `python tools/log_to_kml.py log_YYYYMMDD.csv`
 
 ---
@@ -237,13 +237,20 @@ Use the **`/ghostmesh-website-access`** skill for deploy workflows. Use **`/bran
 
 ## Current Status and Roadmap
 
-**Stable: v0.5** — Phases 0–5 complete and merged to `main`.
+**Stable: v0.8** — Phases 0–5, 7, and 8 complete and merged to `main`. (Phase 6 security
+baseline was skipped; Phase 9 MAX17048 is wired but not yet read — see below.)
 
-Confirmed working (end-to-end hardware test, 2026-05-05):
+Confirmed working on hardware (Heltec on battery, no USB tether, 2026-07-01):
 - TX: Flipper OK → message appears on second Heltec node via mesh
 - RX: Incoming mesh message displayed in GhostMesh status bar
-- CSV logging, marquee scrolling, RSSI/SNR display, RX history (last 16)
+- CSV logging (`timestamp,node_id,message,lat,lon,rssi,snr`), marquee scroll, RSSI/SNR, RX history (16)
 - 3 built-in + up to 5 SD-loaded custom profiles
+- Phase 7: BME280 temp/humidity/pressure on the Sensors screen (long-press Up)
+- Phase 8: BN-220 GPS position (lat/lon/alt) on the Sensors screen + lat/lon in the CSV
+- Battery %: Heltec battery level in the title bar (…/RDY/%/PWR) via device_metrics (ADC source)
+
+**Not yet done:** Phase 6 (nuke/stealth/keys), Phase 9 (MAX17048 read — connector mismatch,
+parked; battery % uses the Heltec ADC), env-telemetry CSV columns, wardriving capture.
 
 **Branch strategy:** `main` = stable releases. `phase-N-description` = active development.
 
