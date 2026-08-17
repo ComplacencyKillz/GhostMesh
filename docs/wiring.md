@@ -58,14 +58,14 @@ I2C addresses: **BME280 = 0x76** (bus 2). The OLED (0x3C) is on bus 1 (GPIO17/18
 
 Plugged into the STEMMA QT hub via Qwiic (powered, address **0x36** on bus 2). **Not functional / untested** — the MAX17048's battery port is a 2.0 mm JST-PH but the Heltec cell uses a 1.25 mm JST, so the pack it's meant to measure can't be connected yet. Needs a connector adapter before it can read state-of-charge.
 
-### Heltec ↔ SW-520D Tilt Switch 🚧
+### Heltec ↔ SW-520D Tilt Switch ✅
 
 | Heltec | Tilt switch (wire) |
 |--------|--------------------|
 | GPIO2 | white |
 | GND | black |
 
-Two wires only — the ESP32 internal pull-up (enabled in the Detection Sensor config) replaces an external resistor. The switch is non-polarized. **Bring-up in progress — not yet reporting.**
+Two wires only — the ESP32 internal pull-up (enabled in the Detection Sensor config) replaces an external resistor. The switch is non-polarized. **Working** — broadcasts `TAMPER` over LoRa via the built-in Detection Sensor module. Requires a private channel; see the setup + gotchas in [meshtastic-setup.md](meshtastic-setup.md).
 
 ---
 
@@ -113,7 +113,7 @@ Numbers and labels match the Flipper case. The external UART is fixed by the STM
 | 33 / 34 | GPS TX / RX (UART1) ✅ |
 | 41 / 42 | I2C bus 2 — hub (BME280 0x76 ✅; MAX17048 0x36 on-bus, untested 🚧) |
 | 17 / 18 | I2C bus 1 — OLED (0x3C), hardwired |
-| 2 | Tilt switch 🚧 |
+| 2 | Tilt switch ✅ |
 | 4 / 5 / 38 / 47 / 48 | Planned sensors ⬜ |
 | 8–14 | SX1262 LoRa SPI + IRQ/RST/BUSY |
 | 19 / 20 | Native USB D− / D+ |

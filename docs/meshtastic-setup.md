@@ -56,10 +56,22 @@ Using the wrong region with a mismatched antenna risks poor RF performance.
 ### Channel
 
 The default **LongFast** channel uses a publicly known key (`AQ==`) — any Meshtastic
-node can read your traffic. For operational use, create a private channel with a random
-key. See [docs/opsec.md](opsec.md) for the full setup procedure.
+node can read your traffic. For operational use, create a private channel (custom name +
+random key). See [docs/opsec.md](opsec.md) for the full setup procedure.
 
-For basic testing, the default channel is fine.
+> **Two gotchas when moving off the default channel:**
+> 1. **The Detection Sensor module will not broadcast on the default/public channel** —
+>    Meshtastic blocks it by design (`isDefaultChannel` gate). Tamper alerts only send on a
+>    non-default primary channel. Renaming off "LongFast" is enough to unblock it; a random
+>    key adds actual privacy.
+> 2. **After renaming a channel, both nodes must share a Frequency Slot.** Slot `0` =
+>    auto-derived from the channel *name*, so a rename can move one node to a new slot (e.g.
+>    slot 20 → 64, i.e. 906.875 → 917.875 MHz). Two nodes on different slots can't hear each
+>    other — messages show "undelivered" even with identical name + key. Fix: set **Frequency
+>    Slot = 0 on both** (same name → same slot), or the same explicit slot number on both
+>    (LoRa → Advanced → Frequency Slot).
+
+For basic testing, the default channel is fine — but note the Detection Sensor won't send on it.
 
 ---
 
@@ -114,8 +126,37 @@ in the app. No custom firmware needed for these:
 |--------|--------------------|-------------|
 | BME280 (temp/humidity/pressure) | Enable Environment Telemetry | Module Config → Telemetry → Environment |
 | BN-220 GPS | Enable GPS, set GPS Receive GPIO=34, Transmit GPIO=33 | Module Config → Position → Advanced |
+| SW-520D tilt switch (tamper) | Enable Detection Sensor (see below) | Module Config → Detection Sensor |
 
 See [docs/hardware.md](hardware.md) for full sensor wiring and GPIO assignments.
+
+### Detection Sensor — Digital Tamper Switch (tilt / slide)
+
+A single digital switch (tilt, reed, slide) broadcasts a tamper alert over LoRa using the
+**built-in Detection Sensor module** — no custom firmware. Module Config → Detection Sensor:
+
+| Field | Value | Notes |
+|-------|-------|-------|
+| Detection Sensor enabled | ON | |
+| Monitor Pin | 2 | GPIO the switch is wired to (tilt = GPIO2) |
+| Use INPUT_PULLUP | ON | replaces an external pull-down resistor |
+| Detection trigger type | EITHER_EDGE_ACTIVE_LOW | fires on any movement, regardless of the switch's rest orientation |
+| Minimum broadcast (seconds) | 30 | anti-spam rate limit (see below) |
+| Friendly name | TAMPER | used in the alert text (`TAMPER detected`) |
+
+On a state change it broadcasts a text mesh packet — `TAMPER detected` on the active edge, and
+`TAMPER state: 0` on the return edge (with EITHER_EDGE). The GhostMesh FAP receives these as
+ordinary mesh text; treat any message from the sensor as "disturbed."
+
+**Requires a private channel** — see the two Channel gotchas above; it will not send on the
+default public channel, and both nodes must be on the same frequency slot.
+
+**Re-trigger behavior:** after each alert the module is silent for the Minimum Broadcast
+interval (30 s) and does not poll the pin during that window, so reliable re-triggering means
+waiting the full interval, then a deliberate tilt-and-hold. Lower the interval for bench testing.
+
+> Use an **edge** trigger, not a level trigger (LOGIC_HIGH/LOW): a ball tilt/vibration switch
+> (SW-520D) chatters, and level triggers can miss the momentary contacts.
 
 ---
 

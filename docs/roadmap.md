@@ -190,7 +190,8 @@ photoresistor (GPIO5 ADC), IR receiver (GPIO48). Requires custom Meshtastic modu
 | 5 (ADC) | Photoresistor | Below threshold → broadcast TAMPER_LIGHT over LoRa |
 | 48 | IR receiver (NEC) | Decoded remote code → arm/disarm backpack from ~10m |
 
-- [ ] Custom module: tilt switch GPIO2 interrupt → `AdminMessage`-based nuke if armed, else TAMPER mesh packet
+- [x] Basic tilt → TAMPER broadcast: **built-in Detection Sensor module** (GPIO2, EITHER_EDGE_ACTIVE_LOW, INPUT_PULLUP, private channel) — no custom firmware. Working 2026-08-16.
+- [ ] Custom module (only for the armed-nuke path): tilt GPIO2 → `AdminMessage` factory-reset when the arming gate is set
 - [ ] Custom module: photoresistor ADC polling → threshold crossing → TAMPER_LIGHT mesh packet
 - [ ] Custom module: IR receiver NEC decode on GPIO48 → arm/disarm state toggle, confirm via OLED
 - [ ] Custom module: slide switch GPIO4 state → sets armed/disarmed on boot and on toggle
