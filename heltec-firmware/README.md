@@ -33,8 +33,14 @@ nodes. A different tag may build fine but can shift file layout / APIs.
 
 | Module | Purpose | Status |
 |--------|---------|--------|
+| ArmingModule | slide switch (GPIO4, SPDT) → broadcast `ARMED`/`DISARMED`; sets shared `ghostmesh_armed` | ✅ working |
+| TiltModule | SW-520D tilt (GPIO2) → broadcast `TAMPER` (replaces built-in Detection Sensor) | ✅ working |
 | LightTamperModule | photoresistor (GPIO5, light) → broadcast `TAMPER_LIGHT` | ✅ working |
 | ProximityModule | HC-SR04 (GPIO38 trig / GPIO47 echo) → broadcast `PERSON_DETECTED` | ✅ working (needs 5V + Echo divider, or a 3.3V RCWL-1601) |
+
+**Armed gate:** `ArmingModule` maintains `volatile bool ghostmesh_armed` (`GhostMeshArming.h`). Tilt/Light/Proximity only broadcast when armed, so the backpack can be handled while DISARMED without spamming the mesh.
+
+**Two hard requirements:** (1) **disable the built-in Detection Sensor** in the Meshtastic app — `TiltModule` owns GPIO2; (2) use a **private channel** — module broadcasts are blocked on the default public channel, and both nodes must share a frequency slot.
 
 ## Design note
 

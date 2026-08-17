@@ -1,4 +1,5 @@
 #include "ProximityModule.h"
+#include "GhostMeshArming.h"
 #include "MeshService.h"
 #include "configuration.h"
 #include "main.h"
@@ -62,8 +63,8 @@ int32_t ProximityModule::runOnce()
         isNear = wasNear ? (cm < PROX_THRESHOLD_CM + PROX_HYSTERESIS_CM) : (cm < PROX_THRESHOLD_CM);
     }
 
-    // Fire only on the far -> near transition, rate-limited.
-    if (isNear && !wasNear) {
+    // Fire only on the far -> near transition, rate-limited, and only when armed.
+    if (isNear && !wasNear && ghostmesh_armed) {
         uint32_t now = millis();
         if (lastSent == 0 || (now - lastSent) >= PROX_MIN_BROADCAST_MS) {
             broadcastPersonDetected(cm);

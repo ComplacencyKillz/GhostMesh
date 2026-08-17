@@ -132,7 +132,13 @@ See [docs/hardware.md](hardware.md) for full sensor wiring and GPIO assignments.
 
 ### Detection Sensor — Digital Tamper Switch (tilt / slide)
 
-A single digital switch (tilt, reed, slide) broadcasts a tamper alert over LoRa using the
+> **Note:** GhostMesh's deployed Heltec firmware now uses the custom `TiltModule`
+> (`heltec-firmware/`) for the tilt, so the built-in Detection Sensor should be **disabled**
+> (it can't be arm-gated). This section is kept as reference — the built-in module still works
+> for a standalone digital switch, and the **channel requirements above apply to the custom
+> modules too.**
+
+A single digital switch (tilt, reed, slide) can broadcast a tamper alert over LoRa using the
 **built-in Detection Sensor module** — no custom firmware. Module Config → Detection Sensor:
 
 | Field | Value | Notes |

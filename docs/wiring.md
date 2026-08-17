@@ -68,7 +68,19 @@ External pull-down, per the board schematic (`kicad/`):
 | Tilt switch leg 2 | GPIO2 (junction) |
 | 10kΩ (R3) | GPIO2 → GND |
 
-Non-polarized switch. Idle (open) = LOW via the 10kΩ pull-down; closed = HIGH. **Working** — broadcasts `TAMPER` over LoRa via the built-in Detection Sensor module. Config for this wiring: **INPUT_PULLUP off, trigger EITHER_EDGE_ACTIVE_HIGH**. (A breadboard variant with the switch to GND + the ESP32 internal pull-up also works — then INPUT_PULLUP on, EITHER_EDGE_ACTIVE_LOW.) Requires a private channel; see [meshtastic-setup.md](meshtastic-setup.md).
+Non-polarized switch. Idle (open) = LOW via the 10kΩ pull-down; closed = HIGH. **Working** — broadcasts `TAMPER` over LoRa via the custom `heltec-firmware/TiltModule`, gated by the arm switch. **Disable the built-in Detection Sensor** in the Meshtastic app (Module Config → Detection Sensor → OFF) — TiltModule owns GPIO2. Requires a private channel; see [meshtastic-setup.md](meshtastic-setup.md).
+
+### Heltec ↔ Slide Switch (Arm/Disarm) ✅
+
+SPDT slide switch on GPIO4, per the schematic:
+
+| Node | Connects to |
+|------|-------------|
+| Common | GPIO4 |
+| One throw | 3.3V (armed) |
+| Other throw | GND (disarmed) |
+
+Runs on `heltec-firmware/ArmingModule` → broadcasts `ARMED` / `DISARMED` and sets the shared `ghostmesh_armed` state that gates the tilt/light/proximity modules (they only alert when armed). If ARMED/DISARMED read backwards, swap the two throw wires.
 
 ### Heltec ↔ Photoresistor (Light Tamper) ✅
 
@@ -103,7 +115,6 @@ Reserved assignments for components not yet connected. Do not treat these as bui
 
 | Component | Heltec pin(s) | Circuit / notes |
 |-----------|---------------|-----------------|
-| Slide switch (arm/disarm) | GPIO4 | SPDT (per schematic): common → GPIO4, throws → 3V3 (armed) / GND (disarmed). |
 | IR receiver (NEC) | GPIO48 | Signal → GPIO48; VCC → 3V3; GND. Active-low, has internal pull-up. |
 
 ### Flipper ProtoBoard — operator controls ⬜
@@ -140,7 +151,8 @@ Numbers and labels match the Flipper case. The external UART is fixed by the STM
 | 2 | Tilt switch ✅ |
 | 5 | Photoresistor — light tamper (LightTamperModule) ✅ |
 | 38 / 47 | HC-SR04 proximity — trig / echo (ProximityModule) 🚧 |
-| 4 / 48 | Planned sensors ⬜ |
+| 4 | Slide switch — arm/disarm (ArmingModule) ✅ |
+| 48 | IR receiver ⬜ planned |
 | 8–14 | SX1262 LoRa SPI + IRQ/RST/BUSY |
 | 19 / 20 | Native USB D− / D+ |
 | 1 | Battery ADC |

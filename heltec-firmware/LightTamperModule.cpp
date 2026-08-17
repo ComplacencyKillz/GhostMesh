@@ -1,4 +1,5 @@
 #include "LightTamperModule.h"
+#include "GhostMeshArming.h"
 #include "MeshService.h"
 #include "configuration.h"
 #include "main.h"
@@ -43,8 +44,8 @@ int32_t LightTamperModule::runOnce()
     bool isLight = wasLight ? (raw < LIGHT_TAMPER_THRESHOLD + LIGHT_TAMPER_HYSTERESIS)
                             : (raw < LIGHT_TAMPER_THRESHOLD);
 
-    // Fire only on the dark -> light transition, rate-limited.
-    if (isLight && !wasLight) {
+    // Fire only on the dark -> light transition, rate-limited, and only when armed.
+    if (isLight && !wasLight && ghostmesh_armed) {
         uint32_t now = millis();
         if (lastSent == 0 || (now - lastSent) >= LIGHT_MIN_BROADCAST_MS) {
             broadcastTamperLight(raw);

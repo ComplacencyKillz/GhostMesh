@@ -4,9 +4,10 @@
 
 GhostMesh is a Flipper Zero companion application that turns the Flipper into a portable offline mesh-radio field terminal. Paired with a Heltec WiFi LoRa 32 V3 running Meshtastic firmware, it enables long-range LoRa mesh communications with no internet, cellular, or phone infrastructure required.
 
-The project has two deliverables:
+The project has three deliverables:
 1. **`flipper-app/`** — A Flipper Application Package (FAP) written in C99
-2. **`ghostmesh.info/`** — A marketing/documentation website (Astro + Tailwind + GSAP)
+2. **`heltec-firmware/`** — Custom Meshtastic C++ modules for the Heltec backpack (tamper / proximity / arming sensors Meshtastic doesn't provide natively)
+3. **`ghostmesh.info/`** — A marketing/documentation website (Astro + Tailwind + GSAP)
 
 The project is thematically tied to the *Tales from the Afternow* audio drama (Sean Kennedy) — Server Monk aesthetic, "Light your candles" tone, GhostMesh as an in-universe WLO-free communications tool. This informs all web copy and documentation tone.
 
@@ -49,21 +50,21 @@ Flipper GND                  ────  Heltec GND
 
 **Power rule:** Never connect Flipper 3.3V or 5V to Heltec. The Flipper's regulator cannot source the 200–500mA the ESP32-S3 draws. Both devices run independent LiPo batteries.
 
-### Planned Sensor Expansion (Phases 7–11)
+### Sensor Expansion (Phases 7–11)
 
-**On Heltec (unattended backpack):**
+**On Heltec (backpack):**
 
-| Component | Interface | GPIO / Addr | Phase |
-|-----------|-----------|-------------|-------|
-| BME280 (temp/humidity/pressure) | I2C bus 2 | 0x76 — GPIO41/42 | 7 |
-| MAX17048 (LiPo fuel gauge) | I2C bus 2 | 0x36 — GPIO41/42 | 9 |
-| BN-220 GPS | UART1 9600 baud | GPIO34 RX / 33 TX | 8 |
-| SW-520D tilt switch | GPIO | GPIO2 | 10 |
-| Slide switch (arm/disarm) | GPIO | GPIO4 | 10 |
-| Photoresistor (light tamper) | ADC | GPIO5 | 10 |
-| IR receiver (NEC remote) | GPIO | GPIO48 | 10 |
-| HC-SR04 ultrasonic | GPIO | GPIO38 trig (21 = OLED reset) / 47 echo | 11 |
-| STEMMA QT 5-port passive hub | I2C passthrough | GPIO41/42 | 7 |
+| Component | Interface | GPIO / Addr | Phase | Status |
+|-----------|-----------|-------------|-------|--------|
+| BME280 (temp/humidity/pressure) | I2C bus 2 | 0x76 — GPIO41/42 | 7 | ✅ Meshtastic native |
+| BN-220 GPS | UART1 9600 baud | GPIO34 RX / 33 TX | 8 | ✅ Meshtastic native |
+| STEMMA QT 5-port passive hub | I2C passthrough | GPIO41/42 | 7 | ✅ |
+| SW-520D tilt switch → `TAMPER` | GPIO | GPIO2 | 10 | ✅ `TiltModule` |
+| Slide switch (arm/disarm) → `ARMED`/`DISARMED` | GPIO | GPIO4 | 10 | ✅ `ArmingModule` |
+| Photoresistor (light tamper) → `TAMPER_LIGHT` | ADC | GPIO5 | 10 | ✅ `LightTamperModule` |
+| HC-SR04 ultrasonic → `PERSON_DETECTED` | GPIO | GPIO38 trig / 47 echo | 11 | 🚧 `ProximityModule` — bench only (needs 5V+divider or a 3.3V RCWL-1601) |
+| IR receiver (NEC remote) | GPIO | GPIO48 | 10 | ⬜ planned |
+| MAX17048 (LiPo fuel gauge) | I2C bus 2 | 0x36 — GPIO41/42 | 9 | 🚧 on-bus, not read (connector mismatch) |
 
 **On Flipper ProtoBoard (operator controls):**
 
@@ -92,6 +93,11 @@ Bus 2 — GPIO41 SDA / GPIO42 SCL
 - `19–20`: USB D-/D+
 - `1`: Battery ADC
 - `6–7`: Serial module (PROTO) ↔ Flipper — GPIO6 TX, GPIO7 RX
+- `2`: SW-520D tilt switch (`TiltModule`)
+- `4`: slide switch / arming (`ArmingModule`)
+- `5`: photoresistor ADC (`LightTamperModule`)
+- `38 / 47`: HC-SR04 trig / echo (`ProximityModule`)
+- `48`: IR receiver (planned)
 - `41–42`: I2C bus 2
 - `43–44`: UART0 / CP2102 USB console — do NOT use for the Flipper link (clamps on battery)
 - `21`: OLED reset (hardwired — not free; do not use for HC-SR04 trigger)
@@ -215,6 +221,36 @@ ufbt update     # refresh SDK
 
 ---
 
+## Custom Heltec Firmware (`heltec-firmware/`)
+
+Phases 10+ add sensors Meshtastic doesn't support natively. Rather than fork Meshtastic, the
+repo vendors just the **custom module source** in `heltec-firmware/`; you drop it into a
+Meshtastic firmware checkout at the pinned tag and build. See `heltec-firmware/README.md`.
+
+**Build:** clone `meshtastic/firmware` at tag **`v2.7.15.567b8ea`** (the deployed version),
+copy the modules into `src/modules/`, register each in `src/modules/Modules.cpp` (`#include` +
+`new XxxModule();` in `setupModules()`), then `pio run -e heltec-v3`. Output:
+`.pio/build/heltec-v3/firmware.factory.bin` — flash at offset `0x0` (no erase, to keep config).
+
+**Modules** (each broadcasts a plain-text mesh packet → shows on the Meshtastic app AND the FAP):
+
+| Module | Pin(s) | Broadcasts | Notes |
+|--------|--------|-----------|-------|
+| `ArmingModule` | GPIO4 (SPDT slide switch) | `ARMED` / `DISARMED` | Sets the shared `ghostmesh_armed` flag |
+| `TiltModule` | GPIO2 (SW-520D, ext. pull-down) | `TAMPER` | Replaces the built-in Detection Sensor |
+| `LightTamperModule` | GPIO5 (photoresistor ADC) | `TAMPER_LIGHT` | Fires when light rises above ambient |
+| `ProximityModule` | GPIO38/47 (HC-SR04) | `PERSON_DETECTED` | Fires when distance drops below threshold |
+
+**Armed gate:** `ArmingModule` reads the slide switch into `volatile bool ghostmesh_armed`
+(`GhostMeshArming.h`). The three tamper modules only broadcast when armed — so the backpack can
+be handled/staged while DISARMED without spamming the mesh.
+
+**Two hard requirements when running this firmware:**
+- **Disable the built-in Detection Sensor** in the Meshtastic app (Module Config → Detection Sensor → OFF) — `TiltModule` owns GPIO2 instead.
+- **Use a private channel.** Meshtastic blocks module broadcasts on the default public channel, and both nodes must share a frequency slot (see `docs/meshtastic-setup.md`).
+
+---
+
 ## Website (ghostmesh.info)
 
 **Stack:** Astro 6.2.1, Tailwind CSS 4.2.4, GSAP 3.15.0. Node >= 22.12.0 required.
@@ -237,20 +273,23 @@ Use the **`/ghostmesh-website-access`** skill for deploy workflows. Use **`/bran
 
 ## Current Status and Roadmap
 
-**Stable: v0.8** — Phases 0–5, 7, and 8 complete and merged to `main`. (Phase 6 security
-baseline was skipped; Phase 9 MAX17048 is wired but not yet read — see below.)
+**FAP: stable v0.8** — Phases 0–5, 7, 8 complete and merged to `main`. (Phase 6 skipped;
+Phase 9 MAX17048 wired but not read.)
+**Heltec custom firmware: Phase 10/11 tamper sensors working** (`heltec-firmware/`) — tilt,
+light, proximity, and the arming gate, all over the private mesh (2026-08-17).
 
-Confirmed working on hardware (Heltec on battery, no USB tether, 2026-07-01):
-- TX: Flipper OK → message appears on second Heltec node via mesh
-- RX: Incoming mesh message displayed in GhostMesh status bar
-- CSV logging (`timestamp,node_id,message,lat,lon,rssi,snr`), marquee scroll, RSSI/SNR, RX history (16)
+Confirmed working on hardware:
+- TX/RX text over the mesh; CSV logging (`timestamp,node_id,message,lat,lon,rssi,snr`), marquee, RSSI/SNR, RX history (16)
 - 3 built-in + up to 5 SD-loaded custom profiles
 - Phase 7: BME280 temp/humidity/pressure on the Sensors screen (long-press Up)
 - Phase 8: BN-220 GPS position (lat/lon/alt) on the Sensors screen + lat/lon in the CSV
-- Battery %: Heltec battery level in the title bar (…/RDY/%/PWR) via device_metrics (ADC source)
+- Battery %: Heltec battery level in the title bar (…/RDY/%/PWR)
+- Phase 10: `TAMPER` (tilt), `TAMPER_LIGHT` (photoresistor), `ARMED`/`DISARMED` (slide switch) — custom Heltec modules, all gated by the arm state; alerts arrive on the FAP as text (RX history/status bar)
+- Phase 11: `PERSON_DETECTED` (HC-SR04) — works on bench (5V + Echo divider); deployment needs a 3.3V RCWL-1601
 
-**Not yet done:** Phase 6 (nuke/stealth/keys), Phase 9 (MAX17048 read — connector mismatch,
-parked; battery % uses the Heltec ADC), env-telemetry CSV columns, wardriving capture.
+**Not yet done:** Phase 6 (nuke/stealth/keys), Phase 9 (MAX17048 read), IR receiver arm/disarm,
+operator buzzer/vibration + a dedicated FAP tamper-alert UI (alerts currently show as plain
+text), env-telemetry CSV columns, wardriving capture.
 
 **Branch strategy:** `main` = stable releases. `phase-N-description` = active development.
 
@@ -262,8 +301,8 @@ parked; battery % uses the Heltec ADC), env-telemetry CSV columns, wardriving ca
 | v0.7 | 7 | BME280 environmental telemetry | No |
 | v0.8 | 8 | GPS + wardriving (BN-220) | No |
 | v0.9 | 9 | MAX17048 battery fuel gauge | Yes |
-| v1.0 | 10 | Physical controls: buzzer, vibration, tamper detection | Yes |
-| v1.1 | 11 | Dead-drop surveillance (HC-SR04 proximity) | Yes |
+| v1.0 | 10 | Physical controls: buzzer, vibration, tamper detection | Yes — 🚧 tamper + arming modules done; buzzer/vibration + FAP UI pending |
+| v1.1 | 11 | Dead-drop surveillance (HC-SR04 proximity) | Yes — 🚧 done on bench; needs a 3.3V module for deploy |
 | v1.2 | 12 | SIGINT, jammer detection, wardriving heatmaps | Yes |
 | v1.3 | 13 | Remote payload execution (BadUSB, NFC, Sub-GHz relay) | Yes |
 | v1.4 | 14 | UART encryption (ChaCha20-Poly1305 AEAD) | Yes |
@@ -284,6 +323,7 @@ All docs live in `docs/`. Key references:
 | `docs/opsec.md` | Encryption layers, nuke button, stealth mode, metadata leakage |
 | `docs/user-guide.md` | Screen-by-screen UI walkthrough |
 | `flipper-app/helpers/proto_notes.md` | Protobuf field number reference |
+| `heltec-firmware/README.md` | Custom Heltec Meshtastic modules — build steps + module list |
 
 ---
 

@@ -216,7 +216,8 @@ UART1 (GPIO34 RX / GPIO33 TX):
 | BN-220 GPS | ✅ built-in | — |
 | Private channels, nuke, stealth | ✅ AdminMessage | — |
 | HC-SR04 → LoRa alert | ❌ | ✅ ProximityModule (built) |
-| Tilt switch → LoRa alert | ✅ built-in Detection Sensor module | — |
+| Tilt switch → LoRa alert | built-in exists but isn't arm-gated | ✅ TiltModule (used) |
+| Slide switch arm/disarm + gate | ❌ | ✅ ArmingModule (built) |
 | Photoresistor → LoRa alert | ❌ | ✅ LightTamperModule (built) |
 | IR receiver arm/disarm | ❌ | Custom module |
 | MAX17048 accurate SOC | ❌ | Custom module |

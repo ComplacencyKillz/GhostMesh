@@ -217,6 +217,18 @@ already handles them; there is no separate serial "sentinel" protocol. Broadcast
 mesh (rather than the wire) is what lets a deployed backpack alert the operator when the
 Flipper is nowhere near it.
 
+**GhostMesh's Heltec modules** live in `heltec-firmware/` (drop into a Meshtastic checkout at
+tag `v2.7.15.567b8ea`, register in `Modules.cpp`, `pio run -e heltec-v3`):
+
+- `ArmingModule` (GPIO4) → `ARMED`/`DISARMED`; sets `volatile bool ghostmesh_armed` (`GhostMeshArming.h`)
+- `TiltModule` (GPIO2) → `TAMPER` — **replaces the built-in Detection Sensor (disable it in the app)**
+- `LightTamperModule` (GPIO5 ADC) → `TAMPER_LIGHT`
+- `ProximityModule` (GPIO38/47) → `PERSON_DETECTED`
+
+The three tamper modules check `ghostmesh_armed` and only broadcast when armed. All alerts are
+plain `TEXT_MESSAGE_APP` packets, so they need a **private channel** (blocked on the default),
+and both nodes must share a frequency slot.
+
 ---
 
 ## Coding Style
