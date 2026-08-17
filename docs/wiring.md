@@ -60,12 +60,27 @@ Plugged into the STEMMA QT hub via Qwiic (powered, address **0x36** on bus 2). *
 
 ### Heltec ↔ SW-520D Tilt Switch ✅
 
-| Heltec | Tilt switch (wire) |
-|--------|--------------------|
-| GPIO2 | white |
-| GND | black |
+External pull-down, per the board schematic (`kicad/`):
 
-Two wires only — the ESP32 internal pull-up (enabled in the Detection Sensor config) replaces an external resistor. The switch is non-polarized. **Working** — broadcasts `TAMPER` over LoRa via the built-in Detection Sensor module. Requires a private channel; see the setup + gotchas in [meshtastic-setup.md](meshtastic-setup.md).
+| Node | Connects to |
+|------|-------------|
+| Tilt switch leg 1 | 3.3V |
+| Tilt switch leg 2 | GPIO2 (junction) |
+| 10kΩ (R3) | GPIO2 → GND |
+
+Non-polarized switch. Idle (open) = LOW via the 10kΩ pull-down; closed = HIGH. **Working** — broadcasts `TAMPER` over LoRa via the built-in Detection Sensor module. Config for this wiring: **INPUT_PULLUP off, trigger EITHER_EDGE_ACTIVE_HIGH**. (A breadboard variant with the switch to GND + the ESP32 internal pull-up also works — then INPUT_PULLUP on, EITHER_EDGE_ACTIVE_LOW.) Requires a private channel; see [meshtastic-setup.md](meshtastic-setup.md).
+
+### Heltec ↔ Photoresistor (Light Tamper) ✅
+
+Voltage divider on GPIO5 (ADC1), per the board schematic (`kicad/`):
+
+| Node | Connects to |
+|------|-------------|
+| 10kΩ (R2) | 3.3V → GPIO5 (junction) |
+| Photoresistor (R1) | GPIO5 (junction) → GND |
+| GPIO5 | junction |
+
+With the 10kΩ on the 3.3V side, **bright light lowers the ADC reading** — so the custom `LightTamperModule` broadcasts `TAMPER_LIGHT` when the reading drops below a threshold. **Working** — the default threshold (2000) triggers cleanly. Runs on `heltec-firmware/LightTamperModule` (see [developer-guide.md](developer-guide.md)).
 
 ---
 
@@ -77,8 +92,7 @@ Reserved assignments for components not yet connected. Do not treat these as bui
 
 | Component | Heltec pin(s) | Circuit / notes |
 |-----------|---------------|-----------------|
-| Slide switch (arm/disarm) | GPIO4 | Common → GPIO4, one throw → 3V3; internal pull-down. |
-| Photoresistor (light tamper) | GPIO5 (ADC1) | Divider: 3V3 → LDR → GPIO5 → 10kΩ → GND. Not GPIO1 (battery ADC). |
+| Slide switch (arm/disarm) | GPIO4 | SPDT (per schematic): common → GPIO4, throws → 3V3 (armed) / GND (disarmed). |
 | IR receiver (NEC) | GPIO48 | Signal → GPIO48; VCC → 3V3; GND. Active-low, has internal pull-up. |
 | HC-SR04 (proximity) | GPIO38 trig / GPIO47 echo | Echo is 5V logic — add a divider to 3.3V if powering the module at 5V. |
 
@@ -114,7 +128,8 @@ Numbers and labels match the Flipper case. The external UART is fixed by the STM
 | 41 / 42 | I2C bus 2 — hub (BME280 0x76 ✅; MAX17048 0x36 on-bus, untested 🚧) |
 | 17 / 18 | I2C bus 1 — OLED (0x3C), hardwired |
 | 2 | Tilt switch ✅ |
-| 4 / 5 / 38 / 47 / 48 | Planned sensors ⬜ |
+| 5 | Photoresistor — light tamper (LightTamperModule) ✅ |
+| 4 / 38 / 47 / 48 | Planned sensors ⬜ |
 | 8–14 | SX1262 LoRa SPI + IRQ/RST/BUSY |
 | 19 / 20 | Native USB D− / D+ |
 | 1 | Battery ADC |

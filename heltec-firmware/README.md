@@ -33,7 +33,7 @@ nodes. A different tag may build fine but can shift file layout / APIs.
 
 | Module | Purpose | Status |
 |--------|---------|--------|
-| _(tamper)_ | tilt / photoresistor → broadcast `TAMPER` mesh packet | in progress |
+| LightTamperModule | photoresistor (GPIO5, light) → broadcast `TAMPER_LIGHT` | ✅ working |
 
 ## Design note
 

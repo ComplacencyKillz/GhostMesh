@@ -1,5 +1,9 @@
 # Hardware Reference
 
+> **Board schematic (source of truth):** the KiCad design lives in `kicad/` —
+> `kicad/FlipperZeroModule/` (schematic + PCB) and `kicad/HeltecModule/` (Heltec symbol/footprint).
+> Where this document and the schematic disagree, the schematic wins.
+
 ## Flipper Zero
 
 - **MCU:** STM32WB55 (ARM Cortex-M4 + M0+)
@@ -213,7 +217,7 @@ UART1 (GPIO34 RX / GPIO33 TX):
 | Private channels, nuke, stealth | ✅ AdminMessage | — |
 | HC-SR04 → LoRa alert | ❌ | Custom module |
 | Tilt switch → LoRa alert | ✅ built-in Detection Sensor module | — |
-| Photoresistor → LoRa alert | ❌ | Custom module |
+| Photoresistor → LoRa alert | ❌ | ✅ LightTamperModule (built) |
 | IR receiver arm/disarm | ❌ | Custom module |
 | MAX17048 accurate SOC | ❌ | Custom module |
 | Jammer detection | ❌ | Custom module |

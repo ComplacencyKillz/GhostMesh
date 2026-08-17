@@ -139,8 +139,8 @@ A single digital switch (tilt, reed, slide) broadcasts a tamper alert over LoRa 
 |-------|-------|-------|
 | Detection Sensor enabled | ON | |
 | Monitor Pin | 2 | GPIO the switch is wired to (tilt = GPIO2) |
-| Use INPUT_PULLUP | ON | replaces an external pull-down resistor |
-| Detection trigger type | EITHER_EDGE_ACTIVE_LOW | fires on any movement, regardless of the switch's rest orientation |
+| Use INPUT_PULLUP | OFF | the board has an external 10kΩ pull-down (see `kicad/`) |
+| Detection trigger type | EITHER_EDGE_ACTIVE_HIGH | switch-closed pulls the pin HIGH with the external pull-down |
 | Minimum broadcast (seconds) | 30 | anti-spam rate limit (see below) |
 | Friendly name | TAMPER | used in the alert text (`TAMPER detected`) |
 
