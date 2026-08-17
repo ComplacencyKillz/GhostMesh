@@ -34,6 +34,7 @@ nodes. A different tag may build fine but can shift file layout / APIs.
 | Module | Purpose | Status |
 |--------|---------|--------|
 | LightTamperModule | photoresistor (GPIO5, light) → broadcast `TAMPER_LIGHT` | ✅ working |
+| ProximityModule | HC-SR04 (GPIO38 trig / GPIO47 echo) → broadcast `PERSON_DETECTED` | ✅ working (needs 5V + Echo divider, or a 3.3V RCWL-1601) |
 
 ## Design note
 

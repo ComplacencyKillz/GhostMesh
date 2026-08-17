@@ -1,0 +1,87 @@
+#include "ProximityModule.h"
+#include "MeshService.h"
+#include "configuration.h"
+#include "main.h"
+#include <Arduino.h>
+#include <string.h>
+
+ProximityModule *proximityModule;
+
+// ── GhostMesh proximity (HC-SR04) config ──────────────────────────────────────
+// Per the board schematic: Trig=GPIO38, Echo=GPIO47, sensor powered at 3.3V (so Echo is
+// 3.3V logic — no divider needed).
+#define PROX_TRIG_PIN         38
+#define PROX_ECHO_PIN         47
+// Distance (cm) inside which we call it "person detected". CALIBRATE: watch the
+// "Proximity: N cm" debug lines and set this to the trip range you want.
+#define PROX_THRESHOLD_CM     200
+// Must move this far back beyond the threshold to re-arm — debounces a target near the edge.
+#define PROX_HYSTERESIS_CM    20
+#define PROX_ECHO_TIMEOUT_US  30000 // ~5 m; pulseIn gives up after this (no echo -> out of range)
+#define PROX_POLL_MS          1000  // ping once per second
+#define PROX_MIN_BROADCAST_MS 60000 // minimum interval between alerts (anti-spam)
+
+ProximityModule::ProximityModule()
+    : SinglePortModule("proximity", meshtastic_PortNum_TEXT_MESSAGE_APP), concurrency::OSThread("Proximity")
+{
+}
+
+// One HC-SR04 ping. Returns distance in cm, or -1 if nothing echoed back (out of range).
+long ProximityModule::measureCm()
+{
+    digitalWrite(PROX_TRIG_PIN, LOW);
+    delayMicroseconds(2);
+    digitalWrite(PROX_TRIG_PIN, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(PROX_TRIG_PIN, LOW);
+    unsigned long us = pulseIn(PROX_ECHO_PIN, HIGH, PROX_ECHO_TIMEOUT_US);
+    if (us == 0)
+        return -1;
+    return (long)(us / 58); // speed of sound: ~58 us per cm round-trip
+}
+
+int32_t ProximityModule::runOnce()
+{
+    if (firstTime) {
+        firstTime = false;
+        pinMode(PROX_TRIG_PIN, OUTPUT);
+        pinMode(PROX_ECHO_PIN, INPUT);
+        digitalWrite(PROX_TRIG_PIN, LOW);
+        LOG_INFO("Proximity: init trig=GPIO%d echo=GPIO%d threshold=%dcm", PROX_TRIG_PIN, PROX_ECHO_PIN,
+                 PROX_THRESHOLD_CM);
+        return PROX_POLL_MS;
+    }
+
+    long cm = measureCm();
+    LOG_DEBUG("Proximity: %ld cm", cm); // watch this to tune PROX_THRESHOLD_CM
+
+    bool isNear;
+    if (cm < 0) {
+        isNear = false; // no echo -> nothing in range
+    } else {
+        isNear = wasNear ? (cm < PROX_THRESHOLD_CM + PROX_HYSTERESIS_CM) : (cm < PROX_THRESHOLD_CM);
+    }
+
+    // Fire only on the far -> near transition, rate-limited.
+    if (isNear && !wasNear) {
+        uint32_t now = millis();
+        if (lastSent == 0 || (now - lastSent) >= PROX_MIN_BROADCAST_MS) {
+            broadcastPersonDetected(cm);
+            lastSent = now;
+        }
+    }
+    wasNear = isNear;
+
+    return PROX_POLL_MS;
+}
+
+void ProximityModule::broadcastPersonDetected(long cm)
+{
+    meshtastic_MeshPacket *p = allocDataPacket(); // portnum = TEXT_MESSAGE_APP
+    p->want_ack = false;
+    const char *msg = "PERSON_DETECTED";
+    p->decoded.payload.size = strlen(msg);
+    memcpy(p->decoded.payload.bytes, msg, p->decoded.payload.size);
+    LOG_INFO("Proximity: person at %ld cm -> broadcast PERSON_DETECTED", cm);
+    service->sendToMesh(p, RX_SRC_LOCAL, true); // ccToPhone=true so a locally-attached Flipper/app also sees it
+}

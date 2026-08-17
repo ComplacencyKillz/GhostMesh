@@ -218,14 +218,18 @@ motor via AO3400 + 1N4007 (pin 3). FAP changes only — no Heltec firmware neede
 
 **New hardware:** HC-SR04 ultrasonic sensor (Heltec GPIO38 trigger — NOT 21, which is the OLED reset; GPIO47 echo)
 
-**Voltage note:** Standard HC-SR04 requires 5V. Verify your specific module's data sheet —
-some 3.3V-compatible clones exist. If 5V required and Heltec USB is not connected, you
-need a small boost converter or swap for a JSN-SR04T (3.3V tolerant). Heltec's 5V pin
-is only live when USB-powered.
+**Voltage note (confirmed 2026-08-16):** the plain blue HC-SR04 does NOT work at 3.3V — it
+returns garbage (0 cm). It needs **5V**, with a divider on Echo (1kΩ → GPIO47, 2kΩ → GND) to
+drop the 5V echo to 3.3V. That works on the bench (USB), but the battery backpack has no 5V,
+so deployment needs a **3.3V-native module (RCWL-1601 / JSN-SR04T)** — a drop-in, no firmware
+change (RCWL-1601 ordered). The EE's 3.3V HC-SR04 on the schematic needs this correction.
 
-- [ ] Hardware: Trigger → GPIO38 (21 is the OLED reset — do not use), Echo → GPIO47; power from appropriate rail
-- [ ] Custom Heltec module: poll HC-SR04 at 1Hz; threshold 200cm; on trigger →
-  broadcast `PERSON_DETECTED` mesh packet over LoRa
+- [x] Hardware: Trigger → GPIO38, Echo → GPIO47 (5V + divider on Echo for the plain HC-SR04)
+- [x] Custom Heltec module: `heltec-firmware/ProximityModule` — poll HC-SR04 at 1Hz, threshold
+  200cm, broadcast `PERSON_DETECTED` text packet over LoRa. Working on bench 2026-08-16.
+- [ ] Enhancement — operator-adjustable sensor thresholds (firmware + FAP): custom modules
+  accept a config command (e.g. `PROX=150`, `LIGHT=1800`), apply live, and persist to flash;
+  a GhostMesh FAP settings screen sends it. No reflash to re-tune light/proximity thresholds.
 - [ ] FAP: receive `PERSON_DETECTED` packet from mesh; log to CSV with timestamp;
   trigger buzzer + vibration; if armed → initiate nuke
 - [ ] FAP: dead-drop arm/disarm from IR remote (Phase 10 IR infra)
@@ -350,7 +354,7 @@ over LoRa, or protect itself.
 | Tilt switch tamper alert | ❌ | Custom module |
 | Photoresistor tamper alert | ❌ | Custom module |
 | IR receiver arm/disarm | ❌ | Custom module |
-| HC-SR04 proximity alert | ❌ | Custom module |
+| HC-SR04 proximity alert | ❌ | ✅ ProximityModule (built) |
 | MAX17048 accurate SOC | ❌ | Custom module |
 | Jammer detection | ❌ | Custom module |
 | UART encryption | ❌ | Full custom firmware layer |

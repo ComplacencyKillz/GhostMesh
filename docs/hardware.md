@@ -215,7 +215,7 @@ UART1 (GPIO34 RX / GPIO33 TX):
 | BME280 env telemetry | ✅ built-in | — |
 | BN-220 GPS | ✅ built-in | — |
 | Private channels, nuke, stealth | ✅ AdminMessage | — |
-| HC-SR04 → LoRa alert | ❌ | Custom module |
+| HC-SR04 → LoRa alert | ❌ | ✅ ProximityModule (built) |
 | Tilt switch → LoRa alert | ✅ built-in Detection Sensor module | — |
 | Photoresistor → LoRa alert | ❌ | ✅ LightTamperModule (built) |
 | IR receiver arm/disarm | ❌ | Custom module |

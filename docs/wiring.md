@@ -82,6 +82,17 @@ Voltage divider on GPIO5 (ADC1), per the board schematic (`kicad/`):
 
 With the 10kΩ on the 3.3V side, **bright light lowers the ADC reading** — so the custom `LightTamperModule` broadcasts `TAMPER_LIGHT` when the reading drops below a threshold. **Working** — the default threshold (2000) triggers cleanly. Runs on `heltec-firmware/LightTamperModule` (see [developer-guide.md](developer-guide.md)).
 
+### Heltec ↔ HC-SR04 Ultrasonic (Proximity) 🚧
+
+| HC-SR04 | Heltec |
+|---------|--------|
+| VCC | **5V** (not 3.3V — see note) |
+| Trig | GPIO38 |
+| Echo | 1kΩ → GPIO47 (junction), then GPIO47 → 2kΩ → GND |
+| GND | GND |
+
+The plain blue HC-SR04 **does not work at 3.3V** (reads 0 cm). It needs **5V**, and its 5V Echo must be divided to 3.3V before GPIO47 (1kΩ/2kΩ). **Working on the bench (USB 5V)** via `heltec-firmware/ProximityModule` → broadcasts `PERSON_DETECTED`. The battery backpack has no 5V, so deployment uses a **3.3V RCWL-1601 / JSN-SR04T** (drop-in, no code change).
+
 ---
 
 ## Planned Wiring
@@ -94,7 +105,6 @@ Reserved assignments for components not yet connected. Do not treat these as bui
 |-----------|---------------|-----------------|
 | Slide switch (arm/disarm) | GPIO4 | SPDT (per schematic): common → GPIO4, throws → 3V3 (armed) / GND (disarmed). |
 | IR receiver (NEC) | GPIO48 | Signal → GPIO48; VCC → 3V3; GND. Active-low, has internal pull-up. |
-| HC-SR04 (proximity) | GPIO38 trig / GPIO47 echo | Echo is 5V logic — add a divider to 3.3V if powering the module at 5V. |
 
 ### Flipper ProtoBoard — operator controls ⬜
 
@@ -129,7 +139,8 @@ Numbers and labels match the Flipper case. The external UART is fixed by the STM
 | 17 / 18 | I2C bus 1 — OLED (0x3C), hardwired |
 | 2 | Tilt switch ✅ |
 | 5 | Photoresistor — light tamper (LightTamperModule) ✅ |
-| 4 / 38 / 47 / 48 | Planned sensors ⬜ |
+| 38 / 47 | HC-SR04 proximity — trig / echo (ProximityModule) 🚧 |
+| 4 / 48 | Planned sensors ⬜ |
 | 8–14 | SX1262 LoRa SPI + IRQ/RST/BUSY |
 | 19 / 20 | Native USB D− / D+ |
 | 1 | Battery ADC |
