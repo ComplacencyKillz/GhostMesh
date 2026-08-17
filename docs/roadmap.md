@@ -193,7 +193,7 @@ photoresistor (GPIO5 ADC), IR receiver (GPIO48). Requires custom Meshtastic modu
 - [x] Tilt → TAMPER broadcast: custom **`TiltModule`** (GPIO2, arm-gated) — replaced the built-in Detection Sensor (disable it). Working 2026-08-17. (The built-in also works standalone/ungated.)
 - [ ] Custom module (only for the armed-nuke path): tilt GPIO2 → `AdminMessage` factory-reset when the arming gate is set
 - [x] Custom module: photoresistor ADC polling → threshold crossing → TAMPER_LIGHT mesh packet — **`heltec-firmware/LightTamperModule`, working 2026-08-16**
-- [ ] Custom module: IR receiver NEC decode on GPIO48 → arm/disarm state toggle, confirm via OLED
+- [x] Custom module: `IRModule` — NEC decode on GPIO48 → arm/disarm (sets `ghostmesh_armed`, broadcasts `ARMED`/`DISARMED`); works with any NEC remote or the Flipper (`flipper-app/GhostMeshBackpack.ir`). Working 2026-08-17.
 - [x] Custom module: slide switch GPIO4 → **`ArmingModule`** sets `ghostmesh_armed` on boot + toggle and broadcasts `ARMED`/`DISARMED`; the tilt/light/proximity modules only alert when armed. Working 2026-08-17.
 
 ### Flipper ProtoBoard (operator — carried in the field)

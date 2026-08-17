@@ -63,7 +63,7 @@ Flipper GND                  ────  Heltec GND
 | Slide switch (arm/disarm) → `ARMED`/`DISARMED` | GPIO | GPIO4 | 10 | ✅ `ArmingModule` |
 | Photoresistor (light tamper) → `TAMPER_LIGHT` | ADC | GPIO5 | 10 | ✅ `LightTamperModule` |
 | HC-SR04 ultrasonic → `PERSON_DETECTED` | GPIO | GPIO38 trig / 47 echo | 11 | 🚧 `ProximityModule` — bench only (needs 5V+divider or a 3.3V RCWL-1601) |
-| IR receiver (NEC remote) | GPIO | GPIO48 | 10 | ⬜ planned |
+| IR receiver (NEC remote) → arm/disarm | GPIO | GPIO48 | 10 | ✅ `IRModule` |
 | MAX17048 (LiPo fuel gauge) | I2C bus 2 | 0x36 — GPIO41/42 | 9 | 🚧 on-bus, not read (connector mismatch) |
 
 **On Flipper ProtoBoard (operator controls):**
@@ -97,7 +97,7 @@ Bus 2 — GPIO41 SDA / GPIO42 SCL
 - `4`: slide switch / arming (`ArmingModule`)
 - `5`: photoresistor ADC (`LightTamperModule`)
 - `38 / 47`: HC-SR04 trig / echo (`ProximityModule`)
-- `48`: IR receiver (planned)
+- `48`: IR receiver — remote arm/disarm (`IRModule`)
 - `41–42`: I2C bus 2
 - `43–44`: UART0 / CP2102 USB console — do NOT use for the Flipper link (clamps on battery)
 - `21`: OLED reset (hardwired — not free; do not use for HC-SR04 trigger)
@@ -240,6 +240,7 @@ copy the modules into `src/modules/`, register each in `src/modules/Modules.cpp`
 | `TiltModule` | GPIO2 (SW-520D, ext. pull-down) | `TAMPER` | Replaces the built-in Detection Sensor |
 | `LightTamperModule` | GPIO5 (photoresistor ADC) | `TAMPER_LIGHT` | Fires when light rises above ambient |
 | `ProximityModule` | GPIO38/47 (HC-SR04) | `PERSON_DETECTED` | Fires when distance drops below threshold |
+| `IRModule` | GPIO48 (VS1838B, NEC) | `ARMED` / `DISARMED` | Remote arm/disarm; sets `ghostmesh_armed` (alongside the slide switch — last action wins). Flipper remote: `flipper-app/GhostMeshBackpack.ir` |
 
 **Armed gate:** `ArmingModule` reads the slide switch into `volatile bool ghostmesh_armed`
 (`GhostMeshArming.h`). The three tamper modules only broadcast when armed — so the backpack can

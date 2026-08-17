@@ -37,6 +37,7 @@ nodes. A different tag may build fine but can shift file layout / APIs.
 | TiltModule | SW-520D tilt (GPIO2) → broadcast `TAMPER` (replaces built-in Detection Sensor) | ✅ working |
 | LightTamperModule | photoresistor (GPIO5, light) → broadcast `TAMPER_LIGHT` | ✅ working |
 | ProximityModule | HC-SR04 (GPIO38 trig / GPIO47 echo) → broadcast `PERSON_DETECTED` | ✅ working (needs 5V + Echo divider, or a 3.3V RCWL-1601) |
+| IRModule | VS1838B (GPIO48, NEC decode) → remote arm/disarm; sets `ghostmesh_armed`, broadcasts `ARMED`/`DISARMED` | ✅ working (any NEC remote or the Flipper via `flipper-app/GhostMeshBackpack.ir`) |
 
 **Armed gate:** `ArmingModule` maintains `volatile bool ghostmesh_armed` (`GhostMeshArming.h`). Tilt/Light/Proximity only broadcast when armed, so the backpack can be handled while DISARMED without spamming the mesh.
 

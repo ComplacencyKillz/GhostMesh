@@ -219,7 +219,7 @@ UART1 (GPIO34 RX / GPIO33 TX):
 | Tilt switch → LoRa alert | built-in exists but isn't arm-gated | ✅ TiltModule (used) |
 | Slide switch arm/disarm + gate | ❌ | ✅ ArmingModule (built) |
 | Photoresistor → LoRa alert | ❌ | ✅ LightTamperModule (built) |
-| IR receiver arm/disarm | ❌ | Custom module |
+| IR receiver arm/disarm | ❌ | ✅ IRModule (built) |
 | MAX17048 accurate SOC | ❌ | Custom module |
 | Jammer detection | ❌ | Custom module |
 | UART encryption | ❌ | Full custom firmware layer |

@@ -105,17 +105,23 @@ With the 10kΩ on the 3.3V side, **bright light lowers the ADC reading** — so 
 
 The plain blue HC-SR04 **does not work at 3.3V** (reads 0 cm). It needs **5V**, and its 5V Echo must be divided to 3.3V before GPIO47 (1kΩ/2kΩ). **Working on the bench (USB 5V)** via `heltec-firmware/ProximityModule` → broadcasts `PERSON_DETECTED`. The battery backpack has no 5V, so deployment uses a **3.3V RCWL-1601 / JSN-SR04T** (drop-in, no code change).
 
+### Heltec ↔ IR Receiver (Arm/Disarm) ✅
+
+VS1838B / KY-022 on GPIO48 (this module's pins are labelled by wire colour):
+
+| IR module | Heltec |
+|-----------|--------|
+| Y (signal) | GPIO48 |
+| R (VCC) | 3.3V |
+| G (GND) | GND |
+
+Runs on `heltec-firmware/IRModule` → decodes NEC codes and arms/disarms (sets `ghostmesh_armed`, broadcasts `ARMED`/`DISARMED`), alongside the slide switch (last action wins). Works with any NEC remote, or the Flipper as a dedicated remote via `flipper-app/GhostMeshBackpack.ir`. Button codes live in `IRModule.cpp` (`IR_ARM_CODE` / `IR_DISARM_CODE`).
+
 ---
 
 ## Planned Wiring
 
 Reserved assignments for components not yet connected. Do not treat these as built.
-
-### Heltec — sensors & tamper ⬜
-
-| Component | Heltec pin(s) | Circuit / notes |
-|-----------|---------------|-----------------|
-| IR receiver (NEC) | GPIO48 | Signal → GPIO48; VCC → 3V3; GND. Active-low, has internal pull-up. |
 
 ### Flipper ProtoBoard — operator controls ⬜
 
@@ -152,7 +158,7 @@ Numbers and labels match the Flipper case. The external UART is fixed by the STM
 | 5 | Photoresistor — light tamper (LightTamperModule) ✅ |
 | 38 / 47 | HC-SR04 proximity — trig / echo (ProximityModule) 🚧 |
 | 4 | Slide switch — arm/disarm (ArmingModule) ✅ |
-| 48 | IR receiver ⬜ planned |
+| 48 | IR receiver — arm/disarm (IRModule) ✅ |
 | 8–14 | SX1262 LoRa SPI + IRQ/RST/BUSY |
 | 19 / 20 | Native USB D− / D+ |
 | 1 | Battery ADC |
