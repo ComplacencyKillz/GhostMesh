@@ -10,3 +10,10 @@ __pycache__/
 
 # ghostmesh.info deploy credentials — never commit
 ghostmesh.info/parameters.ghostmeshinfo.yaml
+
+*backups/
+*.kicad_prl
+**/fp-info-cache
+*.lck
+*autosave*
+*auto_save*
