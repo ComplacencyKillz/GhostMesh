@@ -123,13 +123,19 @@ Runs on `heltec-firmware/IRModule` → decodes NEC codes and arms/disarms (sets 
 
 Reserved assignments for components not yet connected. Do not treat these as built.
 
-### Flipper ProtoBoard — operator controls ⬜
+### Heltec backpack — outputs & controls ⬜
 
-| Control | Flipper pin | Circuit |
+Driven by `heltec-firmware/CommandModule` over the mesh / IR — **no Flipper hardware**. Pins verified
+against the board header photo. Buzzer + vibration use a **PN2222** low-side driver on the bench; the
+EE PCB swaps the motor driver for an **AO3400** MOSFET (identical firmware — a low-side switch is
+`HIGH`=on either way). The arming slide switch is on Heltec GPIO4 (`ArmingModule`).
+
+| Control | Heltec GPIO | Circuit |
 |---------|-------------|---------|
-| Slide switch (arming gate) | pin 6 / PB2 | Common → PB2; one throw → 3V3 (pin 9); pull-down to GND. |
-| Buzzer | pin 2 / PA7 | PA7 → 1kΩ → PN2222 base; collector → buzzer(−); emitter → GND; buzzer(+) → 3V3. |
-| Vibration motor | pin 3 / PA6 | PA6 → 100Ω → AO3400 gate; drain → motor(−); source → GND; motor(+) → 3V3. **1N4007 flyback across the motor is mandatory.** |
+| Passive buzzer | GPIO39 | GPIO39 → 1kΩ → PN2222 base; collector → buzzer(−); emitter → GND; buzzer(+) → 3V3. **1N4007 across the buzzer, stripe → 3V3** (it's a magnetic coil, ~15Ω). Firmware drives a PWM **tone**, not DC. |
+| Vibration motor | GPIO40 | GPIO40 → 1kΩ → PN2222 base; collector → motor; other motor lead → 3V3; emitter → GND. **1N4007 flyback across the motor, stripe → 3V3, is mandatory.** Plain on/off. |
+| RGB status LED | GPIO26 | SK6812 addressable — DIN ← GPIO26; VDD → 3V3; VSS → GND (planned). |
+| Wipe button | GPIO37 | Tact switch: one side → GPIO37, other → GND; firmware uses INPUT_PULLUP (pressed = LOW). Armed + double-press to fire. |
 
 ---
 

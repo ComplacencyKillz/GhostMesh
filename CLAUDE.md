@@ -65,14 +65,20 @@ Flipper GND                  ────  Heltec GND
 | HC-SR04 ultrasonic → `PERSON_DETECTED` | GPIO | GPIO38 trig / 47 echo | 11 | 🚧 `ProximityModule` — bench only (needs 5V+divider or a 3.3V RCWL-1601) |
 | IR receiver (NEC remote) → arm/disarm | GPIO | GPIO48 | 10 | ✅ `IRModule` |
 | MAX17048 (LiPo fuel gauge) | I2C bus 2 | 0x36 — GPIO41/42 | 9 | 🚧 on-bus, not read (connector mismatch) |
+| Passive buzzer via PN2222 → `/buzz` | GPIO (PWM tone) | GPIO39 | 10 | 🚧 `CommandModule` — wired, untested |
+| Vibration motor via PN2222 + 1N4007 → `/vibrate` | GPIO | GPIO40 | 10 | 🚧 `CommandModule` — wired, untested |
+| RGB status LED (SK6812) → `/led` | GPIO (addressable) | GPIO26 | 10 | 🚧 planned; `CommandModule` drives onboard GPIO35 until it's wired |
+| Wipe button (tact switch) → factory reset | GPIO (INPUT_PULLUP) | GPIO37 | 10 | 🚧 `CommandModule` — armed + double-press |
 
 **On Flipper ProtoBoard (operator controls):**
 
-| Component | Interface | GPIO | Phase |
-|-----------|-----------|------|-------|
-| Slide switch (arming gate) | GPIO | pin 6 / PB2 | 10 |
-| Active buzzer via PN2222 | GPIO | pin 2 / PA7 | 10 |
-| Vibration motor via AO3400 + 1N4007 | GPIO | pin 3 / PA6 | 10 |
+None. The Flipper carries **no** control hardware — it links to the backpack over just three wires
+(TX/RX/GND) and the operator drives everything through the FAP. Every physical control and output
+(passive buzzer, vibration motor, RGB LED, arming slide, wipe button) lives on the **backpack**, so
+it works standalone and any operator can trigger it over the mesh or IR. The mesh command layer is
+`CommandModule` (see `docs/command-cli.md`). The vibration/buzzer drivers use a **PN2222** on the
+bench; the EE's PCB uses an **AO3400** MOSFET for the motor (same firmware — a low-side switch is
+`HIGH`=on either way).
 
 ### I2C Bus Architecture (Heltec)
 
@@ -100,9 +106,14 @@ Bus 2 — GPIO41 SDA / GPIO42 SCL
 - `48`: IR receiver — remote arm/disarm (`IRModule`)
 - `41–42`: I2C bus 2
 - `43–44`: UART0 / CP2102 USB console — do NOT use for the Flipper link (clamps on battery)
+- `39`: passive buzzer via PN2222 driver (`CommandModule` `/buzz`)
+- `40`: vibration motor via PN2222 driver + 1N4007 flyback (`CommandModule` `/vibrate`)
+- `26`: external RGB status LED — SK6812 data (`CommandModule` `/led`; planned). NOT Vext.
+- `37`: wipe button — tact switch, INPUT_PULLUP (`CommandModule` factory reset)
 - `21`: OLED reset (hardwired — not free; do not use for HC-SR04 trigger)
-- `35`: onboard white LED (does NOT work as a UART RX)
+- `35`: onboard white LED — `CommandModule` uses it as the `/led` placeholder until the SK6812 on GPIO26 is wired
 - `36`: Vext — powers the OLED + external 3.3V rail (software gated, active LOW). GPIO26 is NOT Vext.
+- Only free non-strapping header pins on the V3 were `26 / 37 / 39 / 40` — now all four used.
 
 ---
 

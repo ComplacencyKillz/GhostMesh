@@ -196,21 +196,25 @@ photoresistor (GPIO5 ADC), IR receiver (GPIO48). Requires custom Meshtastic modu
 - [x] Custom module: `IRModule` — NEC decode on GPIO48 → arm/disarm (sets `ghostmesh_armed`, broadcasts `ARMED`/`DISARMED`); works with any NEC remote or the Flipper (`flipper-app/GhostMeshBackpack.ir`). Working 2026-08-17.
 - [x] Custom module: slide switch GPIO4 → **`ArmingModule`** sets `ghostmesh_armed` on boot + toggle and broadcasts `ARMED`/`DISARMED`; the tilt/light/proximity modules only alert when armed. Working 2026-08-17.
 
-### Flipper ProtoBoard (operator — carried in the field)
+### Backpack outputs — mesh command layer (`CommandModule`)
 
-**New hardware:** slide switch (pin 6), active buzzer via PN2222 (pin 2), vibration
-motor via AO3400 + 1N4007 (pin 3). FAP changes only — no Heltec firmware needed.
+**New hardware (on the Heltec backpack, NOT the Flipper):** passive buzzer (GPIO39, PN2222),
+vibration motor (GPIO40, PN2222 + 1N4007), RGB LED (GPIO26, SK6812), wipe button (GPIO37).
+Needs **custom Heltec firmware** — `heltec-firmware/CommandModule` — so any operator can trigger
+any backpack over the mesh or IR, no Flipper required. See `docs/command-cli.md`.
 
-| Flipper Pin | Component | Behavior |
+| Heltec GPIO | Component | Behavior |
 |-------------|-----------|----------|
-| 6 (PB2) | Slide switch | Arming gate — nuke and destructive actions only fire when HIGH |
-| 2 (PA7) | Buzzer via PN2222 | Audible alert on incoming message or relayed tamper event |
-| 3 (PA6) | Vibration motor via AO3400 + 1N4007 | Haptic alert on incoming message |
+| 39 | Passive buzzer via PN2222 | `/buzz [ms]` — PWM tone; distinct tones per event (planned) |
+| 40 | Vibration motor via PN2222 + 1N4007 | `/vibrate [ms]` — haptic alert |
+| 26 | RGB LED (SK6812) | `/led <color\|off>` — status indicator (planned; onboard GPIO35 for now) |
+| 37 | Wipe button (tact) | Factory reset — armed + double-press (2–5 s gap) |
 
-- [ ] FAP: read slide switch (pin 6) as arming gate — gate on all destructive actions
-- [ ] FAP: drive buzzer (pin 2) on RX message received, tamper alert received, send confirmation
-- [ ] FAP: drive vibration motor (pin 3) on RX message and send confirmation
-- [ ] FAP: parse incoming TAMPER / TAMPER_LIGHT / PERSON_DETECTED mesh packets and trigger alerts
+- [x] `CommandModule`: parse `/cmd @target [args]`, targeting (last-4 / ALL), spaced `/help`. Written 2026-08-18.
+- [x] `CommandModule`: `/arm` `/disarm` `/status` `/buzz` `/vibrate` `/led`; wipe (mesh token + physical double-press), armed-gated. Written 2026-08-18 — untested on hardware.
+- [ ] Wire the RGB SK6812 on GPIO26 (CommandModule drives the onboard LED until then)
+- [ ] IR wipe path: extend `IRModule` with the ARM → WIPE → CONFIRM sequence + a CONFIRM button in `GhostMeshBackpack.ir`
+- [ ] FAP: parse incoming TAMPER / TAMPER_LIGHT / PERSON_DETECTED mesh packets and trigger a dedicated alert UI
 
 ---
 
@@ -351,16 +355,19 @@ over LoRa, or protect itself.
 | Private channel config | ✅ via PROTO AdminMessage | — |
 | Factory reset (nuke) | ✅ AdminMessage | — |
 | Disable beaconing | ✅ via config | — |
-| Tilt switch tamper alert | ❌ | Custom module |
-| Photoresistor tamper alert | ❌ | Custom module |
-| IR receiver arm/disarm | ❌ | Custom module |
+| Tilt switch tamper alert | ❌ | ✅ TiltModule (built) |
+| Photoresistor tamper alert | ❌ | ✅ LightTamperModule (built) |
+| IR receiver arm/disarm | ❌ | ✅ IRModule (built) |
+| Slide-switch arm/disarm | ❌ | ✅ ArmingModule (built) |
 | HC-SR04 proximity alert | ❌ | ✅ ProximityModule (built) |
+| Buzzer / vibration / LED / wipe (mesh-triggered) | ❌ | ✅ CommandModule (written, untested) |
 | MAX17048 accurate SOC | ❌ | Custom module |
 | Jammer detection | ❌ | Custom module |
 | UART encryption | ❌ | Full custom firmware layer |
 
-Slide switch (operator gate), buzzer, and vibration motor are on the **Flipper ProtoBoard**
-and require only FAP changes — no Heltec firmware.
+Buzzer, vibration motor, RGB LED, arming slide, and wipe button are all on the **Heltec backpack**
+(GPIO39/40/26/4/37) and driven by `CommandModule` — so the backpack works standalone and any
+operator can trigger it over the mesh or IR. The Flipper carries no control hardware.
 
 ---
 

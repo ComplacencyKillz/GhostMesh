@@ -22,9 +22,10 @@ header into a breadboard-friendly form. Required for sensor connections.
 | U_TX | 13 | USART1 TX → Heltec GPIO7 (Serial module RX) |
 | U_RX | 14 | USART1 RX ← Heltec GPIO6 (Serial module TX) |
 | GND | 8 or 18 | Ground reference (shared with Heltec) |
-| PB2 | 6 | Slide switch (arming gate) |
-| PA7 | 2 | Active buzzer via PN2222 transistor |
-| PA6 | 3 | Vibration motor via AO3400 MOSFET + 1N4007 flyback diode |
+
+Only these three wires run between the Flipper and the backpack. The Flipper hosts **no** control
+hardware — passive buzzer, vibration motor, RGB LED, arming slide, and wipe button all live on the
+**Heltec backpack** (see the Heltec GPIO allocation below), triggered via the FAP, mesh, or IR.
 
 ---
 
@@ -71,11 +72,14 @@ custom Meshtastic modules.
 | 19 | ❌ USB D- | ESP32-S3 native USB |
 | 20 | ❌ USB D+ | ESP32-S3 native USB |
 | 21 | ❌ OLED reset | Hardwired OLED reset — NOT free (HC-SR04 trigger uses GPIO38 instead) |
-| 26 | ✅ Free (role unconfirmed) | NOT Vext — Vext is GPIO36. Verify before use |
+| 26 | 🚧 RGB status LED | External SK6812 data line (`/led`, planned) — NOT Vext (that's GPIO36) |
 | 33 | ✅ Free — confirmed | GPS UART1 TX (Heltec → BN-220 RX) |
 | 34 | ✅ Free — confirmed | GPS UART1 RX (BN-220 TX → Heltec) |
-| 35 | ❌ Onboard LED | White user LED — does NOT work as a UART RX |
+| 35 | ❌ Onboard LED | White user LED (does NOT work as a UART RX); `CommandModule` `/led` placeholder until GPIO26 RGB is wired |
 | 36 | ❌ Vext control | Powers OLED + external 3.3V rail (Meshtastic `VEXT_ENABLE`, active LOW) |
+| 37 | 🚧 Wipe button | Tact switch, INPUT_PULLUP → `CommandModule` factory reset (armed + double-press) |
+| 39 | 🚧 Buzzer | Passive buzzer via PN2222 low-side driver — PWM tone (`CommandModule` `/buzz`) |
+| 40 | 🚧 Vibration | Motor via PN2222 + 1N4007 flyback (`CommandModule` `/vibrate`); EE PCB uses AO3400 |
 | 41 | ❌ I2C bus 2 SDA | Sensor I2C bus (BME280, MAX17048 via Qwiic hub) |
 | 42 | ❌ I2C bus 2 SCL | Sensor I2C bus |
 | 43 | ⚠️ UART0 TX / CP2102 | USB console (flash/debug). **NOT the Flipper link** — CP2102 clamps it on battery |
@@ -103,16 +107,16 @@ custom Meshtastic modules.
 | Photoresistor (light tamper) | ADC | — | GPIO5 | 10 |
 | IR receiver (remote arm/disarm) | Digital GPIO | — | GPIO48 | 10 |
 
-**Flipper ProtoBoard** — operator-carried, handled by the FAP:
+**Heltec backpack outputs & controls** — operator triggers them over the FAP / mesh / IR; driven by `CommandModule`:
 
-| Component | Interface | Flipper Pin | Phase |
+| Component | Interface | Heltec GPIO | Phase |
 |-----------|-----------|-------------|-------|
-| Slide switch — operator arming gate | Digital GPIO | 6 (PB2) | 10 |
-| Active buzzer | Digital GPIO via PN2222 | 2 (PA7) | 10 |
-| Coin vibration motor (3V) | Digital GPIO via AO3400 | 3 (PA6) | 10 |
-| AO3400 N-MOSFET (SOT-23) | — | Gate: pin 3 (PA6) | 10 |
-| 1N4007 diode | — | Across motor | 10 |
-| PN2222 NPN transistor | — | Base: pin 2 (PA7) | 10 |
+| Passive buzzer | Digital GPIO via PN2222 → PWM tone | GPIO39 | 10 |
+| Vibration motor (3V) | Digital GPIO via PN2222 (PCB: AO3400) | GPIO40 | 10 |
+| RGB status LED (SK6812) | Addressable data line | GPIO26 | 10 |
+| Wipe button (tact switch) | Digital GPIO, INPUT_PULLUP | GPIO37 | 10 |
+| PN2222 NPN transistor (x2) | Low-side drivers for buzzer + motor | Base via 1kΩ | 10 |
+| 1N4007 diode | Flyback across the motor (and the coil buzzer) | — | 10 |
 
 ### From Elegoo Super Starter Kit (relevant components)
 
@@ -120,12 +124,13 @@ custom Meshtastic modules.
 |-----------|-----------------|-------|-------|
 | Photoresistor | Light tamper — case opened | Heltec GPIO5 | 10 |
 | IR receiver module | Remote arm/disarm | Heltec GPIO48 | 10 |
-| 1N4007 diode rectifier (2pcs) | Flyback protection for vibration motor | Across motor | 10 |
-| PN2222 NPN transistor (2pcs) | Buzzer driver | Flipper ProtoBoard | 10 |
-| Active + passive buzzer (2pcs) | Audible operator alert | Flipper ProtoBoard | 10 |
+| 1N4007 diode rectifier (2pcs) | Flyback for the vibration motor + coil buzzer | Heltec backpack | 10 |
+| PN2222 NPN transistor (2pcs) | Buzzer (GPIO39) + vibration (GPIO40) low-side drivers | Heltec backpack | 10 |
+| Passive buzzer | Tone alerts (distinct tones per event) via `/buzz` | Heltec GPIO39 | 10 |
 
 **Not used:** DHT11 (redundant — BME280 is strictly better), LCD 1602 (both devices have
-displays), stepper motor, servo, joystick, potentiometer, UNO R3, 7-segment displays.
+displays), stepper motor, servo, joystick, potentiometer, UNO R3, 7-segment displays, the
+**active buzzer** (the passive one is used instead, so alerts can carry distinct tones).
 
 ### Connectivity Hardware
 
@@ -133,7 +138,7 @@ displays), stepper motor, servo, joystick, potentiometer, UNO R3, 7-segment disp
 |------|-----|
 | JST PH 2.0mm connector kit | Battery connections, sensor power |
 | STEMMA QT / Qwiic cables (10/20/30/50cm) | I2C sensor chain |
-| PINGEQUA ProtoBoard (Flipper Zero) | Clean GPIO breakout for Flipper-side sensors |
+| PINGEQUA ProtoBoard | Backpack substrate — hosts the Heltec + sensors/outputs; plugs onto the Flipper GPIO (TX/RX/GND) |
 | M2 / M2.5 nylon standoff kits | Mechanical mounting |
 | Dupont wires (from Elegoo kit) | Breadboard prototyping before final assembly |
 

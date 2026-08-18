@@ -38,8 +38,13 @@ nodes. A different tag may build fine but can shift file layout / APIs.
 | LightTamperModule | photoresistor (GPIO5, light) → broadcast `TAMPER_LIGHT` | ✅ working |
 | ProximityModule | HC-SR04 (GPIO38 trig / GPIO47 echo) → broadcast `PERSON_DETECTED` | ✅ working (needs 5V + Echo divider, or a 3.3V RCWL-1601) |
 | IRModule | VS1838B (GPIO48, NEC decode) → remote arm/disarm; sets `ghostmesh_armed`, broadcasts `ARMED`/`DISARMED` | ✅ working (any NEC remote or the Flipper via `flipper-app/GhostMeshBackpack.ir`) |
+| CommandModule | **Listens** for `/cmd @target [args]` mesh text → drives buzzer (GPIO39, passive/tone), vibration (GPIO40), LED, status, arm/disarm, and the safety-gated wipe (mesh token + physical double-press on GPIO37) | 🚧 written, untested on hardware — see `docs/command-cli.md` |
 
 **Armed gate:** `ArmingModule` maintains `volatile bool ghostmesh_armed` (`GhostMeshArming.h`). Tilt/Light/Proximity only broadcast when armed, so the backpack can be handled while DISARMED without spamming the mesh.
+
+**CommandModule is the first *receiving* module.** The others only broadcast; CommandModule overrides `handleReceived()` to parse incoming text. Backpack output pins (verified against the board header photo): buzzer **GPIO39** (passive — driven with a PWM `tone()`, not DC), vibration motor **GPIO40** (on/off), physical wipe button **GPIO37** (`INPUT_PULLUP`), status LED on the onboard **GPIO35** as a placeholder until the external RGB (SK6812 on GPIO26) is wired. Registration is the same as any module (`#include` + `new CommandModule();` in `setupModules()`).
+
+> **Build-time APIs to sanity-check against tag `v2.7.15.567b8ea`** (fix in one line if the layout shifted): `nodeDB->getNodeNum()`, `isFromUs()`/`getFrom()` (NodeDB.h), `powerStatus->getBatteryChargePercent()` (PowerStatus.h), `nodeDB->factoryReset()` + the global `rebootAtMsec` (main.h), and Arduino `tone()`/`noTone()` (fallback: LEDC, noted inline in `CommandModule.cpp`).
 
 **Two hard requirements:** (1) **disable the built-in Detection Sensor** in the Meshtastic app — `TiltModule` owns GPIO2; (2) use a **private channel** — module broadcasts are blocked on the default public channel, and both nodes must share a frequency slot.
 
