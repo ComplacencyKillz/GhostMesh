@@ -9,10 +9,13 @@
 #define GHOSTMESH_PROFILE_NAME_LEN 20
 
 typedef enum {
-    GhostMeshScreenProfile,    // profile picker on launch
-    GhostMeshScreenMessages,   // canned message list; long-press Down → history, Up → sensors
-    GhostMeshScreenRxHistory,  // last 16 received messages; BACK returns
-    GhostMeshScreenSensors,    // temp/humidity/pressure telemetry; BACK returns
+    GhostMeshScreenProfile,    // profile picker on launch; OK → menu
+    GhostMeshScreenMenu,       // hub: pick a screen; BACK → profile
+    GhostMeshScreenMessages,   // canned message list; BACK → menu
+    GhostMeshScreenRxHistory,  // last 16 received messages; BACK → menu
+    GhostMeshScreenSensors,    // temp/humidity/pressure/GPS telemetry; BACK → menu
+    GhostMeshScreenStatus,     // node state overview; BACK → menu
+    GhostMeshScreenControl,    // IR arm/disarm/wipe (Step 2); BACK → menu
 } GhostMeshScreen;
 
 typedef struct {
@@ -36,6 +39,16 @@ typedef struct {
     int32_t latitude_i;    // degrees * 1e7
     int32_t longitude_i;   // degrees * 1e7
     int32_t altitude;      // meters
+
+    // ── Node armed state (parsed from ARMED/DISARMED mesh text) — Status/Control ──
+    bool armed_known;   // an ARMED/DISARMED message has been seen
+    bool armed;         // last known arm state of the backpack
+
+    // ── Menu hub (GhostMeshScreenMenu) ───────────────────────────────
+    const char** menu_names;
+    uint8_t menu_count;
+    uint8_t menu_selected;
+    uint8_t menu_scroll;
 
     // ── Profile selection (GhostMeshScreenProfile) ───────────────────
     const char** profile_names;  // array of profile name strings

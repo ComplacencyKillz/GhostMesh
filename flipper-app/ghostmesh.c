@@ -14,6 +14,22 @@
 #define FEEDBACK_TICKS  10   // × 200 ms = 2 s
 #define RX_HISTORY_MAX  16
 
+// Menu-hub entries: each maps a label to the screen it opens. The label is what shows in the hub
+// list — keep "Control" deliberately plain (don't advertise what it does).
+typedef struct {
+    const char* name;
+    GhostMeshScreen screen;
+} MenuEntry;
+
+static const MenuEntry MENU[] = {
+    {"Messages",   GhostMeshScreenMessages},
+    {"RX History", GhostMeshScreenRxHistory},
+    {"Sensors",    GhostMeshScreenSensors},
+    {"Control",    GhostMeshScreenControl},
+    {"Status",     GhostMeshScreenStatus},
+};
+#define MENU_COUNT ((uint8_t)(sizeof(MENU) / sizeof(MENU[0])))
+
 typedef struct {
     Gui* gui;
     MainView* main_view;
@@ -63,6 +79,14 @@ typedef struct {
     // Message list state
     uint8_t msg_sel;
     uint8_t msg_scroll;
+
+    // Menu hub state
+    uint8_t menu_sel;
+    uint8_t menu_scroll;
+
+    // Node armed state, parsed from ARMED/DISARMED mesh text
+    bool node_armed;
+    bool node_armed_known;
 
     // Send feedback
     char sent_display[24];
@@ -129,24 +153,8 @@ static void on_input(InputKey key, InputType type, void* ctx) {
         if(type != InputTypePress) return;
     }
 
-    // Long-press Down on the message screen opens RX history.
-    if(key == InputKeyDown && type == InputTypeLong) {
-        if(app->screen == GhostMeshScreenMessages && app->rx_history_count > 0) {
-            app->rx_history_scroll = 0;
-            app->screen = GhostMeshScreenRxHistory;
-        }
-        return;
-    }
-
-    // Long-press Up on the message screen opens the Sensor screen.
-    if(key == InputKeyUp && type == InputTypeLong) {
-        if(app->screen == GhostMeshScreenMessages) {
-            app->screen = GhostMeshScreenSensors;
-        }
-        return;
-    }
-
-    if(app->screen == GhostMeshScreenProfile) {
+    switch(app->screen) {
+    case GhostMeshScreenProfile:
         switch(key) {
         case InputKeyUp:
             if(app->profile_sel > 0) {
@@ -156,17 +164,17 @@ static void on_input(InputKey key, InputType type, void* ctx) {
             }
             break;
         case InputKeyDown:
-            // MED-3: guard against uint8_t underflow if profile_count == 0
+            // guard against uint8_t underflow if profile_count == 0
             if(app->profile_count > 0 && app->profile_sel < app->profile_count - 1) {
                 app->profile_sel++;
                 if(app->profile_sel >= app->profile_scroll + VISIBLE_ROWS)
                     app->profile_scroll = (uint8_t)(app->profile_sel - VISIBLE_ROWS + 1);
             }
             break;
-        case InputKeyOk:
-            app->msg_sel    = 0;
-            app->msg_scroll = 0;
-            app->screen     = GhostMeshScreenMessages;
+        case InputKeyOk:  // load profile, enter the hub
+            app->menu_sel    = 0;
+            app->menu_scroll = 0;
+            app->screen      = GhostMeshScreenMenu;
             break;
         case InputKeyBack:
             app->running = false;
@@ -174,19 +182,48 @@ static void on_input(InputKey key, InputType type, void* ctx) {
         default:
             break;
         }
+        break;
 
-    } else if(app->screen == GhostMeshScreenMessages) {
+    case GhostMeshScreenMenu:
+        switch(key) {
+        case InputKeyUp:
+            if(app->menu_sel > 0) {
+                app->menu_sel--;
+                if(app->menu_sel < app->menu_scroll) app->menu_scroll = app->menu_sel;
+            }
+            break;
+        case InputKeyDown:
+            if(app->menu_sel < MENU_COUNT - 1) {
+                app->menu_sel++;
+                if(app->menu_sel >= app->menu_scroll + VISIBLE_ROWS)
+                    app->menu_scroll = (uint8_t)(app->menu_sel - VISIBLE_ROWS + 1);
+            }
+            break;
+        case InputKeyOk:  // open the selected screen (reset its scroll state)
+            app->msg_sel           = 0;
+            app->msg_scroll        = 0;
+            app->rx_history_scroll = 0;
+            app->screen            = MENU[app->menu_sel].screen;
+            break;
+        case InputKeyBack:  // back to the profile picker
+            app->screen = GhostMeshScreenProfile;
+            break;
+        default:
+            break;
+        }
+        break;
+
+    case GhostMeshScreenMessages: {
         uint8_t msg_count = app->profiles[app->profile_sel].message_count;
         switch(key) {
         case InputKeyUp:
             if(app->msg_sel > 0) {
                 app->msg_sel--;
-                if(app->msg_sel < app->msg_scroll)
-                    app->msg_scroll = app->msg_sel;
+                if(app->msg_sel < app->msg_scroll) app->msg_scroll = app->msg_sel;
             }
             break;
         case InputKeyDown:
-            // MED-2: guard against uint8_t underflow if msg_count == 0
+            // guard against uint8_t underflow if msg_count == 0
             if(msg_count > 0 && app->msg_sel < msg_count - 1) {
                 app->msg_sel++;
                 if(app->msg_sel >= app->msg_scroll + VISIBLE_ROWS)
@@ -206,16 +243,16 @@ static void on_input(InputKey key, InputType type, void* ctx) {
             break;
         }
         case InputKeyBack:
-            app->screen         = GhostMeshScreenProfile;
-            app->msg_sel        = 0;
-            app->msg_scroll     = 0;
+            app->screen         = GhostMeshScreenMenu;
             app->feedback_ticks = 0;
             break;
         default:
             break;
         }
+        break;
+    }
 
-    } else if(app->screen == GhostMeshScreenRxHistory) {
+    case GhostMeshScreenRxHistory:
         switch(key) {
         case InputKeyUp:
             if(app->rx_history_scroll > 0) app->rx_history_scroll--;
@@ -226,14 +263,19 @@ static void on_input(InputKey key, InputType type, void* ctx) {
                 app->rx_history_scroll++;
             break;
         case InputKeyBack:
-            app->screen = GhostMeshScreenMessages;
+            app->screen = GhostMeshScreenMenu;
             break;
         default:
             break;
         }
+        break;
 
-    } else {  // GhostMeshScreenSensors
-        if(key == InputKeyBack) app->screen = GhostMeshScreenMessages;
+    case GhostMeshScreenSensors:
+    case GhostMeshScreenStatus:
+    case GhostMeshScreenControl:  // read-only in Step 1: BACK returns to the hub
+    default:
+        if(key == InputKeyBack) app->screen = GhostMeshScreenMenu;
+        break;
     }
 }
 
@@ -289,6 +331,10 @@ int32_t ghostmesh_app(void* p) {
     for(uint8_t i = 0; i < app->profile_count; i++)
         profile_names[i] = app->profiles[i].name;
 
+    const char* menu_names[MENU_COUNT];
+    for(uint8_t i = 0; i < MENU_COUNT; i++)
+        menu_names[i] = MENU[i].name;
+
     // history_ptrs must outlive each main_view_update call; declared here so
     // the draw callback never reads a dead stack frame.
     const char* history_ptrs[RX_HISTORY_MAX];
@@ -299,6 +345,8 @@ int32_t ghostmesh_app(void* p) {
     state.visible_rows  = VISIBLE_ROWS;
     state.profile_names = profile_names;
     state.profile_count = app->profile_count;
+    state.menu_names    = menu_names;
+    state.menu_count    = MENU_COUNT;
     state.history_lines = history_ptrs;
 
     while(app->running) {
@@ -328,6 +376,10 @@ int32_t ghostmesh_app(void* p) {
         state.altitude         = app->rx_alt;
         state.profile_selected = app->profile_sel;
         state.profile_scroll   = app->profile_scroll;
+        state.menu_selected    = app->menu_sel;
+        state.menu_scroll      = app->menu_scroll;
+        state.armed_known      = app->node_armed_known;
+        state.armed            = app->node_armed;
 
         Profile* active      = &app->profiles[app->profile_sel];
         state.messages       = (const char**)active->messages;
@@ -366,6 +418,15 @@ int32_t ghostmesh_app(void* p) {
 
             log_rx_message(app->rx_sender, app->rx_text_buf, app->rx_rssi, app->rx_snr, &dt,
                            app->pos_valid, app->rx_lat_i, app->rx_lon_i);
+
+            // Track the backpack's arm state from its ARMED/DISARMED broadcasts (Status/Control).
+            if(strcmp(app->rx_text_buf, "ARMED") == 0) {
+                app->node_armed = true;
+                app->node_armed_known = true;
+            } else if(strcmp(app->rx_text_buf, "DISARMED") == 0) {
+                app->node_armed = false;
+                app->node_armed_known = true;
+            }
             app->rx_updated = false;
         }
 
