@@ -44,6 +44,11 @@ typedef struct {
     bool armed_known;   // an ARMED/DISARMED message has been seen
     bool armed;         // last known arm state of the backpack
 
+    // ── Control page (GhostMeshScreenControl) ────────────────────────
+    uint8_t control_selected;      // 0=Arm 1=Disarm 2=Wipe
+    bool    wipe_confirm;          // wipe confirmation prompt is showing
+    uint8_t wipe_confirm_selected; // 0=Cancel 1=Confirm
+
     // ── Menu hub (GhostMeshScreenMenu) ───────────────────────────────
     const char** menu_names;
     uint8_t menu_count;

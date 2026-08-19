@@ -7,6 +7,7 @@
 #include "helpers/proto_mode.h"
 #include "helpers/profile_manager.h"
 #include "helpers/log_manager.h"
+#include "helpers/ir_tx.h"
 #include "views/main_view.h"
 
 #define TAG             "GhostMesh"
@@ -87,6 +88,11 @@ typedef struct {
     // Node armed state, parsed from ARMED/DISARMED mesh text
     bool node_armed;
     bool node_armed_known;
+
+    // Control page state
+    uint8_t control_sel;      // 0=Arm 1=Disarm 2=Wipe
+    bool    wipe_confirm;     // wipe confirmation prompt active
+    uint8_t wipe_confirm_sel; // 0=Cancel 1=Confirm
 
     // Send feedback
     char sent_display[24];
@@ -203,6 +209,8 @@ static void on_input(InputKey key, InputType type, void* ctx) {
             app->msg_sel           = 0;
             app->msg_scroll        = 0;
             app->rx_history_scroll = 0;
+            app->control_sel       = 0;
+            app->wipe_confirm      = false;
             app->screen            = MENU[app->menu_sel].screen;
             break;
         case InputKeyBack:  // hub is the top level → exit the app
@@ -270,9 +278,71 @@ static void on_input(InputKey key, InputType type, void* ctx) {
         }
         break;
 
+    case GhostMeshScreenControl:
+        if(app->wipe_confirm) {
+            switch(key) {
+            case InputKeyUp:
+            case InputKeyDown:
+                app->wipe_confirm_sel ^= 1u; // toggle Cancel <-> CONFIRM WIPE
+                break;
+            case InputKeyOk:
+                if(app->wipe_confirm_sel == 1) {
+                    // Fire the ARM → WIPE → CONFIRM IR sequence the backpack requires.
+                    ghostmesh_ir_send(GHOSTMESH_IR_ARM);
+                    furi_delay_ms(200);
+                    ghostmesh_ir_send(GHOSTMESH_IR_WIPE);
+                    furi_delay_ms(200);
+                    ghostmesh_ir_send(GHOSTMESH_IR_CONFIRM);
+                    strncpy(app->sent_display, "WIPE via IR", sizeof(app->sent_display) - 1);
+                    app->sent_display[sizeof(app->sent_display) - 1] = '\0';
+                    app->feedback_ticks = FEEDBACK_TICKS;
+                    FURI_LOG_I(TAG, "IR: WIPE sequence sent");
+                }
+                app->wipe_confirm = false;
+                app->wipe_confirm_sel = 0;
+                break;
+            case InputKeyBack:
+                app->wipe_confirm = false;
+                app->wipe_confirm_sel = 0;
+                break;
+            default:
+                break;
+            }
+        } else {
+            switch(key) {
+            case InputKeyUp:
+                if(app->control_sel > 0) app->control_sel--;
+                break;
+            case InputKeyDown:
+                if(app->control_sel < 2) app->control_sel++;
+                break;
+            case InputKeyOk:
+                if(app->control_sel == 0) {
+                    ghostmesh_ir_send(GHOSTMESH_IR_ARM);
+                    strncpy(app->sent_display, "ARM via IR", sizeof(app->sent_display) - 1);
+                    app->sent_display[sizeof(app->sent_display) - 1] = '\0';
+                    app->feedback_ticks = FEEDBACK_TICKS;
+                } else if(app->control_sel == 1) {
+                    ghostmesh_ir_send(GHOSTMESH_IR_DISARM);
+                    strncpy(app->sent_display, "DISARM via IR", sizeof(app->sent_display) - 1);
+                    app->sent_display[sizeof(app->sent_display) - 1] = '\0';
+                    app->feedback_ticks = FEEDBACK_TICKS;
+                } else {
+                    app->wipe_confirm = true; // open confirmation (defaults to Cancel)
+                    app->wipe_confirm_sel = 0;
+                }
+                break;
+            case InputKeyBack:
+                app->screen = GhostMeshScreenMenu;
+                break;
+            default:
+                break;
+            }
+        }
+        break;
+
     case GhostMeshScreenSensors:
     case GhostMeshScreenStatus:
-    case GhostMeshScreenControl:  // read-only in Step 1: BACK returns to the hub
     default:
         if(key == InputKeyBack) app->screen = GhostMeshScreenMenu;
         break;
@@ -380,6 +450,9 @@ int32_t ghostmesh_app(void* p) {
         state.menu_scroll      = app->menu_scroll;
         state.armed_known      = app->node_armed_known;
         state.armed            = app->node_armed;
+        state.control_selected      = app->control_sel;
+        state.wipe_confirm          = app->wipe_confirm;
+        state.wipe_confirm_selected = app->wipe_confirm_sel;
 
         Profile* active      = &app->profiles[app->profile_sel];
         state.messages       = (const char**)active->messages;

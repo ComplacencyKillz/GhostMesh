@@ -215,16 +215,45 @@ static void draw_status_screen(Canvas* canvas, const MainViewState* s) {
     draw_footer(canvas, "BACK:Menu", s);
 }
 
-// Placeholder — Step 2 adds the IR arm/disarm/wipe controls here.
+// Draws one selectable row (highlight box when sel), used by the Control action list.
+static void draw_action_row(Canvas* canvas, uint8_t row_i, const char* txt, bool sel) {
+    uint8_t row_y = (uint8_t)(LIST_Y + row_i * ROW_H);
+    if(sel) {
+        canvas_set_color(canvas, ColorBlack);
+        canvas_draw_box(canvas, 0, row_y, 127, ROW_H);
+        canvas_set_color(canvas, ColorWhite);
+        canvas_draw_str(canvas, 4, (uint8_t)(row_y + ROW_H - 2), txt);
+        canvas_set_color(canvas, ColorBlack);
+    } else {
+        canvas_draw_str(canvas, 4, (uint8_t)(row_y + ROW_H - 2), txt);
+    }
+}
+
+// Control: IR arm/disarm/wipe. Buttons are labelled here (the *menu* stays discreet). WIPE opens
+// an on-screen confirmation before the FAP blasts the ARM→WIPE→CONFIRM IR sequence.
 static void draw_control_screen(Canvas* canvas, const MainViewState* s) {
     draw_header(canvas, "Control", s);
     canvas_set_font(canvas, FontSecondary);
-    char line[32];
+
+    if(s->wipe_confirm) {
+        canvas_draw_str(canvas, 4, (uint8_t)(LIST_Y + ROW_H - 2), "WIPE the backpack?");
+        canvas_draw_str(canvas, 4, (uint8_t)(LIST_Y + 2 * ROW_H - 2), "Erases it completely.");
+        draw_action_row(canvas, 2, "Cancel", s->wipe_confirm_selected == 0);
+        draw_action_row(canvas, 3, "CONFIRM WIPE", s->wipe_confirm_selected == 1);
+        draw_footer(canvas, "Up/Down + OK", s);
+        return;
+    }
+
+    char line[24];
     snprintf(line, sizeof(line), "Node: %s",
              !s->armed_known ? "unknown" : (s->armed ? "ARMED" : "disarmed"));
     canvas_draw_str(canvas, 4, (uint8_t)(LIST_Y + ROW_H - 2), line);
-    canvas_draw_str(canvas, 4, (uint8_t)(LIST_Y + 2 * ROW_H - 2), "IR remote");
-    draw_footer(canvas, "BACK:Menu", s);
+
+    static const char* actions[3] = {"Arm", "Disarm", "Wipe"};
+    for(uint8_t i = 0; i < 3; i++)
+        draw_action_row(canvas, (uint8_t)(i + 1), actions[i], i == s->control_selected);
+
+    draw_footer(canvas, "OK:Send IR", s);
 }
 
 // ── ViewPort callbacks ─────────────────────────────────────────────────────────
