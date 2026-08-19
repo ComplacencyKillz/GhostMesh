@@ -283,7 +283,8 @@ static void on_input(InputKey key, InputType type, void* ctx) {
             switch(key) {
             case InputKeyUp:
             case InputKeyDown:
-                app->wipe_confirm_sel ^= 1u; // toggle Cancel <-> CONFIRM WIPE
+                // Press only — a held key must not flicker the selection onto CONFIRM.
+                if(type == InputTypePress) app->wipe_confirm_sel ^= 1u;
                 break;
             case InputKeyOk:
                 if(app->wipe_confirm_sel == 1) {
