@@ -210,8 +210,8 @@ any backpack over the mesh or IR, no Flipper required. See `docs/command-cli.md`
 | 26 | RGB LED (SK6812) | `/led <color\|off>` — status indicator (planned; onboard GPIO35 for now) |
 | 37 | Wipe button (tact) | Factory reset — armed + double-press (2–5 s gap) |
 
-- [x] `CommandModule`: parse `/cmd @target [args]`, targeting (last-4 / ALL), spaced `/help`. Written 2026-08-18.
-- [x] `CommandModule`: `/arm` `/disarm` `/status` `/buzz` `/vibrate` `/led`; wipe (mesh token + physical double-press), armed-gated. Written 2026-08-18 — untested on hardware.
+- [x] `CommandModule`: parse `/cmd @target [args]`, per-node targeting (last-4 id only — **no broadcast/`@ALL`**), spaced `/help`. Working on hardware 2026-08-18.
+- [x] `CommandModule`: `/arm` `/disarm` `/status` `/buzz` `/vibrate` `/led`; wipe (mesh token + physical double-press), armed-gated. **`/buzz` + `/vibrate` confirmed on hardware 2026-08-18.**
 - [ ] Wire the RGB SK6812 on GPIO26 (CommandModule drives the onboard LED until then)
 - [ ] IR wipe path: extend `IRModule` with the ARM → WIPE → CONFIRM sequence + a CONFIRM button in `GhostMeshBackpack.ir`
 - [ ] FAP: parse incoming TAMPER / TAMPER_LIGHT / PERSON_DETECTED mesh packets and trigger a dedicated alert UI

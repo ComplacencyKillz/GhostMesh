@@ -107,31 +107,25 @@ void CommandModule::handleCommandText(char *text, uint32_t from)
     } else if (strcasecmp(cmd, "/led") == 0) {
         doLed(arg);
     } else if (strcasecmp(cmd, "/wipe") == 0) {
-        doWipeCommand(tgt, arg);
+        doWipeCommand(arg);
     } else {
         enqueueReply("? unknown cmd — try /help");
     }
 }
 
-// ── Targeting: does @target address this node? ──────────────────────────────────────
+// ── Targeting: does @target name THIS node? ─────────────────────────────────────────
+// No broadcast target. Every command must name this node's last-4 hex id — there is deliberately
+// no @ALL. That removes the one-message fleet-wide amplifier: even a key-holding attacker on the
+// private channel must know and name each node individually and can never hit the whole mesh at
+// once. The channel PSK is the outer gate; this is the next layer in.
 bool CommandModule::targetsMe(const char *tgt)
 {
     if (!tgt)
         return false;
     const char *t = (tgt[0] == '@') ? tgt + 1 : tgt;
-    if (strcasecmp(t, "ALL") == 0)
-        return true;
     char me[8];
     snprintf(me, sizeof(me), "%04x", (unsigned)(nodeDB->getNodeNum() & 0xFFFF));
     return strcasecmp(t, me) == 0;
-}
-
-bool CommandModule::targetIsAll(const char *tgt)
-{
-    if (!tgt)
-        return false;
-    const char *t = (tgt[0] == '@') ? tgt + 1 : tgt;
-    return strcasecmp(t, "ALL") == 0;
 }
 
 // ── /help: one message PER command (mesh text caps at ~200 chars, so we never cram) ──
@@ -174,12 +168,10 @@ void CommandModule::doLed(const char *arg)
 }
 
 // ── /wipe: two-step mesh path — issue a one-time token, then verify it. Armed-gated. ─
-void CommandModule::doWipeCommand(const char *tgt, const char *arg)
+// Reached only when @target already named this node exactly (no @ALL exists), so a single message
+// can never wipe the fleet. Still armed-gated + one-time token on top of that.
+void CommandModule::doWipeCommand(const char *arg)
 {
-    if (targetIsAll(tgt)) {
-        enqueueReply("WIPE needs a node id, not ALL");
-        return;
-    }
     if (!ghostmesh_armed) {
         enqueueReply("WIPE denied: not armed");
         return;

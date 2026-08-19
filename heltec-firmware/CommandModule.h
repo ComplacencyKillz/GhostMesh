@@ -51,11 +51,10 @@ class CommandModule : public SinglePortModule, private concurrency::OSThread
     // helpers
     void handleCommandText(char *text, uint32_t from);
     bool targetsMe(const char *tgt);
-    bool targetIsAll(const char *tgt);
     void doHelp();
     void doStatus();
     void doLed(const char *arg);
-    void doWipeCommand(const char *tgt, const char *arg);
+    void doWipeCommand(const char *arg);
     void serviceWipeButton(uint32_t now);
     void doFactoryWipe();
     void enqueueReply(const char *msg);
