@@ -22,7 +22,7 @@ typedef struct {
 } MenuEntry;
 
 static const MenuEntry MENU[] = {
-    {"Messages",   GhostMeshScreenMessages},
+    {"Messages",   GhostMeshScreenProfile}, // opens the profile picker → that profile's messages
     {"RX History", GhostMeshScreenRxHistory},
     {"Sensors",    GhostMeshScreenSensors},
     {"Control",    GhostMeshScreenControl},
@@ -171,13 +171,13 @@ static void on_input(InputKey key, InputType type, void* ctx) {
                     app->profile_scroll = (uint8_t)(app->profile_sel - VISIBLE_ROWS + 1);
             }
             break;
-        case InputKeyOk:  // load profile, enter the hub
-            app->menu_sel    = 0;
-            app->menu_scroll = 0;
-            app->screen      = GhostMeshScreenMenu;
+        case InputKeyOk:  // load this profile's messages
+            app->msg_sel    = 0;
+            app->msg_scroll = 0;
+            app->screen     = GhostMeshScreenMessages;
             break;
-        case InputKeyBack:
-            app->running = false;
+        case InputKeyBack:  // back to the hub
+            app->screen = GhostMeshScreenMenu;
             break;
         default:
             break;
@@ -205,8 +205,8 @@ static void on_input(InputKey key, InputType type, void* ctx) {
             app->rx_history_scroll = 0;
             app->screen            = MENU[app->menu_sel].screen;
             break;
-        case InputKeyBack:  // back to the profile picker
-            app->screen = GhostMeshScreenProfile;
+        case InputKeyBack:  // hub is the top level → exit the app
+            app->running = false;
             break;
         default:
             break;
@@ -242,8 +242,8 @@ static void on_input(InputKey key, InputType type, void* ctx) {
             }
             break;
         }
-        case InputKeyBack:
-            app->screen         = GhostMeshScreenMenu;
+        case InputKeyBack:  // back to the profile picker
+            app->screen         = GhostMeshScreenProfile;
             app->feedback_ticks = 0;
             break;
         default:
@@ -285,7 +285,7 @@ static GhostMeshApp* ghostmesh_alloc(void) {
     GhostMeshApp* app = malloc(sizeof(GhostMeshApp));
     memset(app, 0, sizeof(GhostMeshApp));
     app->running = true;
-    app->screen  = GhostMeshScreenProfile;
+    app->screen  = GhostMeshScreenMenu;  // the hub is home; profile picking lives under Messages
 
     app->mutex = furi_mutex_alloc(FuriMutexTypeNormal);
     app->proto = proto_mode_alloc(GHOSTMESH_UART_BAUD, on_rx_text, app);

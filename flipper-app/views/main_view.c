@@ -132,16 +132,16 @@ static void draw_list(Canvas* canvas, const char** items, uint8_t count, uint8_t
 // ── Screens ───────────────────────────────────────────────────────────────────
 
 static void draw_profile_screen(Canvas* canvas, const MainViewState* s) {
-    draw_header(canvas, "GhostMesh", s);
+    draw_header(canvas, "Profiles", s);
     draw_list(canvas, s->profile_names, s->profile_count, s->profile_selected, s->profile_scroll,
               true, s);
-    draw_footer(canvas, "OK:Load  BACK:Exit", s);
+    draw_footer(canvas, "OK:Load  BACK:Menu", s);
 }
 
 static void draw_menu_screen(Canvas* canvas, const MainViewState* s) {
     draw_header(canvas, "GhostMesh", s);
     draw_list(canvas, s->menu_names, s->menu_count, s->menu_selected, s->menu_scroll, true, s);
-    draw_footer(canvas, "OK:Open  BACK:Profile", s);
+    draw_footer(canvas, "OK:Open  BACK:Exit", s);
 }
 
 static void draw_message_screen(Canvas* canvas, const MainViewState* s) {
