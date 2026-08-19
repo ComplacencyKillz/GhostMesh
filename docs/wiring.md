@@ -80,7 +80,7 @@ SPDT slide switch on GPIO4, per the schematic:
 | One throw | 3.3V (armed) |
 | Other throw | GND (disarmed) |
 
-Runs on `heltec-firmware/ArmingModule` → broadcasts `ARMED` / `DISARMED` and sets the shared `ghostmesh_armed` state that gates the tilt/light/proximity modules (they only alert when armed). If ARMED/DISARMED read backwards, swap the two throw wires.
+Runs on `heltec-firmware/ArmingModule` → broadcasts `ARMED` / `DISARMED` and sets the shared `ghostmesh_armed` state that gates the tilt/light/proximity modules (they only alert when armed). The switch is read as a **toggle** — any flip inverts the state, the position isn't tied to a state — so it never disagrees with an IR/mesh arm/disarm (last action wins). Boot state is DISARMED regardless of switch position, so wiring polarity doesn't matter.
 
 ### Heltec ↔ Photoresistor (Light Tamper) ✅
 

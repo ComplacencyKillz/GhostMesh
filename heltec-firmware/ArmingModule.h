@@ -4,9 +4,10 @@
 
 // GhostMesh arming module.
 //
-// Reads the operator slide switch (SPDT on GPIO4) and maintains the shared `ghostmesh_armed`
-// state that gates the tamper modules. Broadcasts "ARMED" / "DISARMED" over LoRa when the
-// switch is flipped so the operator sees the state on the app / FAP.
+// Reads the operator slide switch (SPDT on GPIO4) as a TOGGLE: any flip inverts the shared
+// `ghostmesh_armed` flag that gates the tamper modules, and broadcasts "ARMED"/"DISARMED". The
+// switch position is NOT tied to a state, so it can never disagree with an IR/mesh arm/disarm —
+// every input just flips/sets the one shared flag, last action wins.
 class ArmingModule : public SinglePortModule, private concurrency::OSThread
 {
   public:
@@ -18,7 +19,7 @@ class ArmingModule : public SinglePortModule, private concurrency::OSThread
 
   private:
     bool firstTime = true;
-    bool lastArmed = false;
+    bool lastLevel = false; // last raw switch reading; a change = a flip = toggle
     void broadcastArmState(bool armed);
 };
 
