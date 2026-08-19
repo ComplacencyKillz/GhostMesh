@@ -27,8 +27,9 @@ IRModule *irModule;
 // ── NECext decode (falling-edge interval method) ──────────────────────────────────────
 // From each falling edge, the gap to the next falling edge is: ~13.5 ms header, ~1.125 ms for a 0
 // bit, ~2.25 ms for a 1 bit. 32 bits per frame, transmitted LSB-first: address_lo, address_hi,
-// command, ~command. We accumulate LSB-first (bit N → position N), so the finished 32-bit word is
-//   [~command][command][address_hi][address_lo]  (low bits = address, exactly as on the wire).
+// command_lo, command_hi (the Flipper's NECext sends a 16-bit command, high byte 0 — not cmd/~cmd).
+// We accumulate LSB-first (bit N → position N), so the finished word is [cmd_hi][cmd_lo][addr]. We
+// use only the low command byte + the 16-bit address.
 // NEC repeat codes (holding a button) have a ~11.25 ms header gap and are ignored.
 static volatile uint32_t ir_lastFall = 0;
 static volatile uint32_t ir_acc      = 0;
@@ -89,10 +90,12 @@ int32_t IRModule::runOnce()
         ir_ready = false;
         uint16_t addr = raw & 0xFFFF;
         uint8_t  cmd  = (raw >> 16) & 0xFF;
-        uint8_t  inv  = (raw >> 24) & 0xFF;
         LOG_INFO("IR: addr 0x%04X cmd 0x%02X", addr, cmd); // point any remote here to identify it
-        if (addr == GM_IR_ADDR && (uint8_t)(cmd ^ inv) == 0xFF)
-            handleCommand(cmd); // ours, and the NEC command/inverse check passes
+        // Match on the 16-bit address only. The Flipper's NECext carries the command as a 16-bit
+        // value (high byte 0), not the classic cmd/~cmd pair, so an inverse check would reject
+        // every frame. The address is the namespace gate; handleCommand ignores unknown commands.
+        if (addr == GM_IR_ADDR)
+            handleCommand(cmd);
     }
 
     // Expire a stale WIPE so a much-later CONFIRM can't fire the destruct.
