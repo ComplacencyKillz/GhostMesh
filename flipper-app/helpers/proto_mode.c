@@ -23,6 +23,16 @@
 // Broadcast node ID
 #define MESH_BROADCAST_ADDR 0xFFFFFFFFu
 
+// Config-backup capture buffer. Holds the Config/ModuleConfig/Channel records streamed during the
+// handshake (~1-3 KB in practice). If a dump overruns this, the tail is dropped (logged nowhere —
+// keep it comfortably larger than a real config set).
+#define PROTO_CONFIG_CAP_MAX 4096
+
+// FromRadio payload_variant field numbers we capture for a config backup.
+#define FR_CONFIG        5
+#define FR_MODULE_CONFIG 9
+#define FR_CHANNEL       10
+
 // ── Varint encoder/decoder ────────────────────────────────────────────────────
 
 static size_t write_varint(uint64_t v, uint8_t* out) {
@@ -389,7 +399,28 @@ struct ProtoMode {
     uint16_t       rx_expected;
     uint16_t       rx_pos;
     uint8_t        rx_buf[PROTO_MAX_PAYLOAD];
+
+    // Config-backup capture (records: [type][len_lo][len_hi][bytes]). Written from the UART
+    // callback during the handshake; read by the main loop once _ready. See proto_mode.h.
+    uint8_t        config_cap[PROTO_CONFIG_CAP_MAX];
+    uint16_t       config_cap_len;
+    volatile bool  config_cap_ready;
 };
+
+// Append one Config/ModuleConfig/Channel sub-message to the capture buffer as a [type][len][bytes]
+// record. Called from the UART callback — no I/O, just a memcpy. Stops appending once _ready so a
+// completed set isn't polluted by stray late frames.
+static void capture_config(ProtoMode* p, uint8_t type, const uint8_t* data, size_t len) {
+    if(p->config_cap_ready) return;
+    size_t need = 3 + len;
+    if((size_t)p->config_cap_len + need > PROTO_CONFIG_CAP_MAX) return; // out of room — drop tail
+    uint8_t* w = p->config_cap + p->config_cap_len;
+    w[0] = type;
+    w[1] = (uint8_t)(len & 0xFF);
+    w[2] = (uint8_t)((len >> 8) & 0xFF);
+    memcpy(w + 3, data, len);
+    p->config_cap_len = (uint16_t)(p->config_cap_len + need);
+}
 
 // NodeInfo.num = field 1 (varint), device_metrics = field 6 (bytes, DeviceMetrics).
 // During the want_config handshake the node sends a NodeInfo for itself, so we can
@@ -484,8 +515,10 @@ static void on_rx_byte(uint8_t byte, void* ctx) {
                     uint64_t val;
                     if(!read_varint(buf, len, &pos, &val)) break;
                     // FromRadio.config_complete_id = field 7
-                    if(field == 7 && (uint32_t)val == PROTO_NONCE)
+                    if(field == 7 && (uint32_t)val == PROTO_NONCE) {
                         p->connected = true;
+                        p->config_cap_ready = true; // config dump done — the backup is complete
+                    }
                 } else if(wire == PB_WIRE_BYTES) {
                     uint64_t blen;
                     if(!read_varint(buf, len, &pos, &blen)) break;
@@ -534,6 +567,10 @@ static void on_rx_byte(uint8_t byte, void* ctx) {
                     } else if(field == 4) {  // FromRadio.node_info = NodeInfo
                         // Local node's NodeInfo carries battery — show it on connect.
                         decode_node_info(buf + pos, (size_t)blen, p);
+                    } else if(field == FR_CONFIG || field == FR_MODULE_CONFIG ||
+                              field == FR_CHANNEL) {
+                        // Capture for the config backup (Config / ModuleConfig / Channel).
+                        capture_config(p, (uint8_t)field, buf + pos, (size_t)blen);
                     }
                     // HIGH-3: safe cast — blen <= len - pos guaranteed by guard above.
                     pos += (size_t)blen;
@@ -554,6 +591,10 @@ static void on_rx_byte(uint8_t byte, void* ctx) {
 //   ToRadio(want_config_id=42).SerializeToString() == b'\x18\x2a'
 //   -> tag 0x18 = (3<<3)|0 = field 3, varint
 static void send_want_config_id(ProtoMode* p) {
+    // A fresh config dump is about to stream — reset the backup capture so it reflects this one.
+    p->config_cap_len = 0;
+    p->config_cap_ready = false;
+
     // Payload: field 3 varint tag (0x18) + varint(PROTO_NONCE)
     uint8_t payload[8];
     size_t pl = 0;
@@ -632,4 +673,11 @@ size_t proto_mode_send_text(ProtoMode* p, const char* text) {
     if(len == 0) return 0;
     uart_helper_send_bytes(p->uart, buf, len);
     return len;
+}
+
+bool proto_mode_get_config_backup(const ProtoMode* p, const uint8_t** out, uint16_t* len) {
+    if(!p || !p->config_cap_ready || p->config_cap_len == 0) return false;
+    *out = p->config_cap;
+    *len = p->config_cap_len;
+    return true;
 }

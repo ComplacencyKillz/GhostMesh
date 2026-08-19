@@ -80,3 +80,11 @@ uint32_t proto_mode_get_local_node(const ProtoMode* proto);
 // Encode and send a text message as a ToRadio PROTO packet (broadcast to all nodes).
 // Returns bytes transmitted (header + payload), or 0 on error.
 size_t proto_mode_send_text(ProtoMode* proto, const char* text);
+
+// ── Config backup ─────────────────────────────────────────────────────────────
+// During the want_config handshake the node streams its whole configuration. We capture the
+// Config (FromRadio field 5), ModuleConfig (9), and Channel (10) sub-messages — everything needed
+// to restore the device, including the channel PSKs — into a buffer, as a sequence of records:
+//   [type:1][len_lo:1][len_hi:1][protobuf bytes:len]   (type = 5 / 9 / 10)
+// The nodedb and other frames are intentionally skipped. Returns false until config_complete.
+bool proto_mode_get_config_backup(const ProtoMode* proto, const uint8_t** out, uint16_t* len);
