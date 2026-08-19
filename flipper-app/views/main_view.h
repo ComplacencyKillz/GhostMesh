@@ -15,7 +15,8 @@ typedef enum {
     GhostMeshScreenRxHistory,  // last 16 received messages; BACK → menu
     GhostMeshScreenSensors,    // temp/humidity/pressure/GPS telemetry; BACK → menu
     GhostMeshScreenStatus,     // node state overview; BACK → menu
-    GhostMeshScreenControl,    // IR arm/disarm/wipe (Step 2); BACK → menu
+    GhostMeshScreenControl,    // IR arm/disarm/wipe; BACK → menu
+    GhostMeshScreenBackup,     // encrypted config backup result; BACK → menu
 } GhostMeshScreen;
 
 typedef struct {
@@ -48,6 +49,9 @@ typedef struct {
     uint8_t control_selected;      // 0=Arm 1=Disarm 2=Wipe
     bool    wipe_confirm;          // wipe confirmation prompt is showing
     uint8_t wipe_confirm_selected; // 0=Cancel 1=Confirm
+
+    // ── Backup screen (GhostMeshScreenBackup) ────────────────────────
+    const char* backup_result;     // status/result line
 
     // ── Menu hub (GhostMeshScreenMenu) ───────────────────────────────
     const char** menu_names;

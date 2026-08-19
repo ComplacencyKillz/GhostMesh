@@ -256,6 +256,17 @@ static void draw_control_screen(Canvas* canvas, const MainViewState* s) {
     draw_footer(canvas, "OK:Send IR", s);
 }
 
+// Backup: shows the result of the encrypted config backup (the passphrase is entered on the
+// Flipper keyboard, driven modally from the main loop — not on this screen).
+static void draw_backup_screen(Canvas* canvas, const MainViewState* s) {
+    draw_header(canvas, "Backup", s);
+    canvas_set_font(canvas, FontSecondary);
+    canvas_draw_str(canvas, 4, (uint8_t)(LIST_Y + ROW_H - 2), "Encrypted config -> SD");
+    canvas_draw_str(canvas, 4, (uint8_t)(LIST_Y + 2 * ROW_H - 2),
+                    s->backup_result ? s->backup_result : "");
+    draw_footer(canvas, "BACK:Menu", s);
+}
+
 // ── ViewPort callbacks ─────────────────────────────────────────────────────────
 
 static void draw_cb(Canvas* canvas, void* ctx) {
@@ -270,6 +281,7 @@ static void draw_cb(Canvas* canvas, void* ctx) {
     case GhostMeshScreenSensors:   draw_sensors_screen(canvas, &mv->state);    break;
     case GhostMeshScreenStatus:    draw_status_screen(canvas, &mv->state);     break;
     case GhostMeshScreenControl:   draw_control_screen(canvas, &mv->state);    break;
+    case GhostMeshScreenBackup:    draw_backup_screen(canvas, &mv->state);     break;
     default:                       draw_menu_screen(canvas, &mv->state);       break;
     }
     furi_mutex_release(mv->mutex);

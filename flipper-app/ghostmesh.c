@@ -1,6 +1,8 @@
 #include <furi.h>
 #include <furi_hal.h>
 #include <gui/gui.h>
+#include <gui/view_holder.h>
+#include <gui/modules/text_input.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -8,6 +10,7 @@
 #include "helpers/profile_manager.h"
 #include "helpers/log_manager.h"
 #include "helpers/ir_tx.h"
+#include "helpers/gm_backup.h"
 #include "views/main_view.h"
 
 #define TAG             "GhostMesh"
@@ -28,6 +31,7 @@ static const MenuEntry MENU[] = {
     {"Sensors",    GhostMeshScreenSensors},
     {"Control",    GhostMeshScreenControl},
     {"Status",     GhostMeshScreenStatus},
+    {"Backup",     GhostMeshScreenBackup},
 };
 #define MENU_COUNT ((uint8_t)(sizeof(MENU) / sizeof(MENU[0])))
 
@@ -93,6 +97,10 @@ typedef struct {
     uint8_t control_sel;      // 0=Arm 1=Disarm 2=Wipe
     bool    wipe_confirm;     // wipe confirmation prompt active
     uint8_t wipe_confirm_sel; // 0=Cancel 1=Confirm
+
+    // Backup state
+    bool request_backup;      // set from input; the main loop runs the modal passphrase + encrypt
+    char backup_result[48];
 
     // Send feedback
     char sent_display[24];
@@ -212,6 +220,13 @@ static void on_input(InputKey key, InputType type, void* ctx) {
             app->control_sel       = 0;
             app->wipe_confirm      = false;
             app->screen            = MENU[app->menu_sel].screen;
+            if(app->screen == GhostMeshScreenBackup) {
+                // The main loop runs the modal passphrase entry + encryption.
+                app->request_backup = true;
+                strncpy(app->backup_result, "Enter passphrase...",
+                        sizeof(app->backup_result) - 1);
+                app->backup_result[sizeof(app->backup_result) - 1] = '\0';
+            }
             break;
         case InputKeyBack:  // hub is the top level → exit the app
             app->running = false;
@@ -344,10 +359,97 @@ static void on_input(InputKey key, InputType type, void* ctx) {
 
     case GhostMeshScreenSensors:
     case GhostMeshScreenStatus:
+    case GhostMeshScreenBackup:
     default:
         if(key == InputKeyBack) app->screen = GhostMeshScreenMenu;
         break;
     }
+}
+
+// ── Modal passphrase entry ────────────────────────────────────────────────────
+// The FAP uses a single fullscreen ViewPort, so to show the Flipper keyboard we swap it out for a
+// text_input in a ViewHolder and block the main loop on a semaphore until the operator confirms or
+// backs out. Runs on the main thread (never the input/ISR thread).
+
+typedef struct {
+    char buf[48];
+    bool confirmed;
+    FuriSemaphore* done;
+} PassEntry;
+
+static void passphrase_ok_cb(void* ctx) {
+    PassEntry* pe = ctx;
+    pe->confirmed = true;
+    furi_semaphore_release(pe->done);
+}
+
+static void passphrase_back_cb(void* ctx) {
+    PassEntry* pe = ctx;
+    pe->confirmed = false;
+    furi_semaphore_release(pe->done);
+}
+
+// Returns true (and fills out) if the operator entered a passphrase and confirmed.
+static bool passphrase_prompt(GhostMeshApp* app, char* out, size_t out_sz) {
+    PassEntry pe;
+    memset(&pe, 0, sizeof(pe));
+    pe.done = furi_semaphore_alloc(1, 0);
+
+    gui_remove_view_port(app->gui, main_view_get_view_port(app->main_view));
+
+    TextInput* ti = text_input_alloc();
+    text_input_set_header_text(ti, "Backup passphrase");
+    text_input_set_result_callback(ti, passphrase_ok_cb, &pe, pe.buf, sizeof(pe.buf), true);
+
+    ViewHolder* vh = view_holder_alloc();
+    view_holder_attach_to_gui(vh, app->gui);
+    view_holder_set_back_callback(vh, passphrase_back_cb, &pe);
+    view_holder_set_view(vh, text_input_get_view(ti));
+
+    furi_semaphore_acquire(pe.done, FuriWaitForever);
+
+    view_holder_set_view(vh, NULL);
+    view_holder_free(vh);
+    text_input_free(ti);
+    furi_semaphore_free(pe.done);
+
+    gui_add_view_port(app->gui, main_view_get_view_port(app->main_view), GuiLayerFullscreen);
+
+    bool ok = pe.confirmed && pe.buf[0];
+    if(ok) {
+        strncpy(out, pe.buf, out_sz - 1);
+        out[out_sz - 1] = '\0';
+    }
+    memset(pe.buf, 0, sizeof(pe.buf)); // don't leave the passphrase on the stack
+    return ok;
+}
+
+// Runs the full backup flow: passphrase → encrypt the captured config → write to SD.
+static void run_backup(GhostMeshApp* app) {
+    char pass[48];
+    if(!passphrase_prompt(app, pass, sizeof(pass))) {
+        strncpy(app->backup_result, "Cancelled", sizeof(app->backup_result) - 1);
+        app->backup_result[sizeof(app->backup_result) - 1] = '\0';
+        return;
+    }
+
+    const uint8_t* cfg = NULL;
+    uint16_t cfg_len = 0;
+    if(!proto_mode_get_config_backup(app->proto, &cfg, &cfg_len)) {
+        strncpy(app->backup_result, "No config yet - reconnect", sizeof(app->backup_result) - 1);
+    } else {
+        char path[96];
+        if(gm_backup_write(cfg, cfg_len, pass, proto_mode_get_local_node(app->proto), path,
+                           sizeof(path))) {
+            const char* base = strrchr(path, '/');
+            snprintf(app->backup_result, sizeof(app->backup_result), "Saved %.40s",
+                     base ? base + 1 : path);
+        } else {
+            strncpy(app->backup_result, "Write failed", sizeof(app->backup_result) - 1);
+        }
+    }
+    app->backup_result[sizeof(app->backup_result) - 1] = '\0';
+    memset(pass, 0, sizeof(pass));
 }
 
 // ── App lifecycle ─────────────────────────────────────────────────────────
@@ -421,6 +523,10 @@ int32_t ghostmesh_app(void* p) {
     state.history_lines = history_ptrs;
 
     while(app->running) {
+        if(app->request_backup) {
+            app->request_backup = false;
+            run_backup(app); // modal: swaps the viewport for the keyboard, then encrypts to SD
+        }
         state.scroll_tick      = scroll_tick++;
         state.screen           = app->screen;
         state.uart_active      = proto_mode_is_connected(app->proto);
@@ -454,6 +560,7 @@ int32_t ghostmesh_app(void* p) {
         state.control_selected      = app->control_sel;
         state.wipe_confirm          = app->wipe_confirm;
         state.wipe_confirm_selected = app->wipe_confirm_sel;
+        state.backup_result         = app->backup_result;
 
         Profile* active      = &app->profiles[app->profile_sel];
         state.messages       = (const char**)active->messages;
