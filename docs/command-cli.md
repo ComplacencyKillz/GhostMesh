@@ -54,8 +54,10 @@ path: the node must be ARMED.** Three independent ways to fire it, each with its
 1. **Mesh:** `/wipe @node` → the node replies a one-time token (e.g. `confirm: A3F9`); the
    operator must send `/wipe @node A3F9` within ~30 s. Nothing is pre-shared; the token can't
    be replayed.
-2. **IR remote:** the button sequence **ARM → WIPE → CONFIRM WIPE**, in order, on the remote
-   (`flipper-app/GhostMeshBackpack.ir`). Needs a `CONFIRM WIPE` button.
+2. **IR remote (out-of-band):** send **ARM → WIPE → CONFIRM** in order (GhostMesh NECext, addr
+   `0x474D`, cmds `01`/`03`/`04`), while armed, with CONFIRM inside ~10 s — decoded by `IRModule`,
+   which factory-resets the node. This path never touches the mesh, so it survives a compromised
+   radio/key. Remote: `flipper-app/GhostMeshBackpack.ir`.
 3. **Physical button (GPIO37):** node armed **and** a **double-press** of the wipe button, with
    the 2nd press **>2 s and <5 s** after the 1st.
 

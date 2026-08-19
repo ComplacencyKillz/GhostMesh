@@ -1,18 +1,33 @@
 Filetype: IR signals file
 Version: 1
-# GhostMesh backpack remote — arm/disarm over IR (NEC). The backpack's IRModule (GPIO48)
-# decodes these; whatever it logs becomes IR_ARM_CODE / IR_DISARM_CODE. Copy to the Flipper
-# SD at infrared/GhostMeshBackpack.ir and open in the Infrared app.
+# GhostMesh backpack remote — NECext, address 0x474D ('GM'). The backpack's IRModule (GPIO48)
+# decodes address + command; it acts only on address 0x474D. Copy to the Flipper SD at
+# infrared/GhostMeshBackpack.ir and open in the Infrared app (until the FAP transmits these itself).
+#
+# Commands: 01 ARM · 02 DISARM · 03 WIPE · 04 CONFIRM.
+# WIPE is an out-of-band destruct: send ARM, then WIPE, then CONFIRM (within 10 s), while armed.
 #
 name: ARM
 type: parsed
-protocol: NEC
-address: BE 00 00 00
-command: A1 00 00 00
+protocol: NECext
+address: 4D 47 00 00
+command: 01 00 00 00
 #
 name: DISARM
 type: parsed
-protocol: NEC
-address: BE 00 00 00
-command: A2 00 00 00
+protocol: NECext
+address: 4D 47 00 00
+command: 02 00 00 00
+#
+name: WIPE
+type: parsed
+protocol: NECext
+address: 4D 47 00 00
+command: 03 00 00 00
+#
+name: CONFIRM
+type: parsed
+protocol: NECext
+address: 4D 47 00 00
+command: 04 00 00 00
 #
