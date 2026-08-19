@@ -1,5 +1,6 @@
 #include "CommandModule.h"
 #include "GhostMeshArming.h"
+#include "GhostMeshWipe.h"
 #include "MeshService.h"
 #include "NodeDB.h"
 #include "mesh/MeshTypes.h" // getFrom(), isFromUs()
@@ -233,12 +234,11 @@ void CommandModule::serviceWipeButton(uint32_t now)
         btnFirstAt = 0;
 }
 
-// ── The nuke: Meshtastic factory reset wipes channel keys + config, then reboots ─────
+// ── The nuke: complete flash erase (NVS + filesystem + firmware) → USB download mode ─
 void CommandModule::doFactoryWipe()
 {
-    LOG_WARN("Command: FACTORY WIPE — erasing channel keys + config");
-    nodeDB->factoryReset();          // clears config/channels (and reboots on current firmware)
-    rebootAtMsec = millis() + 2000;  // belt-and-suspenders reboot in case it didn't
+    LOG_WARN("Command: WIPE confirmed -> complete flash erase");
+    ghostmesh_complete_wipe(); // erases everything and drops to download mode — does not return
 }
 
 // ── Reply plumbing ──────────────────────────────────────────────────────────────────

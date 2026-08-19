@@ -1,9 +1,8 @@
 #include "IRModule.h"
 #include "GhostMeshArming.h"
+#include "GhostMeshWipe.h"
 #include "MeshService.h"
-#include "NodeDB.h" // nodeDB->factoryReset()
 #include "configuration.h"
-#include "main.h" // rebootAtMsec
 #include <Arduino.h>
 #include <string.h>
 
@@ -151,11 +150,10 @@ void IRModule::broadcastArmState(bool armed)
     service->sendToMesh(p, RX_SRC_LOCAL, true);
 }
 
-// ARM → WIPE → CONFIRM completed while armed. Meshtastic factory reset wipes channel keys + config,
-// then reboots — the out-of-band destruct.
+// ARM → WIPE → CONFIRM completed while armed → the out-of-band destruct: a complete flash erase
+// (NVS + filesystem + firmware) that drops the chip to USB download mode. Does not return.
 void IRModule::doFactoryWipe()
 {
-    LOG_WARN("IR: WIPE confirmed - FACTORY RESET (erasing channel keys + config)");
-    nodeDB->factoryReset();
-    rebootAtMsec = millis() + 2000;
+    LOG_WARN("IR: WIPE confirmed -> complete flash erase");
+    ghostmesh_complete_wipe();
 }

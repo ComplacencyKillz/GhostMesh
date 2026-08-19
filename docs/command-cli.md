@@ -48,8 +48,12 @@ broadcast target, so no single message can address more than one node.
 
 ## Wipe safety (defense in depth)
 
-Wipe = Meshtastic **factory reset** (erases channel keys + config). **Precondition for every
-path: the node must be ARMED.** Three independent ways to fire it, each with its own confirm:
+Wipe = **complete flash erase** — NVS (device key, BLE bonds), every data partition (the LittleFS
+config + channel PSKs), *and the firmware itself* are erased; the ESP32-S3 drops to **USB download
+mode** and must be reflashed (`firmware.factory.bin`) + reconfigured to return. Recoverable — the
+ROM bootloader can't be erased — but it is a true nuke, not a config reset. Shared implementation:
+`heltec-firmware/GhostMeshWipe.cpp` (`ghostmesh_complete_wipe()`). **Precondition for every path:
+the node must be ARMED.** Three independent ways to fire it, each with its own confirm:
 
 1. **Mesh:** `/wipe @node` → the node replies a one-time token (e.g. `confirm: A3F9`); the
    operator must send `/wipe @node A3F9` within ~30 s. Nothing is pre-shared; the token can't
