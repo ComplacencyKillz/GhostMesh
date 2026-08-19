@@ -1,88 +1,85 @@
 # GhostMesh User Guide
 
-## Overview
+The FAP is the operator terminal. This walks through it screen by screen. (Building and installing it: [flipper-setup.md](flipper-setup.md).)
 
-GhostMesh has four screens. You start at the Profile screen every time the app launches.
+## Navigation
 
-```
-Profile screen ─[OK]→ Message screen ─[long Down]→ RX History screen
-(BACK exits app)          │      ↑                   (BACK returns)
-                          └─[long Up]→ Sensors screen (BACK returns)
-```
-
----
-
-## Profile Screen
-
-The first screen you see. Lists all loaded profiles (3 built-ins + up to 5 custom).
+The app opens on the **menu hub** — the home screen. Pick a screen, open it, `BACK` returns to the hub. `BACK` from the hub exits.
 
 ```
-┌────────────────────────────┐
-│ GhostMesh             RDY  │
-├────────────────────────────┤
-│ ► Grid Down                │
-│   Hiking / SAR             │
-│   Red Team                 │
-│   My Custom Profile        │
-├────────────────────────────┤
-│ OK: Load   BACK: Exit      │
-└────────────────────────────┘
+Menu hub ─[OK]→ Messages ─[OK]→ Profiles ─[OK]→ that profile's messages
+   │                                                   (OK sends)
+   ├─→ RX History        ├─→ Control (IR)
+   ├─→ Sensors           ├─→ Status
+   └─→ Backup
+
+BACK always steps back one level.
 ```
 
-| Button | Action |
-|--------|--------|
-| UP / DOWN | Scroll through profiles (hold for repeat) |
-| OK | Load the highlighted profile → go to Message screen |
-| BACK | Exit GhostMesh |
+Every screen carries the same **title bar** (name + link/battery status) and a **bottom marquee** that scrolls the last message received — so incoming traffic is visible from anywhere in the app.
 
 **Status indicator (top right):**
 - `...` — handshake in progress (self-retries every ~2 s until the node answers)
-- `RDY` — connected to the Meshtastic node, ready to send
-- `77%` / `PWR` — the node's battery level once known (`PWR` = on external/USB power)
-
-Profile names longer than the display width marquee-scroll automatically.
+- `RDY` — connected to the node, ready
+- `77%` / `PWR` — the node's battery level once known (`PWR` = external/USB power)
 
 ---
 
-## Message Screen
+## Menu (home)
 
-The main operating screen. Shows the canned messages for the loaded profile.
+The hub. Up/Down to choose, OK to open.
 
 ```
 ┌────────────────────────────┐
-│ Grid Down             RDY  │
+│ GhostMesh             77%  │
 ├────────────────────────────┤
-│ ► CHECKIN OK               │
-│   NEED ASSISTANCE          │
-│   MOVING                   │
-│   HOLD POSITION            │
+│ ► Messages                 │
+│   RX History               │
+│   Sensors                  │
+│   Control                  │
+│   Status · Backup          │
 ├────────────────────────────┤
-│ f69c: CHECKIN OK           │ ← last received message
+│ f69c: TAMPER               │ ← last received, scrolling
 └────────────────────────────┘
 ```
 
 | Button | Action |
 |--------|--------|
-| UP / DOWN | Scroll through messages (hold for repeat) |
-| OK | Send the highlighted message over the mesh |
-| BACK | Return to Profile screen |
-| Long-press DOWN | Open RX History screen (only when messages have been received) |
-| Long-press UP | Open Sensors screen (BME280 telemetry + GPS) |
-
-**Status bar (bottom):**
-- `TX:N  [OK] Send` — no messages received yet; shows TX byte count
-- `sender: message` — last received message (e.g., `f69c: CHECKIN OK`)
-- `Sent: message` — 2-second confirmation banner after you send
-
-Long text in both the message list and the status bar marquee-scrolls to reveal the full content.
-
-**Scrollbar:** appears on the right edge when the profile has more messages than fit on screen.
+| UP / DOWN | Move through the menu |
+| OK | Open the highlighted screen |
+| BACK | Exit GhostMesh |
 
 ---
 
-## RX History Screen
+## Messages
 
-Opened with long-press Down from the Message screen. Shows the last 16 received messages, newest at the top.
+`Menu → Messages` opens the **Profiles** picker; choose one and OK loads its canned messages.
+
+```
+Profiles                         Grid Down
+┌────────────────────────────┐   ┌────────────────────────────┐
+│ ► Grid Down                │   │ ► CHECKIN OK               │
+│   Hiking / SAR             │   │   NEED ASSISTANCE          │
+│   Red Team                 │ → │   MOVING                   │
+│   My Custom Profile        │   │   HOLD POSITION            │
+├────────────────────────────┤   ├────────────────────────────┤
+│ OK:Load  BACK:Menu         │   │ TX:12  OK:Send             │
+└────────────────────────────┘   └────────────────────────────┘
+```
+
+| Button | Action |
+|--------|--------|
+| UP / DOWN | Scroll (hold to repeat) |
+| OK | Profiles: load · Messages: **send** over the mesh |
+| BACK | Messages → Profiles → Menu |
+
+The bottom line shows a `Sent: …` banner for ~2 s after you send, otherwise the last received message. Long text marquee-scrolls; a scrollbar appears when the list overflows.
+
+---
+
+## RX History
+
+`Menu → RX History`. The last 16 received messages, newest first.
 
 ```
 ┌────────────────────────────┐
@@ -90,81 +87,116 @@ Opened with long-press Down from the Message screen. Shows the last 16 received 
 ├────────────────────────────┤
 │ f69c -3dBm: CHECKIN OK     │
 │ 2f74: MOVING               │
-│ f69c -7dBm: ALL CLEAR      │
-│ 2f74: NEED WATER           │
+│ f69c -7dBm: TAMPER         │
 ├────────────────────────────┤
-│ BACK: Return               │
+│ BACK:Menu                  │
 └────────────────────────────┘
 ```
 
-Each entry shows the sender's node ID (last 4 hex digits), RSSI in dBm (when available), and the message text. All entries marquee-scroll if the text is too long.
-
-| Button | Action |
-|--------|--------|
-| UP / DOWN | Scroll through history |
-| BACK | Return to Message screen |
+Each entry shows the sender (last 4 hex of the node ID), RSSI in dBm when available, and the text. Up/Down scrolls; BACK returns to the hub.
 
 ---
 
-## Sensors Screen
+## Sensors
 
-Opened with long-press Up from the Message screen. Shows the latest environmental telemetry and GPS position reported by the local Heltec node.
+`Menu → Sensors`. Latest environmental telemetry and GPS from the attached node.
 
 ```
 ┌────────────────────────────┐
 │ Sensors               77%  │
 ├────────────────────────────┤
-│ Temp:  23.4 C              │
-│ Humid: 41%                 │
+│ T:23.4C  H:41%             │
 │ Press: 1013.2 hPa          │
-│ GPS 37.0432,-76.3263       │
+│ GPS 37.043,-76.326         │
 │ Alt: 27 m                  │
 └────────────────────────────┘
 ```
 
-- Temp / Humid / Press come from the BME280 (Environment Telemetry). Shown once an `environment_metrics` packet has been received; blank until then.
-- The GPS line shows the last-known fix, or `GPS: no fix` before the node has a lock.
+Temp/humidity/pressure come from the BME280; the GPS line shows the last fix or `GPS: no fix`. Blank until the first packet of each type arrives.
 
-| Button | Action |
+---
+
+## Control
+
+`Menu → Control`. Drives a backpack over **IR** — point the Flipper's emitter at the node. The `Node:` line reflects the last `ARMED`/`DISARMED` the backpack broadcast, so you get confirmation the command landed.
+
+```
+┌────────────────────────────┐
+│ Control               77%  │
+├────────────────────────────┤
+│ Node: ARMED                │
+│ ► Arm                      │
+│   Disarm                   │
+│   Wipe                     │
+├────────────────────────────┤
+│ OK:Send IR                 │
+└────────────────────────────┘
+```
+
+| Action | Effect |
 |--------|--------|
-| BACK | Return to Message screen |
+| **Arm** / **Disarm** | Transmits one IR command; the node flips its arm state and broadcasts it back |
+| **Wipe** | Opens an on-screen confirmation (defaults to **Cancel**). Confirm and the FAP sends the `ARM → WIPE → CONFIRM` IR sequence — the **complete-erase destruct** |
+
+The wipe confirm is deliberate: Cancel is preselected, and the toggle ignores held keys so a stray press can't reach Confirm. The destruct erases the backpack (see [opsec.md](opsec.md)) — only use it on a node you mean to burn.
+
+---
+
+## Status
+
+`Menu → Status`. A one-glance node state overview.
+
+```
+┌────────────────────────────┐
+│ Status                77%  │
+├────────────────────────────┤
+│ Link:  connected           │
+│ Batt:  77%                 │
+│ Armed: ARMED               │
+│ GPS:   fix                 │
+└────────────────────────────┘
+```
+
+---
+
+## Backup
+
+`Menu → Backup`. Captures the attached node's configuration — device/module config **and the channel keys** — and writes it to the Flipper SD as an **encrypted** file. This is how you recover a wiped node.
+
+1. Open **Backup**. The Flipper keyboard prompts for a passphrase.
+2. Enter it and confirm. GhostMesh encrypts the config (AES-256-GCM) and writes `SD:/apps_data/ghostmesh/backup_<id>.gmb`.
+3. The screen reports `Saved backup_<id>.gmb` (or `Cancelled` / an error).
+
+The passphrase is never stored — a captured Flipper yields only ciphertext. To restore after reflashing a wiped node, copy the `.gmb` to a PC and run `tools/restore_backpack.py` (see [command-cli.md](command-cli.md) and the tool's header). Requires `pip install meshtastic cryptography`.
 
 ---
 
 ## SD Card Logging
 
-Every received message is automatically appended to a dated CSV file on the Flipper SD card:
+Every received message is appended to a dated CSV on the Flipper SD:
 
 ```
 SD:/apps_data/ghostmesh/log_YYYYMMDD.csv
 ```
 
-**CSV columns:** `timestamp, node_id, message, lat, lon, rssi, snr`
+Columns: `timestamp, node_id, message, lat, lon, rssi, snr`.
 
-Example:
 ```
-timestamp,node_id,message,lat,lon,rssi,snr
 2026-05-06T14:32:01,f69c,CHECKIN OK,37.0432650,-76.3262981,-85,7.5
 2026-05-06T14:33:44,2f74,MOVING,,,-92,4.2
 ```
 
-`lat` / `lon` hold the local node's last-known GPS fix (degrees), or are left blank when there is no fix yet.
-
-A new file is created each day. The file header is written automatically on first creation.
-
-### Converting to KML
+`lat`/`lon` carry the local node's last GPS fix, or blank before a lock. Convert to KML for Google Earth / QGIS:
 
 ```bash
 python tools/log_to_kml.py log_20260506.csv
 ```
 
-This generates `log_20260506.kml` which you can open in Google Earth or QGIS. Rows with `lat`/`lon` populated are plotted at their reported position; rows logged before a GPS fix have blank coordinates and are placed at 0,0 with a note.
-
 ---
 
 ## Custom Profiles
 
-Create `SD:/apps_data/ghostmesh/profiles.yaml` on your Flipper SD card. Use the `name:` keyword to start a profile, then list messages with `-`:
+Create `SD:/apps_data/ghostmesh/profiles.yaml`. Start each profile with `name:`, then list messages with `-`:
 
 ```yaml
 name: My Field Profile
@@ -173,7 +205,6 @@ name: My Field Profile
 - MOVING
 - ABORT
 - EXFIL NOW
-- NEED MEDICAL
 
 name: Comms Check
 - RADIO CHECK
@@ -181,42 +212,27 @@ name: Comms Check
 - WEAK SIGNAL
 ```
 
-**Rules:**
-- Up to 5 custom profiles, up to 12 messages per profile
-- Profile names: max 19 characters, printable ASCII only
-- Messages: max 22 characters, printable ASCII only
-- Profiles with no valid messages are silently skipped
-- Custom profiles load alongside the 3 built-ins (8 total max)
+**Rules:** up to 5 custom profiles (8 total with the built-ins), ≤12 messages each, names ≤19 chars, messages ≤22 chars, printable ASCII only. Empty profiles are skipped. See `examples/profiles.yaml` for a commented template.
 
-See `examples/profiles.yaml` for a fully commented template.
+### Built-in profiles
+- **Grid Down** — `CHECKIN OK` · `NEED ASSISTANCE` · `MOVING` · `HOLD POSITION` · `ALL CLEAR` · `BATTERY LOW` · `MEDICAL NEEDED` · `SHELTER IN PLACE`
+- **Hiking / SAR** — `CHECKIN OK` · `ON TRAIL` · `OFF TRAIL` · `SUMMIT REACHED` · `TURNING BACK` · `NEED WATER` · `NEED MEDICAL` · `CAMP REACHED`
+- **Red Team** — `CHECKIN OK` · `IN POSITION` · `MOVING` · `ABORT` · `PHASE START` · `PHASE COMPLETE` · `HOLD` · `ALL CLEAR`
 
 ---
 
-## Built-In Profiles
+## Reading RSSI
 
-### Grid Down
-`CHECKIN OK` · `NEED ASSISTANCE` · `MOVING` · `HOLD POSITION` · `ALL CLEAR` · `BATTERY LOW` · `MEDICAL NEEDED` · `SHELTER IN PLACE`
+Shown in RX History next to the sender, in dBm:
 
-### Hiking / SAR
-`CHECKIN OK` · `ON TRAIL` · `OFF TRAIL` · `SUMMIT REACHED` · `TURNING BACK` · `NEED WATER` · `NEED MEDICAL` · `CAMP REACHED`
+| RSSI | Signal |
+|------|--------|
+| -30 to -70 | Strong (close) |
+| -70 to -100 | Good (normal LoRa range) |
+| -100 to -120 | Marginal |
+| below -120 | Edge of range |
 
-### Red Team
-`CHECKIN OK` · `IN POSITION` · `MOVING` · `ABORT` · `PHASE START` · `PHASE COMPLETE` · `HOLD` · `ALL CLEAR`
-
----
-
-## Understanding RSSI
-
-RSSI (Received Signal Strength Indicator) appears in the RX History screen next to the sender ID. It is measured in dBm (decibels relative to one milliwatt).
-
-| RSSI range | Signal quality |
-|------------|----------------|
-| -30 to -70 dBm | Strong (close proximity) |
-| -70 to -100 dBm | Good (normal LoRa range) |
-| -100 to -120 dBm | Marginal |
-| Below -120 dBm | Very weak / edge of range |
-
-RSSI of `0` means the packet did not arrive over radio (local echo or phone app origin).
+`0` means the packet didn't arrive over radio (local echo or a locally-generated broadcast, e.g. the node's own `ARMED`).
 
 ---
 
@@ -224,10 +240,9 @@ RSSI of `0` means the packet did not arrive over radio (local echo or phone app 
 
 | Symptom | Likely cause | Fix |
 |---------|-------------|-----|
-| Title bar shows `...` indefinitely | No UART connection, or Serial module not set to PROTO on 7/6 | Check TX/RX wires (Flipper 13→Heltec 7, 14→Heltec 6); verify the Meshtastic Serial module is enabled in PROTO mode |
-| Title bar reaches `...` only when the Heltec is plugged into USB | Wired to GPIO43/44 (CP2102 clamps them on battery) | Move the Heltec-side wires to GPIO7/6 |
-| OK button sends but nothing heard on mesh | Heltec not transmitting | Check antenna connected; verify Meshtastic region |
-| Received messages not appearing | RX wire not connected | Check Flipper pin 14 → Heltec GPIO6 |
-| Custom profiles not loading | Wrong SD path or YAML syntax | File must be at `SD:/apps_data/ghostmesh/profiles.yaml` |
-| App crashes on launch | Stack issue | Close all other Flipper apps; restart Flipper |
-| Log file not created | SD card issue | Verify SD card seated; check available space |
+| Title bar stuck on `...` | No UART link, or Serial module not in PROTO on 7/6 | Check TX/RX (Flipper 13→Heltec 7, 14→Heltec 6); verify the Serial module is PROTO |
+| `...` only clears on USB power | Wired to GPIO43/44 — the CP2102 clamps them on battery | Move the Heltec-side wires to GPIO7/6 |
+| OK sends but nothing heard | Not transmitting | Check the antenna; verify the Meshtastic region and the private channel/frequency slot |
+| Control screen does nothing | Backpack on old firmware, or out of IR line-of-sight | Reflash the latest backpack firmware; aim the emitter at the receiver |
+| Custom profiles don't load | Wrong SD path or YAML | File must be at `SD:/apps_data/ghostmesh/profiles.yaml` |
+| Backup says "No config yet" | Handshake not complete | Wait for `RDY`, then retry |

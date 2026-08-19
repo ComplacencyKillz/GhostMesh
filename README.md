@@ -1,167 +1,162 @@
 # GhostMesh
 
-**GhostMesh: a Flipper Zero companion interface for offline Meshtastic field communications.**
+**A deployable red-team mesh platform — planted sensors, encrypted command-and-control, line-of-sight control, and a destruct — running on nothing the target owns.**
 
-GhostMesh turns your Flipper Zero into a long-range, mesh-radio command terminal by pairing it with a Heltec ESP32 LoRa node running Meshtastic. No phone, no internet, no cell infrastructure required.
+GhostMesh is a **backpack that snaps onto a Flipper Zero — then detaches and stays in the field.** Attached, it turns your Flipper into a long-range mesh radio: messaging and control over LoRa, no phone, no cell, no internet, nothing the target controls. Detached and planted, it becomes an autonomous node — watching its own perimeter, holding its place on the mesh, and taking orders by line-of-sight IR from you or over the encrypted mesh from your team. Drop it, walk away, and it stays yours.
 
----
-
-## What It Does
-
-- Sends canned field messages over LoRa mesh — select from scrollable profiles, press OK
-- Receives incoming mesh text messages with sender ID and RSSI displayed
-- RX history screen (long-press Down) — last 16 messages with full signal data, scrollable
-- Logs every received message to a dated CSV on the Flipper SD card with timestamp, node ID, RSSI, and SNR
-- Three built-in profiles: Grid Down, Hiking / SAR, Red Team
-- Custom profiles loaded from `profiles.yaml` on the SD card
-- All text marquee-scrolls if it doesn't fit the display — nothing is cut off
-- `tools/log_to_kml.py` converts the SD card CSV to KML for Google Earth / QGIS
+This repository is the **framework** — the sensing, signaling, and command backbone that offensive capability is built on top of. It reports, it takes commands, and it erases itself on capture. Unlicensed by design.
 
 ---
 
-## Hardware Required
+## What's Here
 
-| Component | Details |
-|-----------|---------|
-| Flipper Zero | With PINGEQUA or official prototype board |
-| Heltec WiFi LoRa 32 V3 | ESP32-S3 + SX1262, Meshtastic firmware |
-| 915 MHz antenna | Attached to Heltec before powering on |
-| LiPo battery | For Heltec — independent of Flipper battery |
+Everything to build one, end to end — all of it open source:
 
-See [docs/hardware.md](docs/hardware.md) for the full hardware reference and planned sensor expansion (GPS, BME280, tamper sensors, etc.).
+| Deliverable | Location | Status |
+|-------------|----------|--------|
+| **Operator app** — the Flipper FAP (C99) | [`flipper-app/`](flipper-app/) | working |
+| **Backpack firmware** — custom Heltec Meshtastic modules (C++) | [`heltec-firmware/`](heltec-firmware/) | working |
+| **Board CAD** — the GhostMesh PCB | [`kicad/`](kicad/) | in progress |
+| **Case CAD** — 3D-printable enclosure (FreeCAD) | — | planned |
+| **Hardware spec** — every component, datasheet-trackable | [`docs/hardware.md`](docs/hardware.md) | in progress |
+| **Wiring schematic** — the full system, end to end | [`kicad/`](kicad/) · [`docs/wiring.md`](docs/wiring.md) | in progress |
+
+The two software halves work today. The board is being designed; the case, the finished component spec, and the whole-system schematic follow it. The transmission — [ghostmesh.info](ghostmesh.info/).
+
+---
+
+## How It Works
+
+The backpack is a **shield.** It plugs onto the Flipper Zero's GPIO header, taps the three pins it needs — TX, RX, GND — and passes the header through to the Heltec and sensor stack riding on top. One board. It runs from its own battery; the Flipper runs from its own. The header is the only link, and it's a link you can break on purpose.
+
+```
+   ATTACHED — comms terminal            DETACHED — planted node
+  ┌──────────────────────┐            ┌──────────────────────┐
+  │  backpack             │  pull off  │  backpack             │  ))) mesh → teammate's Flipper
+  │  Heltec + sensors     │  ───────▶  │  on its own battery   │
+  │ ══ GPIO header ══     │  ◀───────  │  sensing · on mesh    │   ~~ IR → your Flipper
+  │  Flipper Zero         │  snap on   │                       │
+  └──────────────────────┘            └──────────────────────┘
+```
+
+**Attached — a comms terminal.** The backpack rides on the Flipper, which drives it over the header link: send and receive over the LoRa mesh, read telemetry, work the Control screen. Your handheld is now a long-range, infrastructure-free field radio.
+
+**Detached — a planted node.** Pull the backpack off. The header disconnects; it keeps running on its own battery as an isolated asset — sensing its surroundings, holding its place on the mesh, waiting.
+
+**Controlled from anywhere.**
+- The **original operator** reaches the planted node by **line-of-sight IR** — arm, disarm, or fire the destruct without touching it.
+- **Teammates** reach it over the **encrypted LoRa mesh** — status, indicators, wipe, from any Flipper on the private channel.
+
+---
+
+## What Works Today
+
+**Operator terminal — Flipper FAP**
+- Send / receive text over the mesh; canned message profiles (3 built-in + up to 5 from SD YAML)
+- RX history, RSSI / SNR, marquee display, dated CSV logging (→ KML via `tools/log_to_kml.py`)
+- Live telemetry: temperature / humidity / pressure (BME280), GPS position, battery %
+- Menu-hub UI with a **Control** screen (IR arm / disarm / wipe) and **encrypted config backup**
+
+**Backpack — custom Heltec firmware**
+- Tamper detection: tilt (moved), photoresistor (case opened), ultrasonic proximity (approach)
+- Arming gate — sensors report only when armed; flipped by a switch, the mesh, or IR
+- Indicators: buzzer, vibration motor (RGB LED pin reserved)
+- Mesh command CLI — `/cmd @target`: status, arm / disarm, buzz, vibrate, wipe
+- IR line-of-sight control (NECext): arm / disarm / the `ARM → WIPE → CONFIRM` destruct
+- Destruct: armed-gated **complete flash erase** — firmware, config, and channel keys wiped to USB download mode; recover by reflash + encrypted-backup restore
+
+**Hardware**
+- KiCad schematics for the Flipper and Heltec modules (board layout in progress)
+
+Full phase-by-phase status: [`docs/roadmap.md`](docs/roadmap.md).
+
+---
+
+## What You Need
+
+The **GhostMesh backpack** — the custom board that integrates all of this into one Flipper shield — is under active development ([`kicad/`](kicad/)). Until it's fabricated, you build on off-the-shelf parts:
+
+**Core — send / receive over the mesh:**
+- Flipper Zero
+- Heltec WiFi LoRa 32 V3 (ESP32-S3 + SX1262) + a 915 MHz antenna
+- A LiPo for the Heltec (independent of the Flipper battery)
+- A PINGEQUA protoboard to seat the Heltec on the Flipper's GPIO header — the dev stand-in for the real board, not the product
+
+**Full backpack — sensing + security:** adds a BME280, a GPS module, tilt / photoresistor / proximity sensors, an IR receiver, a buzzer, a vibration motor, and their driver parts.
+
+The complete bill of materials — every component, GPIO, and driver circuit — is in [`docs/hardware.md`](docs/hardware.md).
 
 ---
 
 ## Quick Start
 
 ### 1. Flash Meshtastic to the Heltec
+Visit [flasher.meshtastic.org](https://flasher.meshtastic.org), select **Heltec WiFi LoRa 32 V3**, flash, and set your region. See [`docs/meshtastic-setup.md`](docs/meshtastic-setup.md) for the private-channel configuration you'll want before any real use.
 
-Visit [flasher.meshtastic.org](https://flasher.meshtastic.org), select **Heltec WiFi LoRa 32 V3**, and flash. Set your region in the Meshtastic app before proceeding.
-
-See [docs/meshtastic-setup.md](docs/meshtastic-setup.md) for full setup and private channel configuration.
-
-### 2. Wire the devices
-
+### 2. Connect the backpack (three signals)
+On the backpack PCB these run through the GPIO header automatically. On the bench, jumper them:
 ```
 Flipper U_TX (pin 13)  →  Heltec GPIO7  (Serial module RX)
 Flipper U_RX (pin 14)  →  Heltec GPIO6  (Serial module TX)
 Flipper GND            →  Heltec GND
 ```
+Then configure the Meshtastic **Serial module**: PROTO mode, RX 7, TX 6, 115200, override-console OFF. **Not GPIO43/44** — the CP2102 USB bridge clamps those on battery. **Never bridge the power rails** — the backpack and Flipper each run from their own battery. See [`docs/wiring.md`](docs/wiring.md).
 
-Then configure the Meshtastic **Serial module**: PROTO mode, RX 7, TX 6, 115200, override-console OFF. (Not GPIO43/44 — the CP2102 USB bridge clamps those on battery.) **Do not connect power rails** — each device runs from its own battery. See [docs/wiring.md](docs/wiring.md) and [docs/meshtastic-setup.md](docs/meshtastic-setup.md).
-
-### 3. Build and install
-
+### 3. Build and install the FAP
 ```bash
 pip install ufbt
 cd flipper-app
 ufbt
 ```
+Copy `dist/ghostmesh.fap` to `SD:/apps/Tools/` on the Flipper, or `ufbt launch` over USB. See [`docs/flipper-setup.md`](docs/flipper-setup.md).
 
-Copy `dist/ghostmesh.fap` to `SD:/apps/Tools/` on your Flipper, or run `ufbt launch` with the Flipper connected via USB.
+### 4. (Optional) Build the backpack firmware
+The custom Heltec modules build on top of stock Meshtastic. See [`heltec-firmware/README.md`](heltec-firmware/README.md).
 
-See [docs/flipper-setup.md](docs/flipper-setup.md) for the full build guide.
-
-### 4. Run
-
-**Apps → Tools → GhostMesh**
-
-The title bar shows `...` during the startup handshake (~3 seconds), then `RDY`. Select a profile, navigate the message list, press OK to send.
-
-See [docs/user-guide.md](docs/user-guide.md) for a screen-by-screen walkthrough.
+### 5. Run
+**Apps → Tools → GhostMesh.** The title bar shows `...` during the handshake (~3 s), then `RDY`, then the backpack's battery %. You land on the menu hub — Messages, RX History, Sensors, Control, Status, Backup. See [`docs/user-guide.md`](docs/user-guide.md).
 
 ---
 
-## Custom Profiles via SD Card
+## Documentation
 
-Create `SD:/apps_data/ghostmesh/profiles.yaml`:
+**Start here**
+- [`docs/overview.md`](docs/overview.md) — the system end to end: architecture, concepts, the platform vision
 
-```yaml
-name: My Profile
-- CHECKIN OK
-- IN POSITION
-- ABORT
-- EXFIL NOW
+**Build & operate**
+- [`docs/hardware.md`](docs/hardware.md) — full BoM, GPIO allocation, power
+- [`docs/wiring.md`](docs/wiring.md) — pinouts, driver circuits, sensor wiring
+- [`docs/meshtastic-setup.md`](docs/meshtastic-setup.md) — Meshtastic config, private channels
+- [`docs/flipper-setup.md`](docs/flipper-setup.md) — ufbt build & install
+- [`heltec-firmware/README.md`](heltec-firmware/README.md) — building the backpack firmware
+- [`docs/user-guide.md`](docs/user-guide.md) — the FAP, screen by screen
 
-name: Another Profile
-- MESSAGE ONE
-- MESSAGE TWO
-```
+**Operate the backpack**
+- [`docs/command-cli.md`](docs/command-cli.md) — the mesh command CLI + wipe safety
+- [`docs/opsec.md`](docs/opsec.md) — encryption, the destruct, stealth, metadata
 
-Up to 5 custom profiles load alongside the 3 built-ins (8 total). See `examples/profiles.yaml` for the full documented template.
-
----
-
-## Project Structure
-
-```
-ghostmesh/
-├── README.md
-├── docs/
-│   ├── user-guide.md           Screen-by-screen user manual
-│   ├── developer-guide.md      Code architecture and contribution guide
-│   ├── hardware.md             Full hardware reference and BOM
-│   ├── wiring.md               Pinout, connections, sensor wiring
-│   ├── meshtastic-setup.md     Meshtastic config, private channels
-│   ├── flipper-setup.md        ufbt build and install
-│   ├── opsec.md                Encryption, stealth, nuke protocol
-│   ├── serial-modes.md         PROTO protocol field numbers
-│   ├── roadmap.md              Phased development plan (Phases 0–14)
-│   └── red-team-lab-use-cases.md  Authorized lab use cases
-├── flipper-app/
-│   ├── application.fam
-│   ├── ghostmesh.c             App entry point and main loop
-│   ├── helpers/
-│   │   ├── proto_mode.h/.c     PROTO encoder/decoder, handshake
-│   │   ├── profile_manager.h/.c  Built-in profiles + YAML loader
-│   │   ├── log_manager.h/.c    SD card CSV logger
-│   │   ├── uart_helper.h/.c    USART1 init and async RX/TX
-│   │   └── proto_notes.md      Protocol implementation reference
-│   └── views/
-│       └── main_view.h/.c      Four-screen UI (Profile/Messages/RX history/Sensors)
-├── examples/
-│   └── profiles.yaml           Documented custom profile template
-├── tests/
-│   ├── uart-test-plan.md       Manual hardware validation checklist
-│   └── proto_send_test.py      Python PROTO test script
-└── tools/
-    └── log_to_kml.py           Convert SD card CSV log to KML
-```
+**Reference**
+- [`docs/developer-guide.md`](docs/developer-guide.md) — architecture, ISR rules, contributing
+- [`docs/serial-modes.md`](docs/serial-modes.md) — PROTO framing & protobuf field numbers
+- [`docs/roadmap.md`](docs/roadmap.md) — the phased plan (Phases 0–14)
+- [`docs/red-team-lab-use-cases.md`](docs/red-team-lab-use-cases.md) — authorized use cases
 
 ---
 
-## Protocol
+## Scope & Authorization
 
-GhostMesh connects over the Meshtastic **Serial module in PROTO mode** (GPIO7 RX / GPIO6 TX), which exposes the same StreamAPI protobuf stream the phone app and Python library use. Packets use Meshtastic's binary PROTO framing (`0x94 0xC3` magic bytes + protobuf payload). All protobuf field numbers are confirmed against meshtastic Python library v2.7.8. (Earlier builds used the PhoneAPI on UART0/GPIO43-44, but the CP2102 USB bridge clamps those pins on battery — 6/7 works untethered.)
+GhostMesh is offensive-capable hardware for **authorized** work: sanctioned red-team engagements, physical and wireless security assessments you have written permission to conduct, personal lab research, and grid-down communications.
 
-See [docs/serial-modes.md](docs/serial-modes.md) for the complete protocol reference.
+It is not built for, and will not accept, use against systems or people you are not authorized to test. No jamming, no unauthorized interception, no mass targeting, no malware. The destruct erases the operator's own device — nothing else.
 
----
-
-## Operational Security
-
-GhostMesh on the default Meshtastic channel uses a **public encryption key** — traffic is visible to any Meshtastic node. For operational use, create a private channel with a random key before deployment.
-
-See [docs/opsec.md](docs/opsec.md) for the full encryption picture, private channel setup, and the planned nuke / stealth features.
-
----
-
-## Roadmap
-
-Current version: **v0.8** — PROTO client, SD logging, RX history, marquee scroll, plus BME280 environmental telemetry and BN-220 GPS position on the Sensors screen, and battery % in the title bar. (Phase 6 security baseline skipped; Phase 9 MAX17048 wired but not yet read.)
-
-Planned phases include GPS + wardriving, environmental telemetry, tamper detection, dead-drop surveillance, remote payload execution, and UART encryption. See [docs/roadmap.md](docs/roadmap.md).
-
----
-
-## Safety and Scope
-
-This project is for **authorized security work, personal lab testing, grid-down comms experimentation, and open-source learning only.**
-
-No malware, unauthorized remote execution, credential theft, or destructive payloads are implemented or will be accepted. See [docs/red-team-lab-use-cases.md](docs/red-team-lab-use-cases.md).
+Deploy it only where you have the authority to. See [`docs/red-team-lab-use-cases.md`](docs/red-team-lab-use-cases.md).
 
 ---
 
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+```
+// so light your candles
+```

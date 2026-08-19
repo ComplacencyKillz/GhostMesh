@@ -1,122 +1,110 @@
-# GhostMesh OPSEC Guide
+# GhostMesh OPSEC
 
-## The Encryption Picture
+How GhostMesh keeps traffic private, what it leaks, how a node denies itself on capture, and how you get it back.
 
-GhostMesh operates across three segments with different security properties.
+## The encryption picture
 
-| Segment | Encrypted? | Protocol | Risk |
-|---------|-----------|----------|------|
-| Flipper → Heltec (UART) | No (Phase 14 plans it) | Plaintext serial | High if captured while powered |
-| Heltec → Mesh (default channel) | Yes — AES-256, **public key** | Meshtastic LongFast | Medium — any Meshtastic node can read it |
-| Heltec → Mesh (private channel) | Yes — AES-256, private key | Custom channel | Low — mathematically opaque to outsiders |
+Three segments, three security properties.
 
-**The default channel (LongFast) uses the key `AQ==`.** This key is published in the
-Meshtastic source code and baked into every Meshtastic device. Traffic on the default
-channel is encrypted in the technical sense but readable by anyone with a Meshtastic node.
-**Do not use the default channel for sensitive communications.**
+| Segment | Encrypted | Detail | Risk |
+|---------|-----------|--------|------|
+| Flipper ↔ backpack (UART) | No | Plaintext PROTO serial (Phase 14 plans ChaCha20-Poly1305) | High if captured while powered and probed |
+| Backpack ↔ mesh (default channel) | Yes — AES-256, **public key** | Meshtastic LongFast, key `AQ==` | Medium — any Meshtastic node can read it |
+| Backpack ↔ mesh (private channel) | Yes — AES-256, private key | Your channel + random PSK | Low — opaque without the key |
 
----
+**The default channel key `AQ==` is public** — baked into every Meshtastic device. Traffic there is encrypted in name only. Never run an engagement on it.
 
-## Creating a Private Channel (Required for Operational Use)
-
-A private channel uses a random 256-bit key known only to your squad. Anyone without the
-key cannot decrypt your traffic even if they capture the raw LoRa packets.
-
-### Using the Meshtastic app
-
-1. Open the Meshtastic app connected to your node via Bluetooth
-2. Go to **Settings → Channels → Channel 0**
-3. Tap the pencil icon to edit
-4. Set a custom **Name** (the channel name is also part of the key derivation)
-5. Tap **Generate Key** — this creates a random 256-bit PSK
-6. **Share the channel QR code** with every squad member out-of-band (in person)
-7. All nodes must use the identical name + key combination
-
-### Planned: key generation from Flipper (Phase 6)
-
-Phase 6 will add the ability to generate a channel key directly on the Flipper using its
-hardware RNG and push it to the Heltec over the existing PROTO link — no phone app needed.
+**The private channel is the security boundary of the whole platform.** A node can't be read, commanded, or joined without the PSK. Everything below assumes you're on a private channel.
 
 ---
 
-## UART Security
+## Creating a private channel (required)
 
-The serial connection between the Flipper and Heltec is plaintext. If your hardware is
-captured while powered, an adversary with a logic analyzer on the Flipper link (Heltec
-GPIO6/7) can read all traffic in real time. Mitigations:
+A private channel uses a random 256-bit PSK known only to your team.
 
-- **Never leave the rig powered and unattended** (unless intentionally deployed as a dead-drop)
-- **Use the nuke button** (Phase 6) — one key combo wipes all channel keys from the Heltec instantly
-- **Phase 14** will add ChaCha20-Poly1305 authenticated encryption to the UART link
+1. Open the Meshtastic app on the node (Bluetooth).
+2. **Settings → Channels → Channel 0**, edit.
+3. Set a custom **Name** (the name feeds key derivation and the frequency slot).
+4. **Generate Key** — a random 256-bit PSK.
+5. Share the channel **QR code** in person with every operator.
+6. All nodes must share the identical name + key.
+
+See [meshtastic-setup.md](meshtastic-setup.md) for the frequency-slot detail that trips up custom channels.
+
+> Planned (Phase 6): generate the PSK on the Flipper from its hardware RNG and push it to the backpack over PROTO — no phone app in the field.
 
 ---
 
-## Metadata Leakage
+## Command security
 
-Even on a private channel with AES-256, Meshtastic nodes broadcast metadata by default:
+Backpacks take commands two ways — a text CLI over the mesh (`/cmd @target`, see [command-cli.md](command-cli.md)) and line-of-sight IR. The security model:
 
-- **Node ID** — your hardware's unique ID is always visible to mesh relays
-- **Position** — if GPS is enabled, your node broadcasts coordinates
-- **Device metrics** — battery level and uptime are periodically broadcast
+- **The PSK is the gate.** Commands are plain text on the encrypted channel; the mesh drops anything it can't decrypt. Nobody off the channel can command anything. The command syntax being open-source is **not** a weakness — the secret is the key, not the words.
+- **No broadcast target.** Every mesh command names one node's last-4 id; there is no `@ALL`. A key-holder can't one-shot the fleet — they must know and name each node. This bounds the blast radius of a leaked key or a captured node.
+- **Residual risk:** a holder of the PSK is an insider with full channel access. Per-node targeting and the arming gate slow them; they don't stop them. Keep the PSK off compromised hardware, and disarm staged nodes. True per-node authentication (signed admin messages) is future work (Phase 14).
+
+---
+
+## The destruct
+
+The destruct is a **complete flash erase** — not a config reset. It wipes NVS, the filesystem (config + channel keys), **and the firmware itself**, leaving the ESP32-S3 in USB download mode. Implementation: `heltec-firmware/GhostMeshWipe.cpp`.
+
+**Precondition for every path: the node must be ARMED.** Three independent ways to fire it, each with its own confirm:
+
+1. **Mesh** — `/wipe @node` returns a one-time token; `/wipe @node <token>` within ~30 s fires it. Nothing is pre-shared; the token can't be replayed.
+2. **IR** — the sequence **ARM → WIPE → CONFIRM**, in order, while armed, CONFIRM within ~10 s. This path never touches the mesh, so it survives a compromised radio or key. The FAP's Control screen sends it behind an on-screen confirm.
+3. **Physical** — armed + a double-press of the wipe button, 2nd press 2–5 s after the 1st.
+
+It erases the operator's **own** device and nothing else. It is recoverable — the ROM bootloader can't be erased, so a wiped node always reflashes over USB — but it is a true burn, not a factory reset. Recover with a reflash + an encrypted config backup.
+
+**When to use:** capture is imminent, or the hardware may already be compromised.
+
+---
+
+## Encrypted config backup
+
+Because a wipe destroys the channel keys, you keep a way back. The FAP captures the node's config — device/module config **and the channel PSK** — during the connect handshake, encrypts it with an **operator passphrase (AES-256-GCM)**, and writes `SD:/apps_data/ghostmesh/backup_<id>.gmb`. Restore after reflashing with `tools/restore_backpack.py`.
+
+- **The passphrase is never stored.** A captured Flipper yields only ciphertext.
+- **The tension:** a backup *is* the key you just wiped, encrypted. If the Flipper carrying it is also captured, the whole thing rests on the passphrase strength. Use a strong one, and don't carry backups you don't need into the field.
+
+---
+
+## Metadata leakage
+
+Even on a private channel, Meshtastic broadcasts metadata by default:
+
+- **Node ID** — always visible to relays.
+- **Position** — broadcast if GPS is enabled.
+- **Device metrics** — battery and uptime, periodically.
 
 For covert deployment:
+- Disable position broadcasting (Module Config → GPS).
+- Disable device-metrics telemetry (Module Config → Telemetry).
+- Set the role to **ROUTER** — relays traffic without announcing itself, invisible to standard "who's on the mesh" queries.
 
-- Disable position broadcasting in Meshtastic Module Config → GPS
-- Disable device metrics telemetry in Module Config → Telemetry
-- Set device role to **ROUTER** — the node relays traffic but does not initiate NodeInfo
-  announcements, making it invisible to standard "who's on the mesh" queries
-- **Phase 6** will add a single-toggle Stealth Mode in the GhostMesh UI that sends all
-  three of these config commands in one action
+> Planned (Phase 6): a single Stealth Mode toggle in the FAP that sends all three, plus kills the OLED and status LEDs.
 
 ---
 
-## The Nuke Button (Phase 6)
+## Pre-deployment checklist
 
-The nuke button sends `AdminMessage { factory_reset: true }` to the Heltec via the
-existing PROTO UART connection. Meshtastic processes this natively — it wipes all channel
-keys, node info, and configuration, then reboots to factory state. The radio becomes a
-useless unconfigured device.
-
-**Gating:** the nuke button only fires if the slide switch on the Flipper ProtoBoard is in
-the ARMED position. This prevents accidental wipes.
-
-**Confirmation:** the Heltec's onboard LED blinks once after the wipe completes.
-
-**When to use:** any time capture is imminent or the hardware may be compromised.
-
----
-
-## Backpack Dead-Drop Security (Phase 10+)
-
-When deploying the Heltec backpack unattended:
-
-1. Set the slide switch on the Heltec to ARMED before leaving
-2. The tilt switch (GPIO2) will broadcast a TAMPER alert over LoRa if the backpack is moved
-3. The photoresistor (GPIO5) will broadcast a TAMPER_LIGHT alert if the case is opened
-4. The IR receiver (GPIO48) allows you to remotely arm/disarm from ~10m using any NEC
-   remote or the Flipper's built-in IR transmitter — no need to touch the backpack
-
----
-
-## Recommended Pre-Deployment Checklist
-
-- [ ] Private channel configured on all nodes with a freshly generated key
-- [ ] Default channel disabled or de-prioritized
+- [ ] Private channel on all nodes, freshly generated key
+- [ ] Default channel not in use
 - [ ] Position broadcasting disabled
-- [ ] Device metrics telemetry disabled
-- [ ] Device role set to ROUTER
-- [ ] Nuke button tested in a lab environment before field use
-- [ ] Slide switch confirmed functional (ARMED position verified)
-- [ ] Each team member has the channel QR code stored offline
+- [ ] Device-metrics telemetry disabled
+- [ ] Role set to ROUTER (covert deployments)
+- [ ] Destruct verified on a **spare** board (it self-erases the firmware — prove it lands in download mode before trusting it)
+- [ ] Each operator holds the channel QR offline
+- [ ] Config backed up (encrypted) if you'll need the node back
 
 ---
 
-## What GhostMesh Does Not Do
+## What GhostMesh does not do
 
 - Jam or interfere with radio spectrum
 - Capture or decrypt traffic on channels you do not own
-- Implement unauthorized C2 of third-party devices
+- Control third-party Meshtastic nodes you do not own
 - Store credentials, PII, or exfiltrated data
 
-Any use of GhostMesh against systems you do not own or have explicit written authorization
-to test is outside the scope of this project and is your legal responsibility.
+Use against systems or people you are not authorized to test is outside the scope of this project and is your legal responsibility.

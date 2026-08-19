@@ -27,7 +27,7 @@ testing contexts. All features described here apply only to:
 During authorized assessments where cellular and WiFi comms may be monitored or
 unavailable, GhostMesh provides a fallback coordination channel over LoRa mesh.
 
-- Each team member carries a Flipper + Heltec pair
+- Each operator carries a Flipper + GhostMesh backpack
 - Canned message profiles cover common field status: check-in, moving, hold, abort, medical
 - Messages travel over Meshtastic AES-256 mesh — no cell towers, no WiFi, no internet
 - Custom profiles via SD card YAML for operation-specific callouts
@@ -37,16 +37,17 @@ unavailable, GhostMesh provides a fallback coordination channel over LoRa mesh.
 
 ---
 
-## 2. Burn-Proof Protocol (Nuke + Stealth)
+## 2. Burn-Proof Protocol (Destruct + Stealth)
 
-**Status: Planned (Phase 6)**
+**Status: destruct built (untested on a spare board); stealth + key-gen planned (Phase 6)**
 
 Ensures the device cannot be used against the operator if discovered.
 
-**Nuke button:** A key combination on the Flipper sends `AdminMessage { factory_reset }`
-to the Heltec via the existing PROTO link. Meshtastic wipes all channel keys and reboots.
-The node becomes an unconfigured device. Gated by a physical slide switch (ARMED position
-required) to prevent accidental wipes.
+**The destruct:** an armed-gated **complete flash erase** — firmware, config, and channel keys
+wiped, the ESP32-S3 left in USB download mode (`heltec-firmware/GhostMeshWipe.cpp`). Fired three
+ways, each with its own confirm: a one-time mesh token, an IR `ARM → WIPE → CONFIRM` sequence, or
+a physical double-press. It erases the operator's own device only, and is recoverable by reflash +
+encrypted config backup. See [docs/opsec.md](opsec.md).
 
 **Stealth mode:** Single toggle in the GhostMesh UI sends config packets to:
 - Set device role to ROUTER (node relays but does not announce itself)
@@ -61,32 +62,34 @@ hardware RNG and push it to the Heltec — no phone app required in the field.
 
 ## 3. Dead-Drop Surveillance Node
 
-**Status: Planned (Phase 10–11)**
+**Status: tamper sensors working; ultrasonic proximity on bench (Phase 10–11)**
 
-Deploy a Heltec backpack at a dead-drop location. The node monitors the area and
-broadcasts alerts over LoRa to the operator's handheld unit miles away.
+Plant a backpack at a dead-drop. It watches its own perimeter and broadcasts alerts over LoRa to
+operators miles away — running unattended, no Flipper present.
 
-**Sensors (all on Heltec, operate without Flipper present):**
-- HC-SR04 ultrasonic: person detected within ~2m → broadcasts PERSON_DETECTED over mesh
-- SW-520D tilt switch: node disturbed or picked up → broadcasts TAMPER
-- Photoresistor: case opened / light detected → broadcasts TAMPER_LIGHT
+**Sensors (custom Heltec modules, arm-gated — they report only when armed):**
+- SW-520D tilt: node moved / picked up → broadcasts `TAMPER` (working)
+- Photoresistor: case opened / light rises → broadcasts `TAMPER_LIGHT` (working)
+- HC-SR04 ultrasonic: someone within threshold → broadcasts `PERSON_DETECTED` (bench; deploy needs
+  a 3.3 V RCWL-1601)
 
-**Remote arm/disarm:**
-- Physical slide switch on the Heltec: set on deployment
-- IR receiver on Heltec GPIO48: operator arms/disarms from ~10m using any NEC remote
-  or the Flipper's built-in IR transmitter (no need to physically touch the node)
+**Arm / disarm — three ways, last action wins:**
+- Toggle switch on the backpack (any flip inverts the state; position isn't tied to a state)
+- IR from ~10 m — any NEC remote, or the Flipper's Control screen
+- A mesh command (`/arm` / `/disarm`)
 
-**Operator notification:** The Flipper receives TAMPER / PERSON_DETECTED mesh packets,
-triggers the buzzer and vibration motor, and logs to CSV with timestamp.
+**Operator notification:** the FAP receives the `TAMPER` / `PERSON_DETECTED` text over the mesh,
+shows it, and logs it to CSV. The backpack's own buzzer / vibration can be triggered over the mesh
+CLI (`/buzz`, `/vibrate`) or IR — the indicators live on the deployed node, not the Flipper.
 
-**Safety constraint:** The nuke can be armed from the dead-drop slide switch. If the
-node is discovered and disturbed, it wipes keys before an adversary can extract them.
+**Denial on discovery:** if the node is compromised, the destruct (armed + confirm) burns it to
+download mode before an adversary can extract the keys. See use case 2.
 
 ---
 
 ## 4. Environmental Intelligence
 
-**Status: Planned (Phase 7–8)**
+**Status: BME280 telemetry + GPS working; ducting indicator + wardriving planned (Phase 7–8, 12)**
 
 **RF propagation analysis (BME280):** High humidity and temperature inversions create
 RF ducting conditions that can extend LoRa range to 100+ miles. GhostMesh will display

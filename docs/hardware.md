@@ -4,6 +4,38 @@
 > `kicad/FlipperZeroModule/` (schematic + PCB) and `kicad/HeltecModule/` (Heltec symbol/footprint).
 > Where this document and the schematic disagree, the schematic wins.
 
+## Component Spec
+
+Every part in the build, with the maker and part marking to chase down a datasheet. Search the
+**part** column plus "datasheet" to find each one.
+
+| Component | Part / marking | Maker | Role in GhostMesh | Interface |
+|-----------|----------------|-------|-------------------|-----------|
+| Flipper Zero | STM32WB55 | Flipper Devices | Operator terminal (runs the FAP) | — |
+| Heltec WiFi LoRa 32 V3 | HTIT-WB32LAF | Heltec | Backpack MCU + radio board | — |
+| MCU (on Heltec) | ESP32-S3 | Espressif | Backpack processor | — |
+| LoRa radio (on Heltec) | SX1262 | Semtech | 915 MHz LoRa transceiver | SPI (internal) |
+| Environment sensor | BME280 (GY-BME280) | Bosch Sensortec | Temp / humidity / pressure | I2C 0x76 |
+| GPS module | BN-220 | u-blox-based | Position / time | UART 9600 (NMEA) |
+| Fuel gauge | MAX17048 | Analog Devices (Maxim) | LiPo state-of-charge | I2C 0x36 |
+| Tilt switch | SW-520D | generic | Tamper — node moved | GPIO |
+| Light sensor | GL5528 photoresistor (LDR) | generic | Tamper — case opened | ADC |
+| Ultrasonic ranger | HC-SR04 (deploy: RCWL-1601) | generic | Proximity — approach | GPIO (5 V) |
+| IR receiver | VS1838B | generic | NEC IR remote control | GPIO (38 kHz demod) |
+| RGB indicator | SK6812 | Adafruit-compatible | Status LED (planned) | 1-wire addressable |
+| Buzzer | passive magnetic buzzer | generic | Audible indicator (tones) | GPIO PWM via driver |
+| Haptic | 3 V coin/cyl vibration motor | generic | Vibration indicator | GPIO via driver |
+| Driver (bench) | PN2222A (TO-92) | generic NPN BJT | Low-side switch for buzzer/motor | — |
+| Driver (PCB) | AO3400 (SOT-23) | Alpha & Omega | Low-side switch for the motor | — |
+| Flyback diode | 1N4007 | generic | Coil flyback protection | — |
+| I2C hub | STEMMA QT 5-port | Adafruit | Passive I2C fan-out | I2C passthrough |
+| Wipe button | 6 mm tact switch | generic | Physical destruct trigger | GPIO (INPUT_PULLUP) |
+| Arming switch | SPDT slide switch | generic | Toggle the arm state | GPIO |
+| Antenna | 915 MHz whip (SMA/IPEX) | generic | LoRa antenna | — |
+| Battery | LiPo, JST-PH 2.0 | generic | Backpack power (independent) | — |
+
+The per-device wiring, GPIO map, and driver circuits are below and in [wiring.md](wiring.md).
+
 ## Flipper Zero
 
 - **MCU:** STM32WB55 (ARM Cortex-M4 + M0+)
@@ -185,31 +217,32 @@ UART1 (GPIO34 RX / GPIO33 TX):
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  BACKPACK (left unattended at dead drop)                        │
+│  BACKPACK (planted, runs unattended)                            │
 │                                                                 │
-│  [Heltec ESP32-S3 + Meshtastic]                                 │
-│    ├── [SX1262 LoRa] ──── 915 MHz mesh ──── [Other nodes]      │
-│    ├── [OLED]             Meshtastic display                    │
+│  [Heltec ESP32-S3 + Meshtastic + GhostMesh modules]             │
+│    ├── [SX1262 LoRa] ──── 915 MHz mesh ──── [teammate nodes]   │
 │    ├── [BME280]           env telemetry — stock Meshtastic      │
-│    ├── [MAX17048]         battery SOC — custom module           │
 │    ├── [BN-220 GPS]       position — stock Meshtastic           │
-│    ├── [HC-SR04]          proximity → PERSON_DETECTED over LoRa │
-│    ├── [SW-520D tilt]     tamper → TAMPER alert over LoRa       │
-│    ├── [Photoresistor]    case-open tamper → alert over LoRa    │
-│    ├── [Slide switch]     physical arm/disarm on deployment     │
-│    └── [IR receiver]      remote arm/disarm ~10m (NEC remote)   │
+│    ├── [SW-520D tilt]     tamper → TAMPER over LoRa (armed)     │
+│    ├── [Photoresistor]    case-open → TAMPER_LIGHT (armed)      │
+│    ├── [HC-SR04]          proximity → PERSON_DETECTED (armed)   │
+│    ├── [IR receiver]      arm / disarm / destruct (line of sight)│
+│    ├── [toggle switch]    flip to arm/disarm                    │
+│    ├── [buzzer/motor/LED] indicators — driven over mesh or IR   │
+│    └── [wipe button]      destruct (armed + double-press)       │
 └─────────────────────────────────────────────────────────────────┘
-                              │ (when Flipper is connected)
-                              │ UART 115200
-                              │ PROTO frames (ToRadio / FromRadio)
-                              ▼
+                    │ attached: UART 115200, PROTO frames
+                    │ detached: 915 MHz mesh + line-of-sight IR
+                    ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  OPERATOR (carried in the field)                                │
+│  OPERATOR                                                       │
 │                                                                 │
 │  [Flipper Zero + GhostMesh FAP]                                 │
-│    ├── [Slide switch]     operator arming gate (nuke, etc.)     │
-│    ├── [Buzzer]           audible alert — incoming messages      │
-│    └── [Vibration motor]  haptic alert — incoming messages      │
+│    ├── terminal — mesh messaging, telemetry, RX log             │
+│    ├── Control screen → IR arm / disarm / destruct              │
+│    └── encrypted config backup → SD                             │
+│   (no control hardware on the Flipper — every output lives on   │
+│    the backpack, triggered over the mesh or by IR)              │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -219,7 +252,9 @@ UART1 (GPIO34 RX / GPIO33 TX):
 |---------|-----------------|---------------------|
 | BME280 env telemetry | ✅ built-in | — |
 | BN-220 GPS | ✅ built-in | — |
-| Private channels, nuke, stealth | ✅ AdminMessage | — |
+| Private channels / config | ✅ AdminMessage + config | — |
+| Complete-flash destruct | ⚠️ AdminMessage only resets config | ✅ GhostMeshWipe (built) |
+| Mesh command CLI (`/cmd @target`) | ❌ | ✅ CommandModule (built) |
 | HC-SR04 → LoRa alert | ❌ | ✅ ProximityModule (built) |
 | Tilt switch → LoRa alert | built-in exists but isn't arm-gated | ✅ TiltModule (used) |
 | Slide switch arm/disarm + gate | ❌ | ✅ ArmingModule (built) |
@@ -233,9 +268,11 @@ UART1 (GPIO34 RX / GPIO33 TX):
 
 ## Confirmed Working State
 
-- GhostMesh FAP shows `RDY` after a few seconds startup handshake
-- OK button sends selected canned message over LoRa mesh
-- Incoming text messages from other nodes appear in GhostMesh status bar
-- Long-press Down opens RX history with RSSI/SNR per message
-- CSV log written to SD on every received message
-- Two-node end-to-end confirmed: Flipper → f69c → LoRa → 2f74 (TX and RX both working)
+- FAP: menu-hub UI (Messages / RX History / Sensors / Control / Status / Backup); `RDY` after the handshake
+- TX/RX text over the mesh; per-message RSSI/SNR; dated CSV logging; marquee display
+- Telemetry: BME280 temp/humidity/pressure, BN-220 GPS position, battery % in the title bar
+- Backpack firmware: tamper (tilt / light), proximity (bench), arming toggle, buzzer + vibration — all over the private mesh, arm-gated
+- IR control: arm / disarm confirmed on hardware; the `ARM → WIPE → CONFIRM` destruct + complete-flash wipe built (spare-board test pending)
+- Encrypted config backup written by the FAP (backup → restore round-trip test pending)
+
+Full phase-by-phase status: [roadmap.md](roadmap.md).

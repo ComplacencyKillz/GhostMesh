@@ -6,14 +6,17 @@ GhostMesh is a Flipper Zero FAP (Flipper Application Package) written in C. It c
 to a Heltec ESP32-S3 running Meshtastic over UART using Meshtastic's binary PROTO protocol.
 
 ```
-ghostmesh.c          — app entry point, main loop, state machine
+ghostmesh.c          — app entry point, main loop, state machine, modal passphrase entry
 helpers/
-  proto_mode.c/.h    — PROTO protocol encode/decode, handshake, rx state machine
+  proto_mode.c/.h    — PROTO encode/decode, handshake, rx state machine, config capture
   uart_helper.c/.h   — USART1 init, async RX (ISR-driven), TX
   profile_manager.c/.h — built-in profiles, SD card YAML loader
   log_manager.c/.h   — SD card CSV append
+  ir_tx.c/.h         — transmit the GhostMesh NECext IR command set
+  gm_backup.c/.h     — AES-256-GCM encrypted config backup → SD
+  sha256.c/.h        — bundled SHA-256 (the backup KDF)
 views/
-  main_view.c/.h     — four-screen UI, marquee logic, ViewPort callbacks
+  main_view.c/.h     — menu-hub UI (7 screens), shared chrome, marquee, ViewPort callbacks
 ```
 
 ---
@@ -73,24 +76,30 @@ snapshot, and calls `main_view_update()` each tick.
 
 ```c
 typedef enum {
-    GhostMeshScreenProfile,    // profile picker on launch
-    GhostMeshScreenMessages,   // canned message list; long-press Down → history, Up → sensors
-    GhostMeshScreenRxHistory,  // last 16 received messages; BACK returns
-    GhostMeshScreenSensors,    // temp/humidity/pressure + GPS; BACK returns
+    GhostMeshScreenProfile,    // message-set picker (reached via Menu → Messages)
+    GhostMeshScreenMenu,       // hub / home
+    GhostMeshScreenMessages,   // canned message list
+    GhostMeshScreenRxHistory,  // last 16 received
+    GhostMeshScreenSensors,    // telemetry + GPS
+    GhostMeshScreenStatus,     // node state overview
+    GhostMeshScreenControl,    // IR arm / disarm / wipe
+    GhostMeshScreenBackup,     // encrypted config backup
 } GhostMeshScreen;
 ```
 
-Add new screens by extending this enum, adding draw logic to `main_view.c`, and handling
-input in the `on_input` callback in `ghostmesh.c`.
+Add new screens by extending this enum, adding draw logic to `main_view.c`, handling input in
+`on_input` (`ghostmesh.c`), and — if it's a hub destination — adding a `MENU[]` entry.
 
 ### Input handling
 
-`on_input` runs on the Flipper's input thread (not ISR, not main loop). It modifies
-app state directly. Navigation keys fire on `InputTypePress`, `InputTypeRepeat`, and
-`InputTypeLong`. Action keys fire on `InputTypePress` only.
+`on_input` runs on the Flipper's input thread (not ISR, not main loop). It modifies app state
+directly via a per-screen switch. Navigation keys fire on `InputTypePress`, `InputTypeRepeat`,
+and `InputTypeLong`; action keys on `InputTypePress` only.
 
-From the Message screen, long-press Down opens the RX history screen and long-press Up opens
-the Sensors screen. This pattern can be extended for future screens.
+The hub is home: it opens the selected screen, and every screen's BACK returns to it. The Backup
+entry sets a `request_backup` flag that the **main loop** consumes to run the modal passphrase
+prompt — a `text_input` in a `view_holder`, swapped in for the main ViewPort and blocked on a
+semaphore until the operator confirms.
 
 ---
 
@@ -220,14 +229,17 @@ Flipper is nowhere near it.
 **GhostMesh's Heltec modules** live in `heltec-firmware/` (drop into a Meshtastic checkout at
 tag `v2.7.15.567b8ea`, register in `Modules.cpp`, `pio run -e heltec-v3`):
 
-- `ArmingModule` (GPIO4) → `ARMED`/`DISARMED`; sets `volatile bool ghostmesh_armed` (`GhostMeshArming.h`)
+- `ArmingModule` (GPIO4) — toggle switch; any flip inverts `volatile bool ghostmesh_armed` (`GhostMeshArming.h`) and broadcasts `ARMED`/`DISARMED`
 - `TiltModule` (GPIO2) → `TAMPER` — **replaces the built-in Detection Sensor (disable it in the app)**
 - `LightTamperModule` (GPIO5 ADC) → `TAMPER_LIGHT`
 - `ProximityModule` (GPIO38/47) → `PERSON_DETECTED`
+- `IRModule` (GPIO48) — NECext decode (addr `0x474D`); arm / disarm + the `ARM→WIPE→CONFIRM` destruct
+- `CommandModule` — **listens** for `/cmd @target` mesh text; drives buzzer/vibration/LED, status, arm/disarm, wipe (the first *receiving* module)
+- `GhostMeshWipe` — the complete-flash destruct, shared by `CommandModule` and `IRModule`
 
-The three tamper modules check `ghostmesh_armed` and only broadcast when armed. All alerts are
-plain `TEXT_MESSAGE_APP` packets, so they need a **private channel** (blocked on the default),
-and both nodes must share a frequency slot.
+The tamper modules check `ghostmesh_armed` and only broadcast when armed. Alerts are plain
+`TEXT_MESSAGE_APP` packets, so they need a **private channel** (blocked on the default), and both
+nodes must share a frequency slot.
 
 ---
 
@@ -247,7 +259,8 @@ and both nodes must share a frequency slot.
 
 ## Adding a Dependency
 
-GhostMesh has no third-party dependencies and should stay that way. The protobuf
-implementation is hand-coded, the YAML parser is hand-coded, and the crypto (Phase 14)
-will use a single-header ChaCha20-Poly1305 implementation. Adding a library requires
-a strong justification.
+GhostMesh has no third-party dependencies and should stay that way. The protobuf codec is
+hand-coded, the YAML parser is hand-coded, and the backup crypto uses a bundled SHA-256
+(`sha256.c`) plus the Flipper's `furi_hal_crypto` AES-256-GCM — no external library. (Phase 14
+UART encryption will add a single-header ChaCha20-Poly1305 in the same spirit.) Adding a library
+requires a strong justification.
