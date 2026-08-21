@@ -5,24 +5,26 @@ import SubLayout from '../layouts/SubLayout.astro';
 <SubLayout title="CONFIGURATOR" section="CONFIG"
   classification="CLASSIFICATION: FIELD CONFIG / TRANSPORT: WEB SERIAL / USB"
   introLines={[
-    "Plug the node in.",
-    "Set its behaviour.",
+    "Connect the node.",
+    "Set how it behaves.",
     "Nothing leaves the wire.",
   ]}
-  introAction="[ CONNECT ]">
+  introAction="[ ESTABLISH LINK ]">
 
-  <p>Configure a GhostMesh backpack over USB — no app, no install. This talks to the node
-  directly from your browser over <strong>Web Serial</strong>, the same way the Meshtastic web
-  client does. Config commands are addressed to the node itself, so nothing is broadcast over LoRa.</p>
+  <p>A direct interface to a backpack, over USB. No app. No install. The browser speaks to the node
+  the way the Meshtastic client does — <strong>Web Serial</strong>, nothing between you and the wire.
+  Every command is addressed to the node itself. Nothing is broadcast. What you set here stays on
+  the cable.</p>
 
   <div id="gm-unsupported" class="gm-note gm-note--warn" style="display:none;">
-    Web Serial isn't available in this browser. Use <strong>Chrome</strong> or <strong>Edge</strong>
-    on desktop, over https (you're on it here).
+    INTERFACE UNAVAILABLE. This browser has no Web Serial. Use <strong>Chrome</strong> or
+    <strong>Edge</strong> on desktop — you are already on https, the transport is here, the browser
+    is not.
   </div>
 
   <div id="gm-connect-row">
-    <button id="gm-connect" class="gm-btn">[ CONNECT NODE ]</button>
-    <span id="gm-status" class="gm-status">disconnected</span>
+    <button id="gm-connect" class="gm-btn">[ ESTABLISH LINK ]</button>
+    <span id="gm-status" class="gm-status">NO SIGNAL</span>
   </div>
 
   <div id="gm-panel" style="display:none;">
@@ -42,7 +44,7 @@ import SubLayout from '../layouts/SubLayout.astro';
       </div>
     </div>
 
-    <h2>NOTIFICATIONS <span class="tag">COVERT TOGGLE</span></h2>
+    <h2>SIGNALS <span class="tag">GO DARK</span></h2>
     <div class="gm-field gm-field--row">
       <label>Status LED</label>
       <button class="gm-toggle" id="gm-led" data-on="0">OFF</button>
@@ -57,15 +59,15 @@ import SubLayout from '../layouts/SubLayout.astro';
     </div>
 
     <div class="scene-divider">
-      <button id="gm-refresh" class="gm-btn gm-btn--ghost">[ RE-READ NODE ]</button>
+      <button id="gm-refresh" class="gm-btn gm-btn--ghost">[ QUERY NODE ]</button>
     </div>
   </div>
 
-  <h2>LOG</h2>
-  <div class="gm-log" id="gm-log"><span class="gm-dim">Awaiting connection…</span></div>
+  <h2>TRACE</h2>
+  <div class="gm-log" id="gm-log"><span class="gm-dim">No link. Standing by.</span></div>
 
   <div class="scene-divider">
-    <p>Prefer the terminal? The same settings over the mesh CLI or a Python tool →
+    <p>Rather work from the terminal? The same node, over the mesh CLI or serial →
       <a href="https://github.com/ComplacencyKillz/GhostMesh/blob/main/docs/command-cli.md"
          target="_blank" rel="noopener">docs/command-cli.md</a>
     </p>
@@ -157,8 +159,8 @@ import SubLayout from '../layouts/SubLayout.astro';
   }
   function handleFrame(payload) {
     const fr = parseFromRadio(payload);
-    if (fr.nodeNum && !gotNode) { nodeNum = fr.nodeNum; gotNode = true; log('node !' + (nodeNum >>> 0).toString(16).padStart(8, '0') + ' (@' + last4() + ')', 'gm-rx'); }
-    if (fr.complete === NONCE && !handshakeDone) { handshakeDone = true; log('handshake complete — reading config…', 'gm-dim'); requestCfg(); }
+    if (fr.nodeNum && !gotNode) { nodeNum = fr.nodeNum; gotNode = true; log('NODE !' + (nodeNum >>> 0).toString(16).padStart(8, '0') + ' (@' + last4() + ')', 'gm-rx'); }
+    if (fr.complete === NONCE && !handshakeDone) { handshakeDone = true; log('HANDSHAKE COMPLETE. Reading config…', 'gm-dim'); requestCfg(); }
     if (fr.text) onText(fr.text);
   }
 
@@ -190,7 +192,7 @@ import SubLayout from '../layouts/SubLayout.astro';
         if (done) break;
         for (const x of value) onByte(x);
       }
-    } catch (e) { log('read error: ' + e.message, 'gm-err'); }
+    } catch (e) { log('SIGNAL LOST: ' + e.message, 'gm-err'); }
   }
 
   async function connect() {
@@ -201,15 +203,15 @@ import SubLayout from '../layouts/SubLayout.astro';
       writer = port.writable.getWriter();
       reader = port.readable.getReader();
       connected = true; gotNode = false; handshakeDone = false;
-      $('gm-status').textContent = 'connected'; $('gm-status').classList.add('on');
-      $('gm-connect').textContent = '[ CONNECTED ]';
-      log('port open @115200 — requesting node config…', 'gm-dim');
+      $('gm-status').textContent = 'LINKED'; $('gm-status').classList.add('on');
+      $('gm-connect').textContent = '[ LINKED ]';
+      log('LINK OPEN @115200. Querying node…', 'gm-dim');
       readLoop();
       await send(encWantConfig(), 'want_config');
       // If the node is mid-stream, retry the handshake a couple of times.
       setTimeout(() => { if (!handshakeDone && connected) send(encWantConfig()); }, 2200);
-      setTimeout(() => { if (!handshakeDone && connected) log('no reply — is this the Heltec USB port, and GhostMesh firmware?', 'gm-err'); }, 6000);
-    } catch (e) { log('connect cancelled/failed: ' + e.message, 'gm-err'); }
+      setTimeout(() => { if (!handshakeDone && connected) log('NO RESPONSE. Confirm this is the Heltec USB port, running GhostMesh firmware.', 'gm-err'); }, 6000);
+    } catch (e) { log('LINK FAILED: ' + e.message, 'gm-err'); }
   }
 
   function init() {
