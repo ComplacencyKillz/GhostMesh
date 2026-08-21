@@ -1,21 +1,25 @@
 /**
- * GhostMesh payload uploader — the browser half of the `/put` protocol.
+ * GhostMesh payload uploader — the browser half of the `/put` protocol (stop-and-wait).
  *
  * A Meshtastic node exposes only its PROTO text channel over serial (the same one this page does
  * want_config over), so a file rides that channel: base64-chunked TEXT_MESSAGE_APP commands the
- * firmware's CommandModule reassembles to LittleFS and verifies with a CRC32. USB is just the fast,
- * reliable case; the identical protocol works over the mesh.
+ * firmware's CommandModule reassembles to LittleFS and verifies with a CRC32.
+ *
+ * WHY stop-and-wait: a rapid burst of self-addressed packets overruns the node's serial ingest and
+ * every packet after the first is dropped. So we send ONE chunk and wait for the node's ACK
+ * (`PUT <fid> a <idx>`) before sending the next. Each chunk is individually confirmed; nothing
+ * bursts. The node's ack is self-addressed, so a USB transfer stays entirely off the air.
  *
  *   putUploaderInit({ sendCmd, nodeIdHex, log }) -> { element, onReply(text) }
- *     sendCmd(text)  — send one addressed text command to the node (caller PROTO-frames it)
+ *     sendCmd(text)  — send one addressed text command; returns a promise that resolves on write
  *     nodeIdHex      — this node's last-4 hex id (targeting)
  *     log(msg, cls)  — optional: echo status into the page trace
- *     onReply(text)  — feed every "PUT ..." reply line here so the transfer can verify/resume
+ *     onReply(text)  — feed every "PUT ..." reply line here so the transfer can advance/verify
  */
 export function putUploaderInit({ sendCmd, nodeIdHex, log }) {
-  const CHUNK = 132;      // must match firmware PUT_CHUNK_BYTES (132 -> 176 base64 chars, no padding)
-  const PACE_MS = 25;     // gap between data chunks; the node's serial RX + flash write is the limit
-  const MAX_ROUNDS = 6;   // resend attempts before giving up
+  const CHUNK = 132;        // raw bytes per chunk (base64 = 176 chars, no padding)
+  const ACK_TIMEOUT = 2500; // ms to wait for a chunk ack before resending it
+  const MAX_RETRIES = 8;    // per-chunk resend attempts before giving up
   log = log || function () {};
 
   // ── UI ──
@@ -54,7 +58,7 @@ export function putUploaderInit({ sendCmd, nodeIdHex, log }) {
   const sendBtn = el.querySelector('.pu-send');
 
   function status(msg, cls) { statusEl.textContent = msg; statusEl.className = 'pu-status' + (cls ? ' ' + cls : ''); }
-  function progress(pct) { barEl.style.display = 'block'; fillEl.style.width = pct + '%'; }
+  function progress(frac) { barEl.style.display = 'block'; fillEl.style.width = Math.round(frac * 100) + '%'; }
 
   // ── CRC32 (zlib/PNG polynomial) — must match the firmware's crc32_update ──
   const CRC_TABLE = (() => {
@@ -62,9 +66,9 @@ export function putUploaderInit({ sendCmd, nodeIdHex, log }) {
     for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[n] = c >>> 0; }
     return t;
   })();
-  function crc32(bytes) {
+  function crc32(u8) {
     let c = 0xFFFFFFFF;
-    for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+    for (let i = 0; i < u8.length; i++) c = CRC_TABLE[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
     return (c ^ 0xFFFFFFFF) >>> 0;
   }
   function b64(u8, start, end) {
@@ -72,11 +76,28 @@ export function putUploaderInit({ sendCmd, nodeIdHex, log }) {
     for (let i = start; i < end; i++) s += String.fromCharCode(u8[i]);
     return btoa(s);
   }
-  function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
-  // ── transfer state ──
-  let file = null, bytes = null, fidHex = '', nchunks = 0, round = 0, waiting = null, sending = false;
+  // ── reply plumbing: the transfer awaits specific "PUT <fid> ..." replies ──
+  let fidHex = '', pending = null; // pending = { match(verb,rest)->value|undefined, resolve, timer }
+  function waitReply(match, timeoutMs) {
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => { if (pending && pending.resolve === resolve) { pending = null; resolve(null); } }, timeoutMs);
+      pending = { match, resolve, timer };
+    });
+  }
+  function onReply(text) {
+    const m = text.trim().match(/^PUT\s+([0-9a-fA-F]+)\s+([a-zA-Z]+)(?:\s+(.*))?$/);
+    if (!m || m[1].toLowerCase() !== fidHex.toLowerCase()) return false;
+    const verb = m[2].toLowerCase(), rest = m[3] || '';
+    if (pending) {
+      const v = pending.match(verb, rest);
+      if (v !== undefined) { clearTimeout(pending.timer); const r = pending.resolve; pending = null; r(v); }
+    }
+    return true;
+  }
 
+  // ── file selection ──
+  let file = null, bytes = null, sending = false;
   fileInput.addEventListener('change', (e) => {
     file = e.target.files[0];
     if (!file) return;
@@ -84,87 +105,59 @@ export function putUploaderInit({ sendCmd, nodeIdHex, log }) {
     sendBtn.disabled = false;
     status('Ready.');
   });
+  sendBtn.addEventListener('click', () => { if (!sending) start().catch((e) => fail(e.message || String(e))); });
 
-  sendBtn.addEventListener('click', () => { if (!sending) start(); });
-
-  async function sendChunk(i) {
-    const s = i * CHUNK, e = Math.min(s + CHUNK, bytes.length);
-    await sendCmd(`/put @${nodeIdHex} d ${fidHex} ${i} ${b64(bytes, s, e)}`);
+  function fail(reason) {
+    sending = false; sendBtn.disabled = false;
+    status('Upload failed: ' + reason, 'err');
+    log('PUT fail: ' + reason, 'gm-err');
   }
 
   async function start() {
-    sending = true; sendBtn.disabled = true; round = 0;
+    sending = true; sendBtn.disabled = true;
     bytes = new Uint8Array(await file.arrayBuffer());
-    nchunks = Math.ceil(bytes.length / CHUNK);
+    const nchunks = Math.ceil(bytes.length / CHUNK);
     const crc = crc32(bytes);
     fidHex = Math.floor(Math.random() * 0xffff).toString(16);
-    // The node tokenizes the begin line on spaces and the name is its last field, so collapse any
-    // whitespace (and strip path separators) to a single flat token.
     const name = file.name.replace(/[\s\\/]+/g, '_');
 
     log(`PUT begin ${fidHex} ${name} (${bytes.length}B / ${nchunks} chunks)`, 'gm-tx');
-    status(`Sending ${nchunks} chunks…`);
+    status(`Opening on node…`);
     await sendCmd(`/put @${nodeIdHex} begin ${fidHex} ${nchunks} ${bytes.length} ${crc.toString(16)} ${name}`);
-    await sleep(200); // let the node open the file before the flood
+    const ready = await waitReply((verb) => verb === 'ready' ? true : undefined, 4000);
+    if (!ready) return fail('node did not acknowledge begin');
 
     const t0 = performance.now();
-    for (let i = 0; i < nchunks; i++) {
-      await sendChunk(i);
-      if ((i & 7) === 0 || i === nchunks - 1) {
-        const pct = Math.round(((i + 1) / nchunks) * 100);
-        const kbps = (((i + 1) * CHUNK) / 1024) / ((performance.now() - t0) / 1000);
-        progress(pct);
-        status(`Sending… ${pct}%  (${kbps.toFixed(1)} KB/s)`);
+    let nextIdx = 0, retries = 0;
+    while (nextIdx < nchunks) {
+      const s = nextIdx * CHUNK, e = Math.min(s + CHUNK, bytes.length);
+      await sendCmd(`/put @${nodeIdHex} d ${fidHex} ${nextIdx} ${b64(bytes, s, e)}`);
+      // Wait for the node's ack. It acks the highest contiguous index it holds.
+      const acked = await waitReply((verb, rest) => verb === 'a' ? parseInt(rest, 10) : undefined, ACK_TIMEOUT);
+      if (acked === null || isNaN(acked) || acked < nextIdx) {
+        if (++retries > MAX_RETRIES) return fail(`no ack for chunk ${nextIdx}`);
+        continue; // resend the same chunk
       }
-      await sleep(PACE_MS);
+      nextIdx = acked + 1;
+      retries = 0;
+      const kbps = ((nextIdx * CHUNK) / 1024) / ((performance.now() - t0) / 1000);
+      progress(nextIdx / nchunks);
+      status(`Sending… ${Math.round((nextIdx / nchunks) * 100)}%  (${kbps.toFixed(1)} KB/s)`);
     }
-    await finishRound();
-  }
 
-  async function finishRound() {
     status('Verifying on node…');
     await sendCmd(`/put @${nodeIdHex} end ${fidHex}`);
-    waiting = true;
-  }
-
-  // Feed every "PUT ..." reply here. Returns true if it consumed the line.
-  function onReply(text) {
-    if (!waiting) return false;
-    const m = text.trim().match(/^PUT\s+([0-9a-fA-F]+)\s+(\w+)(?:\s+(.*))?$/);
-    if (!m || m[1].toLowerCase() !== fidHex.toLowerCase()) return false;
-    const verb = m[2].toLowerCase(), rest = m[3] || '';
-
-    if (verb === 'ready') return true; // begin ack — data already streaming
-    if (verb === 'ok') {
-      waiting = false; sending = false; sendBtn.disabled = false;
-      progress(100);
-      status(`Uploaded ${rest} bytes → /ghostmesh/${file.name}`, 'ok');
-      log(`PUT ok ${rest} bytes`, 'gm-rx');
-      return true;
+    const res = await waitReply((verb, rest) =>
+      (verb === 'ok' || verb === 'crcfail' || verb === 'sizefail' || verb === 'need') ? { verb, rest } : undefined, 5000);
+    if (!res) return fail('no confirmation from node');
+    if (res.verb === 'ok') {
+      sending = false; sendBtn.disabled = false;
+      progress(1);
+      status(`Uploaded ${res.rest} bytes → /ghostmesh/${file.name}`, 'ok');
+      log(`PUT ok ${res.rest} bytes`, 'gm-rx');
+    } else {
+      return fail(res.verb + (res.rest ? ' ' + res.rest : ''));
     }
-    if (verb === 'need') {
-      if (++round > MAX_ROUNDS) { fail('too many missing chunks — link too lossy'); return true; }
-      const idxs = rest.split(',').map((x) => parseInt(x, 10)).filter((x) => !isNaN(x));
-      status(`Resending ${idxs.length} chunk(s) (round ${round})…`);
-      log(`PUT need ${idxs.length} — resending`, 'gm-tx');
-      resend(idxs);
-      return true;
-    }
-    // toobig / nospace / crcfail / sizefail / timeout / noxfer / *-fail
-    fail(verb + (rest ? ' ' + rest : ''));
-    return true;
-  }
-
-  async function resend(idxs) {
-    waiting = false;
-    for (const i of idxs) { if (i >= 0 && i < nchunks) { await sendChunk(i); await sleep(PACE_MS); } }
-    await finishRound();
-  }
-
-  function fail(reason) {
-    waiting = false; sending = false; sendBtn.disabled = false;
-    status('Upload failed: ' + reason, 'err');
-    log('PUT fail: ' + reason, 'gm-err');
   }
 
   return { element: el, onReply };

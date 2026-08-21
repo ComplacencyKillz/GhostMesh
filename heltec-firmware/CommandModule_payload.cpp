@@ -1,4 +1,4 @@
-// GhostMesh payload file transfer — the `/put` protocol.
+// GhostMesh payload file transfer — the `/put` protocol (stop-and-wait).
 //
 // This is the firmware receiver for the web configurator's file uploader. It is split out of
 // CommandModule.cpp (these are CommandModule member methods, defined here) only to keep that file
@@ -9,21 +9,27 @@
 // not a raw TTY — the USB port is the same protobuf console the web client does want_config over.
 // YMODEM's raw framing would be eaten by the protobuf parser. So a file rides the ONLY channel we
 // control: TEXT_MESSAGE_APP packets, base64-chunked, reassembled here and verified with a CRC32.
-// USB (self-addressed, local) is just the fast, reliable case of the same protocol the mesh uses.
+//
+// WHY stop-and-wait: a rapid BURST of self-addressed packets overruns Meshtastic's serial ingest —
+// the first gets through and the rest are dropped before they ever reach a module. So the node ACKs
+// every data chunk (immediately, self-addressed so it stays off the air), and the client sends the
+// next chunk only after the ACK. That paces the sender to the node's real capacity and makes each
+// chunk individually confirmed — no burst, no silent loss.
 //
 // Wire protocol (each line is one addressed text message; @id = this node's last-4 hex):
-//   /put @id begin <fid> <nchunks> <totalbytes> <crc32hex> <name>   -> reply: PUT <fid> ready <n>
-//   /put @id d <fid> <index> <base64>                               -> (silent; written to flash)
-//   /put @id end <fid>            -> reply: PUT <fid> ok <bytes> | need <i,i,..> | crcfail | sizefail
+//   /put @id begin <fid> <nchunks> <totalbytes> <crc32hex> <name>   -> PUT <fid> ready <n>
+//   /put @id d <fid> <index> <base64>                               -> PUT <fid> a <highest-contiguous>
+//   /put @id end <fid>            -> PUT <fid> ok <bytes> | need <nextIndex> | crcfail | sizefail
 // A stalled transfer (no traffic for PUT_TIMEOUT_MS) is aborted from runOnce -> PUT <fid> timeout.
+// Chunks are appended in order (stop-and-wait guarantees ordering), so no per-chunk seek/bitmap.
 //
 // Build-time API to sanity-check against tag v2.7.15.567b8ea (fix in one line if it shifted):
 // FSCommon.h exposes `FSCom` (LittleFS on ESP32) + the FILE_O_WRITE / FILE_O_READ open-mode macros;
-// File supports seek()/write()/read()/close(); LittleFS.totalBytes()/usedBytes() for the free check.
+// File supports write()/read()/close(); FSCom.totalBytes()/usedBytes() for the free check.
 
 #include "CommandModule.h"
 #include "FSCommon.h"      // FSCom (LittleFS on ESP32), FILE_O_WRITE / FILE_O_READ
-#include "NodeDB.h"        // nodeDB (targetsMe)
+#include "NodeDB.h"        // nodeDB (targetsMe, self node num for off-air acks)
 #include "configuration.h" // LOG_*
 #include <Arduino.h>
 #include <stdlib.h>
@@ -31,24 +37,22 @@
 #include <strings.h>
 
 // ── Tunables ─────────────────────────────────────────────────────────────────────────
-#define PUT_CHUNK_BYTES   132     // raw bytes per data chunk. 132 = 44*3, so base64 is exactly 176
-                                  //   chars with no padding. Prefix + 176 stays well under the ~231
-                                  //   byte text payload cap.
-#define PUT_MAX_CHUNKS    4096    // -> putBitmap[512]; caps a single file at 4096*132 = 540 KB
+#define PUT_MAX_CHUNKS    8192    // sanity cap on nchunks
 #define PUT_MAX_BYTES     (512u * 1024u) // hard ceiling regardless of free space
 #define PUT_TIMEOUT_MS    15000   // abort a transfer that goes quiet this long
 #define PUT_DIR           "/ghostmesh"
 #define PUT_FREE_MARGIN   (32u * 1024u)  // leave this much LittleFS headroom for Meshtastic itself
+#define PUT_ACK_NONE      (-2)    // sentinel: no ack pending
 
 // ── Transfer state (one active transfer; a new `begin` supersedes any prior) ───────────
 static bool     s_active = false;
-static uint32_t s_fid = 0;          // client-chosen id, echoed in every reply so it can correlate
+static uint32_t s_fid = 0;        // client-chosen id, echoed in every reply so it can correlate
 static uint32_t s_nchunks = 0;
 static uint32_t s_total = 0;
-static uint32_t s_crc = 0;          // expected CRC32 of the whole file
-static uint32_t s_recvCount = 0;    // distinct chunks written so far
+static uint32_t s_crc = 0;        // expected CRC32 of the whole file
+static uint32_t s_nextIdx = 0;    // next in-order chunk we expect (== count received so far)
 static uint32_t s_lastRxAt = 0;
-static uint8_t  s_bitmap[PUT_MAX_CHUNKS / 8];
+static long     s_ackIdx = PUT_ACK_NONE; // runOnce sends "a <s_ackIdx>" then clears (fast, off queue)
 static char     s_name[40];
 static char     s_path[56];
 static File     s_file;
@@ -118,9 +122,10 @@ static void abortTransfer()
     if (s_active && s_file)
         s_file.close();
     s_active = false;
+    s_ackIdx = PUT_ACK_NONE;
 }
 
-// ── /put begin: open the file, reset the bitmap, validate size ─────────────────────────
+// ── /put begin: open the file, reset progress, validate size ───────────────────────────
 // Tokens after "begin": <fid> <nchunks> <totalbytes> <crc32hex> <name>
 void CommandModule::putBegin(char *save)
 {
@@ -128,7 +133,7 @@ void CommandModule::putBegin(char *save)
     char *nS = strtok_r(nullptr, " ", &save);
     char *totS = strtok_r(nullptr, " ", &save);
     char *crcS = strtok_r(nullptr, " ", &save);
-    char *nameS = strtok_r(nullptr, " ", &save); // rest-of-line basename (already slash-free client-side)
+    char *nameS = strtok_r(nullptr, " ", &save);
     if (!fidS || !nS || !totS || !crcS || !nameS) {
         enqueueReply("PUT begin: bad args");
         return;
@@ -145,7 +150,6 @@ void CommandModule::putBegin(char *save)
         enqueueReply(reply);
         return;
     }
-    // Free-space guard so a big upload can't wedge Meshtastic's own LittleFS.
     uint32_t freeb = (uint32_t)(FSCom.totalBytes() - FSCom.usedBytes());
     if (total + PUT_FREE_MARGIN > freeb) {
         snprintf(reply, sizeof(reply), "PUT %x nospace free=%uKB", (unsigned)fid, (unsigned)(freeb / 1024));
@@ -158,7 +162,7 @@ void CommandModule::putBegin(char *save)
     sanitizeName(nameS, s_name, sizeof(s_name));
     FSCom.mkdir(PUT_DIR); // no-op if it exists
     snprintf(s_path, sizeof(s_path), "%s/%s", PUT_DIR, s_name);
-    s_file = FSCom.open(s_path, FILE_O_WRITE); // truncates; we seek+write per chunk
+    s_file = FSCom.open(s_path, FILE_O_WRITE); // truncate; we append in order
     if (!s_file) {
         snprintf(reply, sizeof(reply), "PUT %x open-fail", (unsigned)fid);
         enqueueReply(reply);
@@ -170,8 +174,8 @@ void CommandModule::putBegin(char *save)
     s_nchunks = nchunks;
     s_total = total;
     s_crc = crc;
-    s_recvCount = 0;
-    memset(s_bitmap, 0, sizeof(s_bitmap));
+    s_nextIdx = 0;
+    s_ackIdx = PUT_ACK_NONE;
     s_lastRxAt = millis();
 
     LOG_INFO("PUT begin fid=%x '%s' %u chunks / %u bytes", (unsigned)fid, s_name, (unsigned)nchunks,
@@ -180,8 +184,10 @@ void CommandModule::putBegin(char *save)
     enqueueReply(reply);
 }
 
-// ── /put d: one data chunk. Silent on the happy path (no reply, no effect) so a stream of ──
-// hundreds of chunks doesn't flood airtime or strobe the LED. Tokens: <fid> <index> <base64>
+// ── /put d: one in-order data chunk → append + ACK. Tokens: <fid> <index> <base64> ─────
+// Stop-and-wait: the ack (sent immediately from runOnce, off-air) is the client's cue to send the
+// next chunk. We ack the highest CONTIGUOUS index we hold, so a lost ack or a resent chunk just
+// re-acks and the client advances. A gap (idx > expected) re-acks the last good one → client resends.
 void CommandModule::putData(char *save)
 {
     char *fidS = strtok_r(nullptr, " ", &save);
@@ -190,62 +196,40 @@ void CommandModule::putData(char *save)
     if (!fidS || !idxS || !b64)
         return;
     if (!s_active || (uint32_t)strtoul(fidS, nullptr, 16) != s_fid)
-        return; // not our active transfer — ignore quietly
+        return;
 
     uint32_t idx = (uint32_t)strtoul(idxS, nullptr, 10);
-    if (idx >= s_nchunks)
-        return;
-
-    uint8_t bytes[PUT_CHUNK_BYTES];
-    int n = b64decode(b64, bytes, sizeof(bytes));
-    if (n <= 0)
-        return;
-
-    if (!s_file.seek((uint32_t)idx * PUT_CHUNK_BYTES)) {
-        LOG_WARN("PUT seek fail idx=%u", (unsigned)idx);
-        return;
+    if (idx == s_nextIdx) {
+        uint8_t bytes[256];
+        int n = b64decode(b64, bytes, sizeof(bytes));
+        if (n <= 0)
+            return; // corrupt chunk — don't ack; client's ack-wait times out and resends
+        s_file.write(bytes, n);
+        s_nextIdx++;
     }
-    s_file.write(bytes, n);
+    // else: duplicate (idx < nextIdx) or gap (idx > nextIdx) — no write, just re-ack below.
 
-    uint8_t mask = (uint8_t)(1u << (idx & 7));
-    if (!(s_bitmap[idx >> 3] & mask)) {
-        s_bitmap[idx >> 3] |= mask;
-        s_recvCount++;
-    }
     s_lastRxAt = millis();
+    s_ackIdx = (long)s_nextIdx - 1; // highest contiguous index we hold (-1 before any chunk)
 }
 
-// Collect up to `cap` still-missing indices into a "i,i,i" reply so the client can resend.
-static void buildNeedReply(uint32_t fid, char *out, size_t outsz, int cap)
-{
-    int written = snprintf(out, outsz, "PUT %x need ", (unsigned)fid);
-    int listed = 0;
-    for (uint32_t i = 0; i < s_nchunks && listed < cap && written < (int)outsz - 8; i++) {
-        uint8_t mask = (uint8_t)(1u << (i & 7));
-        if (!(s_bitmap[i >> 3] & mask)) {
-            written += snprintf(out + written, outsz - written, "%s%u", listed ? "," : "", (unsigned)i);
-            listed++;
-        }
-    }
-}
-
-// ── /put end: verify completeness, then size + CRC32; reply the result. Tokens: <fid> ──
+// ── /put end: verify size + CRC32 over the reassembled file. Tokens: <fid> ─────────────
 void CommandModule::putEnd(char *save)
 {
     char *fidS = strtok_r(nullptr, " ", &save);
     if (!fidS)
         return;
     uint32_t fid = (uint32_t)strtoul(fidS, nullptr, 16);
-    char reply[80];
+    char reply[64];
 
     if (!s_active || fid != s_fid) {
         snprintf(reply, sizeof(reply), "PUT %x noxfer", (unsigned)fid);
         enqueueReply(reply);
         return;
     }
-
-    if (s_recvCount < s_nchunks) {
-        buildNeedReply(fid, reply, sizeof(reply), 12); // client resends these, then re-ends
+    if (s_nextIdx < s_nchunks) {
+        // Missing the tail — tell the client where to resume (stop-and-wait shouldn't reach here).
+        snprintf(reply, sizeof(reply), "PUT %x need %u", (unsigned)fid, (unsigned)s_nextIdx);
         enqueueReply(reply);
         return;
     }
@@ -253,7 +237,6 @@ void CommandModule::putEnd(char *save)
     s_file.flush();
     s_file.close();
 
-    // Re-read the file to verify size + CRC32 against what `begin` promised.
     File rf = FSCom.open(s_path, FILE_O_READ);
     if (!rf) {
         s_active = false;
@@ -306,6 +289,19 @@ void CommandModule::handlePut(char *text)
         putBegin(save);
     else if (strcasecmp(sub, "end") == 0)
         putEnd(save);
+}
+
+// ── Called every runOnce tick: emit a pending chunk ACK immediately (not via the 800 ms reply
+// queue — flow control must be fast). Self-addressed so the ack reaches the USB client via
+// ccToPhone WITHOUT a LoRa broadcast, keeping a USB transfer entirely off the air.
+void CommandModule::servicePutAck()
+{
+    if (s_ackIdx == PUT_ACK_NONE)
+        return;
+    char r[24];
+    snprintf(r, sizeof(r), "PUT %x a %ld", (unsigned)s_fid, s_ackIdx);
+    s_ackIdx = PUT_ACK_NONE;
+    sendTextTo(r, nodeDB->getNodeNum()); // to self → delivered to the phone/serial client, no air TX
 }
 
 // ── Called from runOnce: abort a transfer that has gone quiet mid-stream ────────────────

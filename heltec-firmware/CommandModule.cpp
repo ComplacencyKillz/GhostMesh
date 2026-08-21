@@ -537,7 +537,16 @@ void CommandModule::enqueueReply(const char *msg)
 
 void CommandModule::sendText(const char *msg)
 {
+    sendTextTo(msg, NODENUM_BROADCAST); // replies broadcast so every operator sees them
+}
+
+// Like sendText, but addressed to a specific node. Addressing a reply to OURSELVES makes it a
+// phone/serial-only delivery (ccToPhone) with no LoRa broadcast — used for /put chunk acks so a
+// USB file transfer stays entirely off the air.
+void CommandModule::sendTextTo(const char *msg, uint32_t to)
+{
     meshtastic_MeshPacket *p = allocDataPacket(); // portnum = TEXT_MESSAGE_APP
+    p->to = to;
     p->want_ack = false;
     size_t n = strlen(msg);
     if (n > sizeof(p->decoded.payload.bytes))
@@ -614,6 +623,7 @@ int32_t CommandModule::runOnce()
     }
 
     serviceWipeButton(now);
+    servicePutAck();        // emit a pending /put chunk ack immediately (flow control, off the reply queue)
     servicePutTimeout(now); // abort a file transfer that has gone quiet mid-stream
 
     // Emit one queued reply per REPLY_SPACING_MS so /help doesn't hog the airtime.
