@@ -48,6 +48,12 @@ class CommandModule : public SinglePortModule, private concurrency::OSThread
     bool     btnPrev = false;
     uint32_t btnLastEdge = 0, btnFirstAt = 0;
 
+    // ── LED gradient sweep (green↔red), stepped by runOnce when active ──
+    bool     ledSweep = false;
+    uint32_t ledNextStep = 0;
+    uint8_t  ledPhase = 0;   // 0..LED_SWEEP_STEPS
+    int8_t   ledDir = 1;     // +1 toward red, -1 toward green
+
     // helpers
     void handleCommandText(char *text, uint32_t from);
     bool targetsMe(const char *tgt);

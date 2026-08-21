@@ -18,9 +18,11 @@ CommandModule *commandModule;
 // ── Backpack output pins (verified against the board header photo, heltec_front_back/) ──
 #define BUZZER_PIN   39   // passive buzzer via PN2222 low-side driver — needs a PWM tone, not DC
 #define VIBRATE_PIN  40   // vibration motor via PN2222 low-side driver — plain on/off
-#define LED_PIN      35   // onboard white LED — kept as a simple on/off mirror of the RGB state
-#define RGB_LED_PIN  26   // external SK6812 (WS2812 family) data line — driven via neopixelWrite()
-#define RGB_BRIGHT   64   // 0-255 cap; a status LED at ~1/4 is plenty and easy on the 3.3V rail
+#define LED_PIN         35   // onboard white LED — a simple on/off mirror of the RGB state
+#define RGB_LED_PIN     26   // external SK6812 (WS2812 family) data — driven via neopixelWrite()
+#define RGB_BRIGHT      64   // 0-255 cap; a status LED at ~1/4 is plenty and easy on the 3.3V rail
+#define LED_SWEEP_STEPS 50   // steps per half (green→red); 2× is a full green↔green cycle
+#define LED_SWEEP_MS    40   // ms per step → ~2 s each way, ~4 s full cycle
 #define WIPE_BTN_PIN 37   // tact switch to GND; INPUT_PULLUP, so a press reads LOW
 
 #define BUZZ_FREQ         2000  // Hz — passive buzzers are loudest in the 2–4 kHz range
@@ -138,7 +140,7 @@ void CommandModule::doHelp()
         "/status @id - armed, battery, uptime",
         "/arm @id - arm the node",
         "/disarm @id - disarm the node",
-        "/led @id <red|green|blue|off> - RGB",
+        "/led @id <red|green|blue|gradient|off>",
         "/buzz @id [ms] - sound buzzer",
         "/vibrate @id [ms] - run vibration",
         "/wipe @id - factory reset (armed+confirm)",
@@ -165,8 +167,21 @@ void CommandModule::doStatus()
 // RGB_BRIGHT so the LED stays a status light, not a flashlight.
 void CommandModule::doLed(const char *arg)
 {
-    uint8_t r = 0, g = 0, b = 0;
     const char *name = arg ? arg : "white";
+
+    // Animated green↔red sweep — runOnce drives the color; return before the solid-color path.
+    if (strcasecmp(name, "gradient") == 0 || strcasecmp(name, "sweep") == 0) {
+        ledSweep = true;
+        ledPhase = 0;
+        ledDir = 1;
+        ledNextStep = 0; // step immediately on the next runOnce
+        digitalWrite(LED_PIN, HIGH);
+        enqueueReply("LED gradient");
+        return;
+    }
+    ledSweep = false; // any solid color / off cancels the sweep
+
+    uint8_t r = 0, g = 0, b = 0;
     if (strcasecmp(name, "off") == 0 || strcmp(name, "0") == 0) {
         r = g = b = 0;
     } else if (strcasecmp(name, "red") == 0) {
@@ -322,6 +337,17 @@ int32_t CommandModule::runOnce()
         noTone(BUZZER_PIN);
         digitalWrite(BUZZER_PIN, LOW);
         buzzUntil = 0;
+    }
+
+    // LED gradient sweep — triangle-wave the phase green(0)↔red(STEPS); mix and clock the SK6812.
+    if (ledSweep && now >= ledNextStep) {
+        ledNextStep = now + LED_SWEEP_MS;
+        uint8_t red = (uint16_t)ledPhase * RGB_BRIGHT / LED_SWEEP_STEPS;
+        uint8_t grn = (uint16_t)(LED_SWEEP_STEPS - ledPhase) * RGB_BRIGHT / LED_SWEEP_STEPS;
+        neopixelWrite(RGB_LED_PIN, red, grn, 0);
+        if (ledPhase == 0) ledDir = 1;
+        else if (ledPhase >= LED_SWEEP_STEPS) ledDir = -1;
+        ledPhase = (uint8_t)(ledPhase + ledDir);
     }
 
     // Vibration motor — plain on/off.
