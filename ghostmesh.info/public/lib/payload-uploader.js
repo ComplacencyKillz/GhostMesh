@@ -77,22 +77,25 @@ export function putUploaderInit({ sendCmd, nodeIdHex, log }) {
     return btoa(s);
   }
 
-  // ── reply plumbing: the transfer awaits specific "PUT <fid> ..." replies ──
-  let fidHex = '', pending = null; // pending = { match(verb,rest)->value|undefined, resolve, timer }
-  function waitReply(match, timeoutMs) {
-    return new Promise((resolve) => {
-      const timer = setTimeout(() => { if (pending && pending.resolve === resolve) { pending = null; resolve(null); } }, timeoutMs);
-      pending = { match, resolve, timer };
-    });
-  }
+  // ── reply plumbing: replies are BUFFERED as state, not caught by a one-shot waiter ──
+  // Meshtastic double-delivers self-addressed packets, so acks stream in — often in the gap between
+  // one chunk's send and the next wait being armed. A one-shot waiter drops anything landing in that
+  // gap, forcing a full ACK_TIMEOUT + resend per chunk (the "0.0 KB/s" crawl). Recording the latest
+  // ack / verdict as plain state means nothing is ever missed; the transfer just polls the state.
+  let fidHex = '', lastAck = -1, gotReady = false, endVerdict = null;
   function onReply(text) {
     const m = text.trim().match(/^PUT\s+([0-9a-fA-F]+)\s+([a-zA-Z]+)(?:\s+(.*))?$/);
     if (!m || m[1].toLowerCase() !== fidHex.toLowerCase()) return false;
     const verb = m[2].toLowerCase(), rest = m[3] || '';
-    if (pending) {
-      const v = pending.match(verb, rest);
-      if (v !== undefined) { clearTimeout(pending.timer); const r = pending.resolve; pending = null; r(v); }
-    }
+    if (verb === 'a') { const i = parseInt(rest, 10); if (!isNaN(i) && i > lastAck) lastAck = i; }
+    else if (verb === 'ready') gotReady = true;
+    else if (verb === 'ok' || verb === 'crcfail' || verb === 'sizefail' || verb === 'need') endVerdict = { verb, rest };
+    return true;
+  }
+  function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+  async function waitFor(pred, timeoutMs) {
+    const deadline = performance.now() + timeoutMs;
+    while (!pred()) { if (performance.now() > deadline) return false; await sleep(15); }
     return true;
   }
 
@@ -118,65 +121,48 @@ export function putUploaderInit({ sendCmd, nodeIdHex, log }) {
     bytes = new Uint8Array(await file.arrayBuffer());
     const nchunks = Math.ceil(bytes.length / CHUNK);
     const crc = crc32(bytes);
+    lastAck = -1; gotReady = false; endVerdict = null;  // reset buffered reply state for this transfer
     fidHex = Math.floor(Math.random() * 0xffff).toString(16);
     const name = file.name.replace(/[\s\\/]+/g, '_');
 
     log(`PUT begin ${fidHex} ${name} (${bytes.length}B / ${nchunks} chunks)`, 'gm-tx');
     status(`Opening on node…`);
     await sendCmd(`/put @${nodeIdHex} begin ${fidHex} ${nchunks} ${bytes.length} ${crc.toString(16)} ${name}`);
-    const ready = await waitReply((verb) => verb === 'ready' ? true : undefined, 4000);
-    if (!ready) return fail('node did not acknowledge begin');
+    if (!await waitFor(() => gotReady, 4000)) return fail('node did not acknowledge begin');
 
-    // Wait for an ack of at least `target`, DRAINING stale/duplicate acks. Meshtastic delivers each
-    // self-addressed packet to the module twice, so the node acks every chunk twice; the second ack
-    // is for an index we've already passed. Ignoring those (instead of treating them as failures) is
-    // what keeps stop-and-wait in sync. Returns the ack index, or null on timeout.
-    async function waitAckAtLeast(target, timeoutMs) {
-      const deadline = performance.now() + timeoutMs;
-      for (;;) {
-        const remaining = deadline - performance.now();
-        if (remaining <= 0) return null;
-        const a = await waitReply((verb, rest) => verb === 'a' ? parseInt(rest, 10) : undefined, remaining);
-        if (a === null) return null;            // real timeout — the chunk (or its ack) was lost
-        if (!isNaN(a) && a >= target) return a; // fresh ack
-        // else a < target: a stale duplicate ack — ignore and keep waiting
-      }
-    }
-
+    // Stop-and-wait, but the node acks the HIGHEST CONTIGUOUS index it holds, so we just poll
+    // lastAck. Duplicate/stale acks (Meshtastic double-delivers) only ever move lastAck forward or
+    // leave it — never a problem. A chunk is resent only if lastAck fails to reach it in time.
     const t0 = performance.now();
     let nextIdx = 0, retries = 0;
     while (nextIdx < nchunks) {
       const s = nextIdx * CHUNK, e = Math.min(s + CHUNK, bytes.length);
       await sendCmd(`/put @${nodeIdHex} d ${fidHex} ${nextIdx} ${b64(bytes, s, e)}`);
-      const acked = await waitAckAtLeast(nextIdx, ACK_TIMEOUT);
-      if (acked === null) {
+      if (!await waitFor(() => lastAck >= nextIdx, ACK_TIMEOUT)) {
         if (++retries > MAX_RETRIES) return fail(`no ack for chunk ${nextIdx}`);
         continue; // resend the same chunk
       }
-      nextIdx = acked + 1;
+      nextIdx = lastAck + 1;
       retries = 0;
       const kbps = ((nextIdx * CHUNK) / 1024) / (Math.max(1, performance.now() - t0) / 1000);
       progress(nextIdx / nchunks);
       status(`Sending… ${Math.round((nextIdx / nchunks) * 100)}%  (${kbps.toFixed(1)} KB/s)`);
     }
 
-    // Close out. `end` can be dropped (or double-delivered) like any packet, so retry until the node
-    // confirms. A repeated end after success returns 'noxfer' (harmless) — we only accept a verdict.
+    // Close out. `end` can be dropped like any packet, so retry until the node returns a verdict.
     status('Verifying on node…');
-    let res = null;
-    for (let endTry = 0; endTry < 5 && !res; endTry++) {
+    for (let endTry = 0; endTry < 5 && !endVerdict; endTry++) {
       await sendCmd(`/put @${nodeIdHex} end ${fidHex}`);
-      res = await waitReply((verb, rest) =>
-        (verb === 'ok' || verb === 'crcfail' || verb === 'sizefail' || verb === 'need') ? { verb, rest } : undefined, 3000);
+      await waitFor(() => endVerdict, 3000);
     }
-    if (!res) return fail('no confirmation from node');
-    if (res.verb === 'ok') {
+    if (!endVerdict) return fail('no confirmation from node');
+    if (endVerdict.verb === 'ok') {
       sending = false; sendBtn.disabled = false;
       progress(1);
-      status(`Uploaded ${res.rest} bytes → /ghostmesh/${file.name}`, 'ok');
-      log(`PUT ok ${res.rest} bytes`, 'gm-rx');
+      status(`Uploaded ${endVerdict.rest} bytes → /ghostmesh/${file.name}`, 'ok');
+      log(`PUT ok ${endVerdict.rest} bytes`, 'gm-rx');
     } else {
-      return fail(res.verb + (res.rest ? ' ' + res.rest : ''));
+      return fail(endVerdict.verb + (endVerdict.rest ? ' ' + endVerdict.rest : ''));
     }
   }
 
