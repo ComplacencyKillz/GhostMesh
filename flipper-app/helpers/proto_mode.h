@@ -81,6 +81,11 @@ uint32_t proto_mode_get_local_node(const ProtoMode* proto);
 // Returns bytes transmitted (header + payload), or 0 on error.
 size_t proto_mode_send_text(ProtoMode* proto, const char* text);
 
+// Send a text message addressed to the LOCAL node itself. Meshtastic delivers a self-addressed
+// packet in-node without transmitting, so this reaches the node's own CommandModule (for local
+// config: /set, /cfg) with no RF. Returns 0 until the node id is known (post-handshake).
+size_t proto_mode_send_local(ProtoMode* proto, const char* text);
+
 // ── Config backup ─────────────────────────────────────────────────────────────
 // During the want_config handshake the node streams its whole configuration. We capture the
 // Config (FromRadio field 5), ModuleConfig (9), and Channel (10) sub-messages — everything needed

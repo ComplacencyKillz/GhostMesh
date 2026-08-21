@@ -267,6 +267,45 @@ static void draw_backup_screen(Canvas* canvas, const MainViewState* s) {
     draw_footer(canvas, "BACK:Menu", s);
 }
 
+// Settings: live node config. Up/Down select a field, Left/Right change it — each change is sent
+// to the local node (no broadcast). Values come from the node's /cfg reply.
+static void draw_settings_screen(Canvas* canvas, const MainViewState* s) {
+    draw_header(canvas, "Settings", s);
+    canvas_set_font(canvas, FontSecondary);
+
+    if(!s->settings_loaded) {
+        canvas_draw_str(canvas, 4, (uint8_t)(LIST_Y + ROW_H - 2), "Reading node config...");
+        draw_footer(canvas, "BACK:Menu", s);
+        return;
+    }
+
+    char rows[5][24];
+    snprintf(rows[0], sizeof(rows[0]), "Proximity  %u cm", (unsigned)s->set_prox);
+    snprintf(rows[1], sizeof(rows[1]), "Light thr  %u", (unsigned)s->set_light);
+    snprintf(rows[2], sizeof(rows[2]), "LED        %s", s->set_led ? "on" : "off");
+    snprintf(rows[3], sizeof(rows[3]), "Buzzer     %s", s->set_buzz ? "on" : "off");
+    snprintf(rows[4], sizeof(rows[4]), "Vibration  %s", s->set_vib ? "on" : "off");
+
+    // Five fields, four visible rows — scroll so the selected field stays on screen.
+    uint8_t top = (s->settings_selected >= VIS_ROWS) ? (uint8_t)(s->settings_selected - VIS_ROWS + 1) : 0;
+    for(uint8_t i = 0; i < VIS_ROWS; i++) {
+        uint8_t idx = (uint8_t)(top + i);
+        if(idx >= 5) break;
+        uint8_t row_y = (uint8_t)(LIST_Y + i * ROW_H);
+        bool sel = (idx == s->settings_selected);
+        if(sel) {
+            canvas_set_color(canvas, ColorBlack);
+            canvas_draw_box(canvas, 0, row_y, 127, ROW_H);
+            canvas_set_color(canvas, ColorWhite);
+            canvas_draw_str(canvas, 4, (uint8_t)(row_y + ROW_H - 2), rows[idx]);
+            canvas_set_color(canvas, ColorBlack);
+        } else {
+            canvas_draw_str(canvas, 4, (uint8_t)(row_y + ROW_H - 2), rows[idx]);
+        }
+    }
+    draw_footer(canvas, "Up/Dn pick  Lt/Rt set", s);
+}
+
 // ── ViewPort callbacks ─────────────────────────────────────────────────────────
 
 static void draw_cb(Canvas* canvas, void* ctx) {
@@ -282,6 +321,7 @@ static void draw_cb(Canvas* canvas, void* ctx) {
     case GhostMeshScreenStatus:    draw_status_screen(canvas, &mv->state);     break;
     case GhostMeshScreenControl:   draw_control_screen(canvas, &mv->state);    break;
     case GhostMeshScreenBackup:    draw_backup_screen(canvas, &mv->state);     break;
+    case GhostMeshScreenSettings:  draw_settings_screen(canvas, &mv->state);   break;
     default:                       draw_menu_screen(canvas, &mv->state);       break;
     }
     furi_mutex_release(mv->mutex);

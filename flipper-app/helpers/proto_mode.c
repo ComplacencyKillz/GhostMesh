@@ -127,7 +127,10 @@ static size_t write_fixed32_field(uint8_t* out, uint32_t field, uint32_t value) 
     return n;
 }
 
-size_t proto_encode_text(const char* text, uint8_t* out, size_t out_max) {
+// Encode a text packet addressed to `to_addr`. Broadcast (0xFFFFFFFF) transmits to the whole mesh;
+// a specific node id is a DM — and a DM to our OWN node id is delivered locally without going on the
+// air (used for local config, so config commands never transmit).
+static size_t proto_encode_text_to(const char* text, uint32_t to_addr, uint8_t* out, size_t out_max) {
     uint8_t data_buf[96];
     uint8_t mesh_buf[160];
     uint8_t radio_buf[256];
@@ -141,8 +144,8 @@ size_t proto_encode_text(const char* text, uint8_t* out, size_t out_max) {
     dl += write_varint_field(data_buf + dl, 1, PORTNUM_TEXT_MESSAGE);
     dl += write_bytes_field(data_buf + dl, 2, (const uint8_t*)text, text_len);
 
-    // MeshPacket { to=0xFFFFFFFF (field 2, fixed32), decoded=Data, hop_limit=3 }
-    ml += write_fixed32_field(mesh_buf + ml, 2, MESH_BROADCAST_ADDR);
+    // MeshPacket { to (field 2, fixed32), decoded=Data, hop_limit=3 }
+    ml += write_fixed32_field(mesh_buf + ml, 2, to_addr);
     ml += write_bytes_field(mesh_buf + ml, 4, data_buf, dl);
     ml += write_varint_field(mesh_buf + ml, 9, 3);  // hop_limit = 3
 
@@ -159,6 +162,11 @@ size_t proto_encode_text(const char* text, uint8_t* out, size_t out_max) {
     memcpy(out + 4, radio_buf, rl);
 
     return 4 + rl;
+}
+
+// Broadcast text to the whole mesh — the original behaviour.
+size_t proto_encode_text(const char* text, uint8_t* out, size_t out_max) {
+    return proto_encode_text_to(text, MESH_BROADCAST_ADDR, out, out_max);
 }
 
 // ── FromRadio decoder ─────────────────────────────────────────────────────────
@@ -670,6 +678,17 @@ size_t proto_mode_send_text(ProtoMode* p, const char* text) {
     if(!p || !text || !p->connected) return 0;
     uint8_t buf[300];
     size_t len = proto_encode_text(text, buf, sizeof(buf));
+    if(len == 0) return 0;
+    uart_helper_send_bytes(p->uart, buf, len);
+    return len;
+}
+
+size_t proto_mode_send_local(ProtoMode* p, const char* text) {
+    // Address the local node itself (my_node_num) so Meshtastic delivers it in-node without
+    // transmitting — config commands stay off the air. Needs the node id, so wait for the handshake.
+    if(!p || !text || !p->connected || p->my_node_num == 0) return 0;
+    uint8_t buf[300];
+    size_t len = proto_encode_text_to(text, p->my_node_num, buf, sizeof(buf));
     if(len == 0) return 0;
     uart_helper_send_bytes(p->uart, buf, len);
     return len;

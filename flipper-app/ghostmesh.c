@@ -5,6 +5,7 @@
 #include <gui/modules/text_input.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "helpers/proto_mode.h"
 #include "helpers/profile_manager.h"
@@ -31,6 +32,7 @@ static const MenuEntry MENU[] = {
     {"Sensors",    GhostMeshScreenSensors},
     {"Control",    GhostMeshScreenControl},
     {"Status",     GhostMeshScreenStatus},
+    {"Settings",   GhostMeshScreenSettings},
     {"Backup",     GhostMeshScreenBackup},
 };
 #define MENU_COUNT ((uint8_t)(sizeof(MENU) / sizeof(MENU[0])))
@@ -102,6 +104,12 @@ typedef struct {
     bool request_backup;      // set from input; the main loop runs the modal passphrase + encrypt
     char backup_result[48];
 
+    // Settings state (live node config via /set + /cfg over the local link)
+    bool     settings_loaded; // a /cfg reply has populated the values
+    uint8_t  settings_sel;    // selected field 0..4
+    uint16_t set_prox, set_light;
+    bool     set_led, set_buzz, set_vib;
+
     // Send feedback
     char sent_display[24];
     uint8_t feedback_ticks;
@@ -151,6 +159,63 @@ static void on_position(const ProtoPosition* p, void* ctx) {
     app->rx_lon_i  = p->longitude_i;
     app->rx_alt    = p->altitude;
     app->pos_valid = true;
+}
+
+// ── Settings helpers (local node config over the self-addressed link, no broadcast) ──
+
+static void gm_local_id(GhostMeshApp* app, char* out, size_t sz) {
+    uint32_t id = proto_mode_get_local_node(app->proto);
+    snprintf(out, sz, "%04lx", (unsigned long)(id & 0xFFFF));
+}
+
+// Ask the local node for its current config; the CFG reply repopulates the screen.
+static void settings_request(GhostMeshApp* app) {
+    app->settings_loaded = false;
+    char id[8];
+    gm_local_id(app, id, sizeof(id));
+    char cmd[24];
+    snprintf(cmd, sizeof(cmd), "/cfg @%s", id);
+    proto_mode_send_local(app->proto, cmd);
+}
+
+// Change the selected field by dir (-1/+1 = down/off, up/on) and push it to the local node.
+static void settings_edit(GhostMeshApp* app, int dir) {
+    char id[8];
+    gm_local_id(app, id, sizeof(id));
+    char cmd[40];
+    switch(app->settings_sel) {
+    case 0: {
+        int v = (int)app->set_prox + dir * 25;
+        if(v < 20) v = 20;
+        if(v > 400) v = 400;
+        app->set_prox = (uint16_t)v;
+        snprintf(cmd, sizeof(cmd), "/set @%s prox %u", id, (unsigned)v);
+        break;
+    }
+    case 1: {
+        int v = (int)app->set_light + dir * 100;
+        if(v < 0) v = 0;
+        if(v > 4095) v = 4095;
+        app->set_light = (uint16_t)v;
+        snprintf(cmd, sizeof(cmd), "/set @%s light %u", id, (unsigned)v);
+        break;
+    }
+    case 2:
+        app->set_led = (dir > 0);
+        snprintf(cmd, sizeof(cmd), "/set @%s led %s", id, app->set_led ? "on" : "off");
+        break;
+    case 3:
+        app->set_buzz = (dir > 0);
+        snprintf(cmd, sizeof(cmd), "/set @%s buzz %s", id, app->set_buzz ? "on" : "off");
+        break;
+    case 4:
+        app->set_vib = (dir > 0);
+        snprintf(cmd, sizeof(cmd), "/set @%s vib %s", id, app->set_vib ? "on" : "off");
+        break;
+    default:
+        return;
+    }
+    proto_mode_send_local(app->proto, cmd);
 }
 
 // ── Input callback ────────────────────────────────────────────────────────
@@ -219,7 +284,11 @@ static void on_input(InputKey key, InputType type, void* ctx) {
             app->rx_history_scroll = 0;
             app->control_sel       = 0;
             app->wipe_confirm      = false;
+            app->settings_sel      = 0;
             app->screen            = MENU[app->menu_sel].screen;
+            if(app->screen == GhostMeshScreenSettings) {
+                settings_request(app); // pull the node's current config into the screen
+            }
             if(app->screen == GhostMeshScreenBackup) {
                 // The main loop runs the modal passphrase entry + encryption.
                 app->request_backup = true;
@@ -354,6 +423,31 @@ static void on_input(InputKey key, InputType type, void* ctx) {
             default:
                 break;
             }
+        }
+        break;
+
+    case GhostMeshScreenSettings:
+        switch(key) {
+        case InputKeyUp:
+            if(app->settings_sel > 0) app->settings_sel--;
+            break;
+        case InputKeyDown:
+            if(app->settings_sel < 4) app->settings_sel++;
+            break;
+        case InputKeyLeft:
+            if(app->settings_loaded) settings_edit(app, -1);
+            break;
+        case InputKeyRight:
+            if(app->settings_loaded) settings_edit(app, +1);
+            break;
+        case InputKeyOk:
+            settings_request(app); // refresh from the node
+            break;
+        case InputKeyBack:
+            app->screen = GhostMeshScreenMenu;
+            break;
+        default:
+            break;
         }
         break;
 
@@ -561,6 +655,13 @@ int32_t ghostmesh_app(void* p) {
         state.wipe_confirm          = app->wipe_confirm;
         state.wipe_confirm_selected = app->wipe_confirm_sel;
         state.backup_result         = app->backup_result;
+        state.settings_loaded       = app->settings_loaded;
+        state.settings_selected     = app->settings_sel;
+        state.set_prox              = app->set_prox;
+        state.set_light             = app->set_light;
+        state.set_led               = app->set_led;
+        state.set_buzz              = app->set_buzz;
+        state.set_vib               = app->set_vib;
 
         Profile* active      = &app->profiles[app->profile_sel];
         state.messages       = (const char**)active->messages;
@@ -607,6 +708,16 @@ int32_t ghostmesh_app(void* p) {
             } else if(strcmp(app->rx_text_buf, "DISARMED") == 0) {
                 app->node_armed = false;
                 app->node_armed_known = true;
+            } else if(strncmp(app->rx_text_buf, "CFG ", 4) == 0) {
+                // Node's /cfg reply → populate the Settings screen. Parse by key so field order
+                // doesn't matter: "CFG prox=150 light=2000 led=1 buzz=1 vib=1".
+                const char* t;
+                if((t = strstr(app->rx_text_buf, "prox=")))  app->set_prox = (uint16_t)atoi(t + 5);
+                if((t = strstr(app->rx_text_buf, "light="))) app->set_light = (uint16_t)atoi(t + 6);
+                if((t = strstr(app->rx_text_buf, "led=")))   app->set_led = atoi(t + 4) != 0;
+                if((t = strstr(app->rx_text_buf, "buzz=")))  app->set_buzz = atoi(t + 5) != 0;
+                if((t = strstr(app->rx_text_buf, "vib=")))   app->set_vib = atoi(t + 4) != 0;
+                app->settings_loaded = true;
             }
             app->rx_updated = false;
         }

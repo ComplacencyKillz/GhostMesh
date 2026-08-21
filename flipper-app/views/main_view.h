@@ -17,6 +17,7 @@ typedef enum {
     GhostMeshScreenStatus,     // node state overview; BACK → menu
     GhostMeshScreenControl,    // IR arm/disarm/wipe; BACK → menu
     GhostMeshScreenBackup,     // encrypted config backup result; BACK → menu
+    GhostMeshScreenSettings,   // live node config (/set + /cfg over the local link); BACK → menu
 } GhostMeshScreen;
 
 typedef struct {
@@ -52,6 +53,13 @@ typedef struct {
 
     // ── Backup screen (GhostMeshScreenBackup) ────────────────────────
     const char* backup_result;     // status/result line
+
+    // ── Settings screen (GhostMeshScreenSettings) — live node config ──
+    bool     settings_loaded;      // a /cfg reply has populated the values
+    uint8_t  settings_selected;    // highlighted field (0..4)
+    uint16_t set_prox;             // proximity threshold (cm)
+    uint16_t set_light;            // light-tamper ADC threshold
+    bool     set_led, set_buzz, set_vib; // indicator channel enables
 
     // ── Menu hub (GhostMeshScreenMenu) ───────────────────────────────
     const char** menu_names;
