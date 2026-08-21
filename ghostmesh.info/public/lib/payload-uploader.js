@@ -127,28 +127,48 @@ export function putUploaderInit({ sendCmd, nodeIdHex, log }) {
     const ready = await waitReply((verb) => verb === 'ready' ? true : undefined, 4000);
     if (!ready) return fail('node did not acknowledge begin');
 
+    // Wait for an ack of at least `target`, DRAINING stale/duplicate acks. Meshtastic delivers each
+    // self-addressed packet to the module twice, so the node acks every chunk twice; the second ack
+    // is for an index we've already passed. Ignoring those (instead of treating them as failures) is
+    // what keeps stop-and-wait in sync. Returns the ack index, or null on timeout.
+    async function waitAckAtLeast(target, timeoutMs) {
+      const deadline = performance.now() + timeoutMs;
+      for (;;) {
+        const remaining = deadline - performance.now();
+        if (remaining <= 0) return null;
+        const a = await waitReply((verb, rest) => verb === 'a' ? parseInt(rest, 10) : undefined, remaining);
+        if (a === null) return null;            // real timeout — the chunk (or its ack) was lost
+        if (!isNaN(a) && a >= target) return a; // fresh ack
+        // else a < target: a stale duplicate ack — ignore and keep waiting
+      }
+    }
+
     const t0 = performance.now();
     let nextIdx = 0, retries = 0;
     while (nextIdx < nchunks) {
       const s = nextIdx * CHUNK, e = Math.min(s + CHUNK, bytes.length);
       await sendCmd(`/put @${nodeIdHex} d ${fidHex} ${nextIdx} ${b64(bytes, s, e)}`);
-      // Wait for the node's ack. It acks the highest contiguous index it holds.
-      const acked = await waitReply((verb, rest) => verb === 'a' ? parseInt(rest, 10) : undefined, ACK_TIMEOUT);
-      if (acked === null || isNaN(acked) || acked < nextIdx) {
+      const acked = await waitAckAtLeast(nextIdx, ACK_TIMEOUT);
+      if (acked === null) {
         if (++retries > MAX_RETRIES) return fail(`no ack for chunk ${nextIdx}`);
         continue; // resend the same chunk
       }
       nextIdx = acked + 1;
       retries = 0;
-      const kbps = ((nextIdx * CHUNK) / 1024) / ((performance.now() - t0) / 1000);
+      const kbps = ((nextIdx * CHUNK) / 1024) / (Math.max(1, performance.now() - t0) / 1000);
       progress(nextIdx / nchunks);
       status(`Sending… ${Math.round((nextIdx / nchunks) * 100)}%  (${kbps.toFixed(1)} KB/s)`);
     }
 
+    // Close out. `end` can be dropped (or double-delivered) like any packet, so retry until the node
+    // confirms. A repeated end after success returns 'noxfer' (harmless) — we only accept a verdict.
     status('Verifying on node…');
-    await sendCmd(`/put @${nodeIdHex} end ${fidHex}`);
-    const res = await waitReply((verb, rest) =>
-      (verb === 'ok' || verb === 'crcfail' || verb === 'sizefail' || verb === 'need') ? { verb, rest } : undefined, 5000);
+    let res = null;
+    for (let endTry = 0; endTry < 5 && !res; endTry++) {
+      await sendCmd(`/put @${nodeIdHex} end ${fidHex}`);
+      res = await waitReply((verb, rest) =>
+        (verb === 'ok' || verb === 'crcfail' || verb === 'sizefail' || verb === 'need') ? { verb, rest } : undefined, 3000);
+    }
     if (!res) return fail('no confirmation from node');
     if (res.verb === 'ok') {
       sending = false; sendBtn.disabled = false;
