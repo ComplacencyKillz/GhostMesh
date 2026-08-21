@@ -60,6 +60,26 @@ reboot (until a wipe, which erases NVS too). `/cfg` reads the current values bac
 
 Example: `/set @f69c prox 150` then `/cfg @f69c` → `CFG prox=150 light=2000 led=1 buzz=1 vib=1`.
 
+### Three ways to configure a node
+
+The same `/set`/`/cfg` backend is reachable three ways:
+
+| Surface | Transport | Use |
+|---------|-----------|-----|
+| Mesh CLI | over the air, from another node | tune / silence a **deployed** node remotely |
+| FAP Settings screen | Flipper link, self-addressed (off-air) | configure the backpack on your Flipper |
+| `tools/configure_backpack.py` | **USB serial → PC**, self-addressed (off-air) | bench / provisioning config, **no Flipper needed** |
+
+The FAP and USB paths address the command to the node's own id, so Meshtastic delivers it in-node
+without transmitting — config commands stay off the air.
+
+```
+pip install meshtastic
+python tools/configure_backpack.py --port /dev/ttyUSB0              # show current config
+python tools/configure_backpack.py --port /dev/ttyUSB0 --set prox 150
+python tools/configure_backpack.py --port COM5 --set notify off     # silence everything
+```
+
 Every command — including `/help` and `/status` — must name a specific node id. There is **no**
 broadcast target, so no single message can address more than one node.
 
