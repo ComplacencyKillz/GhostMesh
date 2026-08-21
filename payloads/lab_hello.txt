@@ -1,0 +1,39 @@
+REM ============================================================
+REM  GhostMesh lab payload — lab_hello
+REM  BENIGN proof-of-concept DuckyScript (Flipper Zero BadUSB).
+REM
+REM  Matches docs/red-team-lab-use-cases.md section 5 constraints:
+REM    - benign + reversible: only opens a text editor and types a
+REM      banner. Nothing is saved, downloaded, or persisted. Close
+REM      the editor without saving and the machine is untouched.
+REM    - no exfiltration, no network, no credentials, no persistence.
+REM    - selected by NAME (this file), never arbitrary code.
+REM
+REM  Operational gate (enforced elsewhere, not in this file):
+REM    - node must be ARMED, and the trigger must arrive on the
+REM      PRIVATE channel. Lab / owned systems only.
+REM
+REM  Target: Windows. Adjust the opener line for another OS.
+REM ============================================================
+
+REM give the host a moment to enumerate the HID device
+DELAY 2000
+
+REM open Notepad (nothing touches disk until a human saves)
+GUI r
+DELAY 600
+STRING notepad
+ENTER
+DELAY 1500
+
+REM type a harmless, self-describing banner — this is the whole payload
+STRING GhostMesh :: lab_hello
+ENTER
+STRING Benign BadUSB proof-of-concept. Execution confirmed.
+ENTER
+STRING Nothing was installed, downloaded, or changed on this machine.
+ENTER
+STRING Close without saving to leave no trace.
+ENTER
+ENTER
+STRING // so light your candles
