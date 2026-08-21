@@ -87,9 +87,9 @@ export function putUploaderInit({ sendCmd, nodeIdHex, log }) {
 
   sendBtn.addEventListener('click', () => { if (!sending) start(); });
 
-  function sendChunk(i) {
+  async function sendChunk(i) {
     const s = i * CHUNK, e = Math.min(s + CHUNK, bytes.length);
-    sendCmd(`/put @${nodeIdHex} d ${fidHex} ${i} ${b64(bytes, s, e)}`);
+    await sendCmd(`/put @${nodeIdHex} d ${fidHex} ${i} ${b64(bytes, s, e)}`);
   }
 
   async function start() {
@@ -104,12 +104,12 @@ export function putUploaderInit({ sendCmd, nodeIdHex, log }) {
 
     log(`PUT begin ${fidHex} ${name} (${bytes.length}B / ${nchunks} chunks)`, 'gm-tx');
     status(`Sending ${nchunks} chunks…`);
-    sendCmd(`/put @${nodeIdHex} begin ${fidHex} ${nchunks} ${bytes.length} ${crc.toString(16)} ${name}`);
+    await sendCmd(`/put @${nodeIdHex} begin ${fidHex} ${nchunks} ${bytes.length} ${crc.toString(16)} ${name}`);
     await sleep(200); // let the node open the file before the flood
 
     const t0 = performance.now();
     for (let i = 0; i < nchunks; i++) {
-      sendChunk(i);
+      await sendChunk(i);
       if ((i & 7) === 0 || i === nchunks - 1) {
         const pct = Math.round(((i + 1) / nchunks) * 100);
         const kbps = (((i + 1) * CHUNK) / 1024) / ((performance.now() - t0) / 1000);
@@ -118,12 +118,12 @@ export function putUploaderInit({ sendCmd, nodeIdHex, log }) {
       }
       await sleep(PACE_MS);
     }
-    finishRound();
+    await finishRound();
   }
 
-  function finishRound() {
+  async function finishRound() {
     status('Verifying on node…');
-    sendCmd(`/put @${nodeIdHex} end ${fidHex}`);
+    await sendCmd(`/put @${nodeIdHex} end ${fidHex}`);
     waiting = true;
   }
 
@@ -157,8 +157,8 @@ export function putUploaderInit({ sendCmd, nodeIdHex, log }) {
 
   async function resend(idxs) {
     waiting = false;
-    for (const i of idxs) { if (i >= 0 && i < nchunks) { sendChunk(i); await sleep(PACE_MS); } }
-    finishRound();
+    for (const i of idxs) { if (i >= 0 && i < nchunks) { await sendChunk(i); await sleep(PACE_MS); } }
+    await finishRound();
   }
 
   function fail(reason) {

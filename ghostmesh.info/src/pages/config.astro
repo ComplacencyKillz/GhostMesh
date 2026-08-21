@@ -164,9 +164,16 @@ import SubLayout from '../layouts/SubLayout.astro';
 
   function frame(payload) { const n = payload.length; return new Uint8Array([0x94, 0xc3, (n >> 8) & 0xff, n & 0xff, ...payload]); }
   function encWantConfig() { const p = []; wVarintField(p, 3, NONCE); return frame(p); }
+
+  // MeshPacket.id (fixed32, field 6). Meshtastic's router dedups by (from, id), so every packet
+  // MUST carry a unique id — otherwise a burst (e.g. /put data chunks) all share id=0 and every one
+  // after the first is dropped as a duplicate. Real clients set this; our hand-rolled one must too.
+  let _pid = (Math.floor(Math.random() * 0x7fffffff)) >>> 0;
+  function nextPid() { _pid = (_pid + 1) >>> 0; return _pid || 1; }
+
   function encTextTo(text, toAddr) {
     const data = []; wVarintField(data, 1, 1); wBytesField(data, 2, Array.from(enc.encode(text)));
-    const mesh = []; wFixed32Field(mesh, 2, toAddr); wBytesField(mesh, 4, data); wVarintField(mesh, 9, 3);
+    const mesh = []; wFixed32Field(mesh, 2, toAddr); wFixed32Field(mesh, 6, nextPid()); wBytesField(mesh, 4, data); wVarintField(mesh, 9, 3);
     const radio = []; wBytesField(radio, 1, mesh);
     return frame(radio);
   }
@@ -235,7 +242,7 @@ import SubLayout from '../layouts/SubLayout.astro';
       if (!uploader && port && nodeNum) {
         log('Initializing payload uploader…', 'gm-dim');
         uploader = putUploaderInit({
-          sendCmd: (text) => { send(encTextTo(text, nodeNum)); },
+          sendCmd: (text) => send(encTextTo(text, nodeNum)), // returns the write promise → callers await
           nodeIdHex: last4(),
           log,
         });
