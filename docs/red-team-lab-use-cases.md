@@ -62,7 +62,7 @@ hardware RNG and push it to the Heltec — no phone app required in the field.
 
 ## 3. Dead-Drop Surveillance Node
 
-**Status: tamper sensors working; ultrasonic proximity on bench (Phase 10–11)**
+**Status: tamper + proximity sensors working (Phase 10–11)**
 
 Plant a backpack at a dead-drop. It watches its own perimeter and broadcasts alerts over LoRa to
 operators miles away — running unattended, no Flipper present.
@@ -70,8 +70,8 @@ operators miles away — running unattended, no Flipper present.
 **Sensors (custom Heltec modules, arm-gated — they report only when armed):**
 - SW-520D tilt: node moved / picked up → broadcasts `TAMPER` (working)
 - Photoresistor: case opened / light rises → broadcasts `TAMPER_LIGHT` (working)
-- HC-SR04 ultrasonic: someone within threshold → broadcasts `PERSON_DETECTED` (bench; deploy needs
-  a 3.3 V RCWL-1601)
+- RCWL-1601 ultrasonic: someone within threshold → broadcasts `PERSON_DETECTED` (working, at 3.3 V,
+  no divider)
 
 **Arm / disarm — three ways, last action wins:**
 - Toggle switch on the backpack (any flip inverts the state; position isn't tied to a state)

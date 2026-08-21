@@ -8,9 +8,10 @@
 
 ProximityModule *proximityModule;
 
-// ── GhostMesh proximity (HC-SR04) config ──────────────────────────────────────
-// Per the board schematic: Trig=GPIO38, Echo=GPIO47, sensor powered at 3.3V (so Echo is
-// 3.3V logic — no divider needed).
+// ── GhostMesh proximity (RCWL-1601) config ────────────────────────────────────
+// Deploy sensor: RCWL-1601 — Trig=GPIO38, Echo=GPIO47, VCC=3.3V, GND=GND. It's 3.3V-native, so
+// Echo is already 3.3V logic — no divider needed. (A plain HC-SR04 works on the same pins but
+// needs 5V + a divider on Echo; the battery backpack has no 5V, hence the RCWL-1601.)
 #define PROX_TRIG_PIN         38
 #define PROX_ECHO_PIN         47
 // Distance (cm) inside which we call it "person detected". CALIBRATE: watch the

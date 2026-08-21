@@ -62,7 +62,7 @@ Flipper GND                  ────  Heltec GND
 | SW-520D tilt switch → `TAMPER` | GPIO | GPIO2 | 10 | ✅ `TiltModule` |
 | Slide switch (arm/disarm) → `ARMED`/`DISARMED` | GPIO | GPIO4 | 10 | ✅ `ArmingModule` |
 | Photoresistor (light tamper) → `TAMPER_LIGHT` | ADC | GPIO5 | 10 | ✅ `LightTamperModule` |
-| HC-SR04 ultrasonic → `PERSON_DETECTED` | GPIO | GPIO38 trig / 47 echo | 11 | 🚧 `ProximityModule` — bench only (needs 5V+divider or a 3.3V RCWL-1601) |
+| RCWL-1601 ultrasonic → `PERSON_DETECTED` | GPIO | GPIO38 trig / 47 echo | 11 | ✅ `ProximityModule` — RCWL-1601 at 3.3V (no divider), working on HW |
 | IR receiver (NEC remote) → arm/disarm | GPIO | GPIO48 | 10 | ✅ `IRModule` |
 | MAX17048 (LiPo fuel gauge) | I2C bus 2 | 0x36 — GPIO41/42 | 9 | 🚧 on-bus, not read (connector mismatch) |
 | Passive buzzer via PN2222 → `/buzz` | GPIO (PWM tone) | GPIO39 | 10 | ✅ `CommandModule` — working on HW |
@@ -297,7 +297,7 @@ Confirmed working on hardware:
 - Phase 8: BN-220 GPS position (lat/lon/alt) on the Sensors screen + lat/lon in the CSV
 - Battery %: Heltec battery level in the title bar (…/RDY/%/PWR)
 - Phase 10: `TAMPER` (tilt), `TAMPER_LIGHT` (photoresistor), `ARMED`/`DISARMED` (slide switch) — custom Heltec modules, all gated by the arm state; alerts arrive on the FAP as text (RX history/status bar)
-- Phase 11: `PERSON_DETECTED` (HC-SR04) — works on bench (5V + Echo divider); deployment needs a 3.3V RCWL-1601
+- Phase 11: `PERSON_DETECTED` (RCWL-1601 at 3.3V, GPIO38 trig / 47 echo, no divider) — working on HW
 
 **Not yet done:** Phase 6 (nuke/stealth/keys), Phase 9 (MAX17048 read), IR receiver arm/disarm,
 operator buzzer/vibration + a dedicated FAP tamper-alert UI (alerts currently show as plain
@@ -314,7 +314,7 @@ text), env-telemetry CSV columns, wardriving capture.
 | v0.8 | 8 | GPS + wardriving (BN-220) | No |
 | v0.9 | 9 | MAX17048 battery fuel gauge | Yes |
 | v1.0 | 10 | Physical controls: buzzer, vibration, tamper detection | Yes — 🚧 tamper + arming modules done; buzzer/vibration + FAP UI pending |
-| v1.1 | 11 | Dead-drop surveillance (HC-SR04 proximity) | Yes — 🚧 done on bench; needs a 3.3V module for deploy |
+| v1.1 | 11 | Dead-drop surveillance (RCWL-1601 proximity) | Yes — ✅ RCWL-1601 at 3.3V, working on HW |
 | v1.2 | 12 | SIGINT, jammer detection, wardriving heatmaps | Yes |
 | v1.3 | 13 | Remote payload execution (BadUSB, NFC, Sub-GHz relay) | Yes |
 | v1.4 | 14 | UART encryption (ChaCha20-Poly1305 AEAD) | Yes |

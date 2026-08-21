@@ -271,7 +271,7 @@ UART1 (GPIO34 RX / GPIO33 TX):
 - FAP: menu-hub UI (Messages / RX History / Sensors / Control / Status / Backup); `RDY` after the handshake
 - TX/RX text over the mesh; per-message RSSI/SNR; dated CSV logging; marquee display
 - Telemetry: BME280 temp/humidity/pressure, BN-220 GPS position, battery % in the title bar
-- Backpack firmware: tamper (tilt / light), proximity (bench), arming toggle, buzzer + vibration — all over the private mesh, arm-gated
+- Backpack firmware: tamper (tilt / light), proximity (RCWL-1601 at 3.3V), arming toggle, buzzer + vibration + RGB LED — all over the private mesh, arm-gated
 - IR control: arm / disarm confirmed on hardware; the `ARM → WIPE → CONFIRM` destruct + complete-flash wipe built (spare-board test pending)
 - Encrypted config backup written by the FAP (backup → restore round-trip test pending)
 

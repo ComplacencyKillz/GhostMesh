@@ -218,19 +218,19 @@ any backpack over the mesh or IR, no Flipper required. See `docs/command-cli.md`
 
 ---
 
-## Phase 11 — Dead-Drop Surveillance ⏳
+## Phase 11 — Dead-Drop Surveillance ✅ (deploy sensor working)
 
-**New hardware:** HC-SR04 ultrasonic sensor (Heltec GPIO38 trigger — NOT 21, which is the OLED reset; GPIO47 echo)
+**New hardware:** RCWL-1601 ultrasonic sensor (Heltec GPIO38 trigger — NOT 21, which is the OLED reset; GPIO47 echo)
 
-**Voltage note (confirmed 2026-08-16):** the plain blue HC-SR04 does NOT work at 3.3V — it
-returns garbage (0 cm). It needs **5V**, with a divider on Echo (1kΩ → GPIO47, 2kΩ → GND) to
-drop the 5V echo to 3.3V. That works on the bench (USB), but the battery backpack has no 5V,
-so deployment needs a **3.3V-native module (RCWL-1601 / JSN-SR04T)** — a drop-in, no firmware
-change (RCWL-1601 ordered). The EE's 3.3V HC-SR04 on the schematic needs this correction.
+**Voltage note (resolved 2026-08-20):** the plain blue HC-SR04 does NOT work at 3.3V (returns 0 cm)
+— it needs **5V** plus a divider on Echo (1kΩ → GPIO47, 2kΩ → GND). The battery backpack has no 5V,
+so the deploy part is the **3.3V-native RCWL-1601** — a drop-in on the same pins, no divider, no
+firmware change. **Confirmed working on the RCWL-1601 at 3.3V, 2026-08-20** (initial `-1` was a
+VCC-on-ground miswire).
 
-- [x] Hardware: Trigger → GPIO38, Echo → GPIO47 (5V + divider on Echo for the plain HC-SR04)
-- [x] Custom Heltec module: `heltec-firmware/ProximityModule` — poll HC-SR04 at 1Hz, threshold
-  200cm, broadcast `PERSON_DETECTED` text packet over LoRa. Working on bench 2026-08-16.
+- [x] Hardware: RCWL-1601 — VCC → 3.3V, Trig → GPIO38, Echo → GPIO47, GND → GND (no divider)
+- [x] Custom Heltec module: `heltec-firmware/ProximityModule` — poll at 1Hz, threshold
+  200cm, broadcast `PERSON_DETECTED` text packet over LoRa. Working on HW 2026-08-20.
 - [ ] Enhancement — operator-adjustable sensor thresholds (firmware + FAP): custom modules
   accept a config command (e.g. `PROX=150`, `LIGHT=1800`), apply live, and persist to flash;
   a GhostMesh FAP settings screen sends it. No reflash to re-tune light/proximity thresholds.

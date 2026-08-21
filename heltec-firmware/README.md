@@ -36,7 +36,7 @@ nodes. A different tag may build fine but can shift file layout / APIs.
 | ArmingModule | slide switch (GPIO4, SPDT) → broadcast `ARMED`/`DISARMED`; sets shared `ghostmesh_armed` | ✅ working |
 | TiltModule | SW-520D tilt (GPIO2) → broadcast `TAMPER` (replaces built-in Detection Sensor) | ✅ working |
 | LightTamperModule | photoresistor (GPIO5, light) → broadcast `TAMPER_LIGHT` | ✅ working |
-| ProximityModule | HC-SR04 (GPIO38 trig / GPIO47 echo) → broadcast `PERSON_DETECTED` | ✅ working (needs 5V + Echo divider, or a 3.3V RCWL-1601) |
+| ProximityModule | RCWL-1601 (GPIO38 trig / GPIO47 echo) → broadcast `PERSON_DETECTED` | ✅ working — RCWL-1601 at 3.3V, no divider (HC-SR04 also works but needs 5V + an Echo divider) |
 | IRModule | VS1838B (GPIO48) decodes the **GhostMesh NECext set** (addr `0x474D`: `01`ARM `02`DISARM `03`WIPE `04`CONFIRM) → arm/disarm (sets `ghostmesh_armed`, broadcasts) + out-of-band **wipe** via the `ARM→WIPE→CONFIRM` sequence (armed, CONFIRM within 10 s) | ✅ arm/disarm working; wipe sequence new. TX: `flipper-app/GhostMeshBackpack.ir` |
 | CommandModule | **Listens** for `/cmd @target [args]` mesh text (per-node id only, **no `@ALL`**) → drives buzzer (GPIO39, passive/tone), vibration (GPIO40), LED, status, arm/disarm, and the safety-gated wipe (mesh token + physical double-press on GPIO37) | ✅ `/buzz`+`/vibrate` confirmed on hardware 2026-08-18 — see `docs/command-cli.md` |
 
