@@ -211,10 +211,14 @@ any backpack over the mesh or IR, no Flipper required. See `docs/command-cli.md`
 | 37 | Wipe button (tact) | Factory reset — armed + double-press (2–5 s gap) |
 
 - [x] `CommandModule`: parse `/cmd @target [args]`, per-node targeting (last-4 id only — **no broadcast/`@ALL`**), spaced `/help`. Working on hardware 2026-08-18.
-- [x] `CommandModule`: `/arm` `/disarm` `/status` `/buzz` `/vibrate` `/led`; wipe (mesh token + physical double-press), armed-gated. **`/buzz` + `/vibrate` confirmed on hardware 2026-08-18.**
-- [ ] Wire the RGB SK6812 on GPIO26 (CommandModule drives the onboard LED until then)
-- [ ] IR wipe path: extend `IRModule` with the ARM → WIPE → CONFIRM sequence + a CONFIRM button in `GhostMeshBackpack.ir`
-- [ ] FAP: parse incoming TAMPER / TAMPER_LIGHT / PERSON_DETECTED mesh packets and trigger a dedicated alert UI
+- [x] `CommandModule`: `/arm` `/disarm` `/status` `/buzz` `/vibrate` `/led`; wipe (mesh token + physical double-press), armed-gated. Confirmed on hardware.
+- [x] RGB SK6812 on GPIO26 — `/led` colours + green↔red gradient via `neopixelWrite`. Working 2026-08-20.
+- [x] IR wipe path: `IRModule` NECext `ARM → WIPE → CONFIRM` sequence + `.ir` buttons. Working (decode) 2026-08-19.
+- [x] **Indicator effect engine** — synced LED+buzzer+vibration effects bound to events (armed/disarmed/wipe/message/CLI); `/fx` to tune. Built 2026-08-20.
+- [x] **Config layer** — `/set` + `/cfg`, NVS-persisted (prox/light thresholds, notify led/buzz/vib = covert toggle). Tunable over the mesh, no reflash. Built 2026-08-20.
+- [ ] **FAP Settings screen** — dial the config on-screen and push it to a node. OPEN DESIGN Q: local-node config from the attached FAP needs the mesh-loopback behaviour confirmed on hardware (does a FAP-sent command reach the local `CommandModule`?); remote-node config over the mesh works today. Decide before building.
+- [ ] FAP: parse incoming TAMPER / TAMPER_LIGHT / PERSON_DETECTED mesh packets and trigger a dedicated alert UI (visual — the Flipper carries no outputs)
+- [ ] Indicator polish: per-CLI-command buzz/vibration variants; tune colours/tones/timing on hardware
 
 ---
 
@@ -267,11 +271,26 @@ Leverages all installed hardware for intelligence gathering.
 Transforms GhostMesh from a communications tool into a remote hardware orchestrator.
 All features require slide switch in the ARMED position before execution.
 
+**Two payload hosts (complementary):**
+- **Flipper as the payload device (do first):** mature BadUSB/HID + DuckyScript + SD storage. A
+  mesh/IR trigger tells the FAP to replay a named script over USB HID. Scripts drop onto the
+  Flipper SD via qFlipper — no upload protocol needed.
+- **Heltec as the payload device (the planted-node play):** the ESP32-S3 has native USB and can
+  enumerate as a USB HID keyboard (TinyUSB) to type a stored script. Scripts live on the Heltec
+  LittleFS; upload when tethered (a PROTO/CLI push) or slowly over the mesh. This is the detached
+  backpack *being* the implant. Note: native USB HID conflicts with the USB serial console — gate
+  it behind arm + a config flag.
+
+The trigger side already exists — the mesh CLI + IR are exactly the fire mechanism. Safety stays
+the same as the rest of the platform: armed-gated, private-channel only, scripts pre-staged and
+selected **by name** (never arbitrary code over the air), authorized/lab use.
+
 ### 13.1 BadUSB over Mesh
 - [ ] FAP listens for `PAYLOAD_n` mesh packet (on private channel only)
 - [ ] On receipt with switch armed: invoke Flipper BadUSB service with pre-staged
   DuckyScript `.txt` from SD card `SD:/apps_data/ghostmesh/payloads/`
 - [ ] Confirm execution via mesh ACK packet
+- [ ] Heltec-native variant: TinyUSB HID keyboard on the ESP32-S3, scripts on LittleFS
 
 ### 13.2 NFC Orchestration over Mesh
 - [ ] `NFC_EMU:filename.nfc` packet → FAP loads NFC file and starts emulation
