@@ -48,11 +48,19 @@ class CommandModule : public SinglePortModule, private concurrency::OSThread
     bool     btnPrev = false;
     uint32_t btnLastEdge = 0, btnFirstAt = 0;
 
-    // ── LED gradient sweep (green↔red), stepped by runOnce when active ──
-    bool     ledSweep = false;
-    uint32_t ledNextStep = 0;
-    uint8_t  ledPhase = 0;   // 0..LED_SWEEP_STEPS
-    int8_t   ledDir = 1;     // +1 toward red, -1 toward green
+    // ── Indicator effect engine (synced LED + buzzer + vibration) ──
+    // An "effect" is a timeline of colour ramps with optional tone + vibration; runOnce steps it
+    // non-blocking. Events (arm/disarm/wipe/message/CLI) each map to an effect. When no effect is
+    // active the LED holds `steady*` (default off — covert), and the plain /buzz//vibrate timers run.
+    uint8_t  curFx = 0;            // active effect id (0 = FX_NONE / idle)
+    uint8_t  fxIdx = 0;           // current segment
+    uint32_t fxSegStart = 0;
+    bool     fxSegEntered = false; // has this segment's tone/vib been applied?
+    uint8_t  steadyR = 0, steadyG = 0, steadyB = 0; // idle LED colour, restored after an effect
+    bool     enLed = true, enBuzz = true, enVib = true; // per-channel enable (covert toggle; config later)
+    bool     lastArmedSeen = false; // arm-state edge detection → arm/disarm effects
+    bool     eraseArmed = false;    // a wipe is scheduled once its effect finishes
+    uint32_t eraseAt = 0;
 
     // helpers
     void handleCommandText(char *text, uint32_t from);
@@ -60,6 +68,12 @@ class CommandModule : public SinglePortModule, private concurrency::OSThread
     void doHelp();
     void doStatus();
     void doLed(const char *arg);
+    void doFx(const char *arg);          // /fx <name> — play an effect for tuning (no side effects)
+    // indicator engine
+    void startEffect(uint8_t fx);
+    void tickEffect(uint32_t now);
+    void stopEffect();                   // → idle, outputs off
+    void setSteadyLed(uint8_t r, uint8_t g, uint8_t b);
     void doWipeCommand(const char *arg);
     void serviceWipeButton(uint32_t now);
     void doFactoryWipe();

@@ -153,10 +153,11 @@ void IRModule::broadcastArmState(bool armed)
     service->sendToMesh(p, RX_SRC_LOCAL, true);
 }
 
-// ARM → WIPE → CONFIRM completed while armed → the out-of-band destruct: a complete flash erase
-// (NVS + filesystem + firmware) that drops the chip to USB download mode. Does not return.
+// ARM → WIPE → CONFIRM completed while armed → the out-of-band destruct. Request the wipe so
+// CommandModule plays the pre-roll indicator effect and then runs the complete flash erase — the
+// same path as the mesh/button wipes, so all three fire the same light/sound show before erasing.
 void IRModule::doFactoryWipe()
 {
-    LOG_WARN("IR: WIPE confirmed -> complete flash erase");
-    ghostmesh_complete_wipe();
+    LOG_WARN("IR: WIPE confirmed -> request complete flash erase");
+    ghostmesh_wipe_request = true;
 }

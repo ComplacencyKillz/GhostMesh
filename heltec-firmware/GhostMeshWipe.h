@@ -10,3 +10,8 @@
 // before trusting it on a deployment node. Called by CommandModule (mesh /wipe) and IRModule
 // (IR ARM→WIPE→CONFIRM), both armed-gated + confirmed. Does not return.
 void ghostmesh_complete_wipe();
+
+// Set by any confirmed wipe path (mesh, physical button, IR) instead of erasing immediately, so
+// CommandModule can play the wipe indicator effect first, then run the erase. Defined in
+// CommandModule.cpp, serviced by its runOnce.
+extern volatile bool ghostmesh_wipe_request;

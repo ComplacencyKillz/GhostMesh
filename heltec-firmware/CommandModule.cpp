@@ -21,8 +21,75 @@ CommandModule *commandModule;
 #define LED_PIN         35   // onboard white LED — a simple on/off mirror of the RGB state
 #define RGB_LED_PIN     26   // external SK6812 (WS2812 family) data — driven via neopixelWrite()
 #define RGB_BRIGHT      64   // 0-255 cap; a status LED at ~1/4 is plenty and easy on the 3.3V rail
-#define LED_SWEEP_STEPS 50   // steps per half (green→red); 2× is a full green↔green cycle
-#define LED_SWEEP_MS    40   // ms per step → ~2 s each way, ~4 s full cycle
+
+// ── Indicator effect engine ──────────────────────────────────────────────────────────
+// One EffectSeg = a colour ramp (r0,g0,b0)→(r1,g1,b1) over dur_ms, with an optional buzzer tone
+// and vibration for the whole segment. A solid flash sets start==end. A list of segments is a
+// little synced light/sound sequence. runOnce interpolates the colour each tick and applies the
+// tone/vibration once per segment. This is what turns the outputs from CLI test toys into real
+// deployment feedback.
+struct EffectSeg {
+    uint16_t dur_ms;
+    uint8_t  r0, g0, b0, r1, g1, b1;
+    uint16_t buzz_hz; // 0 = silent
+    bool     vib;
+};
+
+enum { FX_NONE = 0, FX_ARMED, FX_DISARMED, FX_WIPE, FX_MSG, FX_CLI, FX_GRADIENT };
+
+#define BR RGB_BRIGHT
+// Armed: green→yellow→red, rising two-note + a vibration kick. "Coming online."
+static const EffectSeg FX_ARMED_SEGS[] = {
+    {500,  0, BR, 0, BR, BR, 0, 1500, true},
+    {500, BR, BR, 0, BR,  0, 0, 2200, false},
+};
+// Disarmed: red→yellow→green, falling two-note. "Standing down."
+static const EffectSeg FX_DISARMED_SEGS[] = {
+    {500, BR,  0, 0, BR, BR, 0, 2200, true},
+    {500, BR, BR, 0,  0, BR, 0, 1500, false},
+};
+// Wipe: three blue flashes + a low tone, then fade to off. Plays *before* the erase.
+static const EffectSeg FX_WIPE_SEGS[] = {
+    {120, 0, 0, BR, 0, 0, BR, 400, true},  {120, 0, 0, 0, 0, 0, 0, 0, false},
+    {120, 0, 0, BR, 0, 0, BR, 400, true},  {120, 0, 0, 0, 0, 0, 0, 0, false},
+    {120, 0, 0, BR, 0, 0, BR, 400, true},  {120, 0, 0, 0, 0, 0, 0, 0, false},
+    {480, 0, 0, BR, 0, 0, 0, 300, true},
+};
+// Message received: three yellow flashes + a double-buzz.
+static const EffectSeg FX_MSG_SEGS[] = {
+    {120, BR, BR, 0, BR, BR, 0, 2000, true},  {120, 0, 0, 0, 0, 0, 0, 0, false},
+    {120, BR, BR, 0, BR, BR, 0, 2000, false}, {120, 0, 0, 0, 0, 0, 0, 0, false},
+    {120, BR, BR, 0, BR, BR, 0, 2000, false}, {120, 0, 0, 0, 0, 0, 0, 0, false},
+};
+// CLI command received: two green flashes + a short high buzz.
+static const EffectSeg FX_CLI_SEGS[] = {
+    {120, 0, BR, 0, 0, BR, 0, 2500, true}, {120, 0, 0, 0, 0, 0, 0, 0, false},
+    {120, 0, BR, 0, 0, BR, 0, 2500, false}, {120, 0, 0, 0, 0, 0, 0, 0, false},
+};
+// Gradient: continuous green↔red, no sound. A CLI test / "loud idle."
+static const EffectSeg FX_GRADIENT_SEGS[] = {
+    {2000, 0, BR, 0, BR, 0, 0, 0, false},
+    {2000, BR, 0, 0, 0, BR, 0, 0, false},
+};
+#undef BR
+
+// Resolve an effect id → its segment list. loop=true replays instead of stopping.
+static bool fx_lookup(uint8_t fx, const EffectSeg **segs, uint8_t *count, bool *loop) {
+    *loop = false;
+    switch (fx) {
+    case FX_ARMED:    *segs = FX_ARMED_SEGS;    *count = 2; return true;
+    case FX_DISARMED: *segs = FX_DISARMED_SEGS; *count = 2; return true;
+    case FX_WIPE:     *segs = FX_WIPE_SEGS;     *count = 7; return true;
+    case FX_MSG:      *segs = FX_MSG_SEGS;      *count = 6; return true;
+    case FX_CLI:      *segs = FX_CLI_SEGS;      *count = 4; return true;
+    case FX_GRADIENT: *segs = FX_GRADIENT_SEGS; *count = 2; *loop = true; return true;
+    default: return false;
+    }
+}
+
+// Confirmed wipe (any path) sets this; CommandModule::runOnce plays FX_WIPE then erases.
+volatile bool ghostmesh_wipe_request = false;
+#define WIPE_PREROLL_MS 1300 // ~FX_WIPE length; the erase is scheduled this far out, guaranteed
 #define WIPE_BTN_PIN 37   // tact switch to GND; INPUT_PULLUP, so a press reads LOW
 
 #define BUZZ_FREQ         2000  // Hz — passive buzzers are loudest in the 2–4 kHz range
@@ -54,6 +121,14 @@ ProcessMessage CommandModule::handleReceived(const meshtastic_MeshPacket &mp)
     size_t n = d.payload.size < sizeof(text) - 1 ? d.payload.size : sizeof(text) - 1;
     memcpy(text, d.payload.bytes, n);
     text[n] = '\0';
+
+    // Reception feedback: a command-form message (starts with '/') flashes the CLI effect, any
+    // other text flashes the message effect. Fires for all incoming traffic on the channel, not
+    // just commands aimed at us. An arm/disarm command overrides this via the arm-edge effect.
+    const char *p = text;
+    while (*p == ' ')
+        p++;
+    startEffect(*p == '/' ? FX_CLI : FX_MSG);
 
     handleCommandText(text, getFrom(&mp));
     return ProcessMessage::CONTINUE; // let other modules (e.g. the app text view) see it too
@@ -110,6 +185,8 @@ void CommandModule::handleCommandText(char *text, uint32_t from)
         enqueueReply(r);
     } else if (strcasecmp(cmd, "/led") == 0) {
         doLed(arg);
+    } else if (strcasecmp(cmd, "/fx") == 0) {
+        doFx(arg);
     } else if (strcasecmp(cmd, "/wipe") == 0) {
         doWipeCommand(arg);
     } else {
@@ -161,25 +238,18 @@ void CommandModule::doStatus()
     enqueueReply(r);
 }
 
-// ── /led <color|off>: drive the external SK6812 on GPIO26 ────────────────────────────
-// neopixelWrite() (ESP32 core, RMT-backed) clocks one WS2812/SK6812 frame — no library needed.
-// The onboard GPIO35 LED mirrors on/off as a basic backup indicator. Colors are scaled to
-// RGB_BRIGHT so the LED stays a status light, not a flashlight.
+// ── /led <color|gradient|off>: set the idle colour, or run the gradient effect ───────
+// A solid colour becomes the *steady* idle state the LED returns to after any event effect.
+// "gradient" runs the looping green↔red effect. Colours are scaled to RGB_BRIGHT.
 void CommandModule::doLed(const char *arg)
 {
     const char *name = arg ? arg : "white";
 
-    // Animated green↔red sweep — runOnce drives the color; return before the solid-color path.
     if (strcasecmp(name, "gradient") == 0 || strcasecmp(name, "sweep") == 0) {
-        ledSweep = true;
-        ledPhase = 0;
-        ledDir = 1;
-        ledNextStep = 0; // step immediately on the next runOnce
-        digitalWrite(LED_PIN, HIGH);
+        startEffect(FX_GRADIENT);
         enqueueReply("LED gradient");
         return;
     }
-    ledSweep = false; // any solid color / off cancels the sweep
 
     uint8_t r = 0, g = 0, b = 0;
     if (strcasecmp(name, "off") == 0 || strcmp(name, "0") == 0) {
@@ -201,11 +271,105 @@ void CommandModule::doLed(const char *arg)
         r = g = b = RGB_BRIGHT;
     }
 
-    neopixelWrite(RGB_LED_PIN, r, g, b);
-    digitalWrite(LED_PIN, (r || g || b) ? HIGH : LOW); // onboard mirror
+    stopEffect(); // a solid colour cancels any running effect
+    setSteadyLed(r, g, b);
     char reply[40];
     snprintf(reply, sizeof(reply), "LED %s", name);
     enqueueReply(reply);
+}
+
+// ── /fx <name>: play an indicator effect for tuning (VISUAL only — never triggers a wipe) ──
+void CommandModule::doFx(const char *arg)
+{
+    uint8_t fx = FX_NONE;
+    if (arg) {
+        if (strcasecmp(arg, "armed") == 0) fx = FX_ARMED;
+        else if (strcasecmp(arg, "disarmed") == 0) fx = FX_DISARMED;
+        else if (strcasecmp(arg, "wipe") == 0) fx = FX_WIPE;
+        else if (strcasecmp(arg, "msg") == 0) fx = FX_MSG;
+        else if (strcasecmp(arg, "cli") == 0) fx = FX_CLI;
+        else if (strcasecmp(arg, "gradient") == 0) fx = FX_GRADIENT;
+    }
+    startEffect(fx); // fx==FX_NONE just stops
+    char reply[32];
+    snprintf(reply, sizeof(reply), "FX %s", arg ? arg : "off");
+    enqueueReply(reply);
+}
+
+// ── Indicator engine ──────────────────────────────────────────────────────────────────
+void CommandModule::setSteadyLed(uint8_t r, uint8_t g, uint8_t b)
+{
+    steadyR = r;
+    steadyG = g;
+    steadyB = b;
+    if (curFx == FX_NONE) { // only paint now if no effect owns the LED
+        neopixelWrite(RGB_LED_PIN, enLed ? r : 0, enLed ? g : 0, enLed ? b : 0);
+        digitalWrite(LED_PIN, (r || g || b) ? HIGH : LOW);
+    }
+}
+
+void CommandModule::startEffect(uint8_t fx)
+{
+    // Cancel the plain output timers so nothing fights the effect.
+    reqBuzzMs = reqVibrateMs = 0;
+    buzzUntil = vibrateUntil = 0;
+    if (fx == FX_NONE) { stopEffect(); return; }
+    curFx = fx;
+    fxIdx = 0;
+    fxSegStart = millis();
+    fxSegEntered = false;
+}
+
+void CommandModule::stopEffect()
+{
+    curFx = FX_NONE;
+    noTone(BUZZER_PIN);
+    digitalWrite(BUZZER_PIN, LOW);
+    digitalWrite(VIBRATE_PIN, LOW);
+    // Restore the idle LED.
+    neopixelWrite(RGB_LED_PIN, enLed ? steadyR : 0, enLed ? steadyG : 0, enLed ? steadyB : 0);
+    digitalWrite(LED_PIN, (steadyR || steadyG || steadyB) ? HIGH : LOW);
+}
+
+void CommandModule::tickEffect(uint32_t now)
+{
+    const EffectSeg *segs;
+    uint8_t count;
+    bool loop;
+    if (!fx_lookup(curFx, &segs, &count, &loop)) { stopEffect(); return; }
+    const EffectSeg &s = segs[fxIdx];
+
+    // Apply the tone + vibration once when a segment begins.
+    if (!fxSegEntered) {
+        fxSegEntered = true;
+        if (enBuzz && s.buzz_hz) {
+            tone(BUZZER_PIN, s.buzz_hz);
+        } else {
+            noTone(BUZZER_PIN);
+            digitalWrite(BUZZER_PIN, LOW);
+        }
+        digitalWrite(VIBRATE_PIN, (enVib && s.vib) ? HIGH : LOW);
+    }
+
+    // Interpolate the colour across the segment each tick.
+    uint32_t el = now - fxSegStart;
+    if (el > s.dur_ms) el = s.dur_ms;
+    uint8_t r = (uint8_t)((int)s.r0 + ((int)s.r1 - (int)s.r0) * (int)el / s.dur_ms);
+    uint8_t g = (uint8_t)((int)s.g0 + ((int)s.g1 - (int)s.g0) * (int)el / s.dur_ms);
+    uint8_t b = (uint8_t)((int)s.b0 + ((int)s.b1 - (int)s.b0) * (int)el / s.dur_ms);
+    neopixelWrite(RGB_LED_PIN, enLed ? r : 0, enLed ? g : 0, enLed ? b : 0);
+    digitalWrite(LED_PIN, (r || g || b) ? HIGH : LOW);
+
+    // Advance at the end of the segment.
+    if (now - fxSegStart >= s.dur_ms) {
+        fxIdx++;
+        fxSegStart = now;
+        fxSegEntered = false;
+        if (fxIdx >= count) {
+            if (loop) fxIdx = 0;
+            else stopEffect();
+        }
+    }
 }
 
 // ── /wipe: two-step mesh path — issue a one-time token, then verify it. Armed-gated. ─
@@ -274,11 +438,11 @@ void CommandModule::serviceWipeButton(uint32_t now)
         btnFirstAt = 0;
 }
 
-// ── The nuke: complete flash erase (NVS + filesystem + firmware) → USB download mode ─
+// ── The nuke: request the wipe. runOnce plays FX_WIPE then runs the complete flash erase. ─
 void CommandModule::doFactoryWipe()
 {
-    LOG_WARN("Command: WIPE confirmed -> complete flash erase");
-    ghostmesh_complete_wipe(); // erases everything and drops to download mode — does not return
+    LOG_WARN("Command: WIPE confirmed -> pre-roll effect, then complete flash erase");
+    ghostmesh_wipe_request = true; // serviced in runOnce (plays the effect, then erases)
 }
 
 // ── Reply plumbing ──────────────────────────────────────────────────────────────────
@@ -320,45 +484,53 @@ int32_t CommandModule::runOnce()
         digitalWrite(LED_PIN, LOW);
         neopixelWrite(RGB_LED_PIN, 0, 0, 0); // SK6812 dark at boot (no random-color power-on)
         pinMode(WIPE_BTN_PIN, INPUT_PULLUP);
-        LOG_INFO("Command: init (buzz %d, vibrate %d, led %d, wipe-btn %d)", BUZZER_PIN, VIBRATE_PIN, LED_PIN,
-                 WIPE_BTN_PIN);
+        lastArmedSeen = ghostmesh_armed; // seed the edge detector — don't fire on boot
+        LOG_INFO("Command: init (buzz %d, vibrate %d, led %d/rgb %d, wipe-btn %d)", BUZZER_PIN, VIBRATE_PIN,
+                 LED_PIN, RGB_LED_PIN, WIPE_BTN_PIN);
         return CMD_POLL_MS;
     }
 
-    // Buzzer — passive, so a PWM tone (not a level). tone()/noTone() ride the ESP32 LEDC.
-    // (If a build lacks tone(): ledcAttach(BUZZER_PIN, BUZZ_FREQ, 8) once, then
-    //  ledcWriteTone(BUZZER_PIN, BUZZ_FREQ) to start / ledcWriteTone(BUZZER_PIN, 0) to stop.)
-    if (reqBuzzMs) {
-        tone(BUZZER_PIN, BUZZ_FREQ);
-        buzzUntil = now + reqBuzzMs;
-        reqBuzzMs = 0;
-    }
-    if (buzzUntil && now >= buzzUntil) {
-        noTone(BUZZER_PIN);
-        digitalWrite(BUZZER_PIN, LOW);
-        buzzUntil = 0;
+    // Arm-state edge → indicator effect. Catches every source (switch, IR, mesh) in one place.
+    if (ghostmesh_armed != lastArmedSeen) {
+        lastArmedSeen = ghostmesh_armed;
+        startEffect(ghostmesh_armed ? FX_ARMED : FX_DISARMED);
     }
 
-    // LED gradient sweep — triangle-wave the phase green(0)↔red(STEPS); mix and clock the SK6812.
-    if (ledSweep && now >= ledNextStep) {
-        ledNextStep = now + LED_SWEEP_MS;
-        uint8_t red = (uint16_t)ledPhase * RGB_BRIGHT / LED_SWEEP_STEPS;
-        uint8_t grn = (uint16_t)(LED_SWEEP_STEPS - ledPhase) * RGB_BRIGHT / LED_SWEEP_STEPS;
-        neopixelWrite(RGB_LED_PIN, red, grn, 0);
-        if (ledPhase == 0) ledDir = 1;
-        else if (ledPhase >= LED_SWEEP_STEPS) ledDir = -1;
-        ledPhase = (uint8_t)(ledPhase + ledDir);
+    // Wipe pre-roll: a confirmed wipe (any path) requests the effect; play it, then erase on a
+    // guaranteed deadline so the light/sound show happens before the chip goes dark.
+    if (ghostmesh_wipe_request && !eraseArmed) {
+        ghostmesh_wipe_request = false;
+        startEffect(FX_WIPE);
+        eraseArmed = true;
+        eraseAt = now + WIPE_PREROLL_MS;
+    }
+    if (eraseArmed && now >= eraseAt) {
+        ghostmesh_complete_wipe(); // does not return
     }
 
-    // Vibration motor — plain on/off.
-    if (reqVibrateMs) {
-        digitalWrite(VIBRATE_PIN, HIGH);
-        vibrateUntil = now + reqVibrateMs;
-        reqVibrateMs = 0;
-    }
-    if (vibrateUntil && now >= vibrateUntil) {
-        digitalWrite(VIBRATE_PIN, LOW);
-        vibrateUntil = 0;
+    // Outputs: an active effect owns all three; otherwise the plain /buzz//vibrate timers run.
+    if (curFx != FX_NONE) {
+        tickEffect(now);
+    } else {
+        if (reqBuzzMs) {
+            tone(BUZZER_PIN, BUZZ_FREQ);
+            buzzUntil = now + reqBuzzMs;
+            reqBuzzMs = 0;
+        }
+        if (buzzUntil && now >= buzzUntil) {
+            noTone(BUZZER_PIN);
+            digitalWrite(BUZZER_PIN, LOW);
+            buzzUntil = 0;
+        }
+        if (reqVibrateMs) {
+            digitalWrite(VIBRATE_PIN, HIGH);
+            vibrateUntil = now + reqVibrateMs;
+            reqVibrateMs = 0;
+        }
+        if (vibrateUntil && now >= vibrateUntil) {
+            digitalWrite(VIBRATE_PIN, LOW);
+            vibrateUntil = 0;
+        }
     }
 
     serviceWipeButton(now);
