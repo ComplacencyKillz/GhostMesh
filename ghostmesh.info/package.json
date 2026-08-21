@@ -20,5 +20,8 @@
     "astro": "^6.2.1",
     "gsap": "^3.15.0",
     "tailwindcss": "^4.2.4"
+  },
+  "devDependencies": {
+    "esptool-js": "^0.6.1"
   }
 }

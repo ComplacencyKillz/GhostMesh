@@ -6,11 +6,17 @@
  * works even when the node isn't talking yet — which is exactly when you need to reflash.
  *
  * esptool-js is a real ES module (there is no `ESPLoader` global from a <script src> — that was the
- * old bug). We import it here; the browser fetches it as native ESM.
+ * first bug). We import it from a locally-bundled copy: esm.sh mis-handled esptool-js's JSON stub
+ * imports (`await import('./stub.json')` → the `.text` base64 came back undefined → atob threw
+ * "not correctly encoded"). esbuild inlines JSON with proper named exports, so the self-hosted
+ * bundle loads the flasher stub correctly. Rebuild it with:
+ *   echo "export { ESPLoader, Transport } from 'esptool-js';" > e.mjs
+ *   node_modules/.bin/esbuild e.mjs --bundle --format=esm --platform=browser \
+ *     --loader:.json=json --minify --outfile=public/lib/esptool-bundle.js
  *
  *   flasherInit({ hostedUrl, hostedLabel, log }) -> DOM element
  */
-import { ESPLoader, Transport } from 'https://esm.sh/esptool-js@0.6.1';
+import { ESPLoader, Transport } from '/lib/esptool-bundle.js';
 
 export function flasherInit({ hostedUrl, hostedLabel, log }) {
   log = log || function () {};
