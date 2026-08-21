@@ -42,7 +42,23 @@ every reply within the cap and leaves room for each command's help to grow.
 | `/buzz` | `[ms]` | Sound the buzzer (default: short beep). |
 | `/vibrate` | `[ms]` | Run the vibration motor. |
 | `/fx` | `<name>` | Play an indicator effect for tuning — `armed`/`disarmed`/`wipe`/`msg`/`cli`/`gradient`/`off`. Visual only; `/fx wipe` does **not** erase. |
+| `/set` | `<key> <val>` | Tune + persist a setting: `prox <cm>`, `light <counts>`, `led\|buzz\|vib <on\|off>`, `notify <on\|off>` (all three). |
+| `/cfg` | — | Report the current config in one message. |
 | `/wipe` | `<token>` | Complete flash erase. Requires armed + confirmation — see below. |
+
+## Configuration (persisted)
+
+`/set` tunes a deployed node live — no reflash — and the change is saved to NVS, so it survives
+reboot (until a wipe, which erases NVS too). `/cfg` reads the current values back.
+
+| Key | Effect |
+|-----|--------|
+| `prox <cm>` | Proximity trip distance (`PERSON_DETECTED`) |
+| `light <counts>` | Light-tamper ADC threshold (`TAMPER_LIGHT`) |
+| `led` / `buzz` / `vib` `<on\|off>` | Enable/disable each indicator channel |
+| `notify <on\|off>` | All three indicator channels at once — the **covert toggle** for a silent deployment |
+
+Example: `/set @f69c prox 150` then `/cfg @f69c` → `CFG prox=150 light=2000 led=1 buzz=1 vib=1`.
 
 Every command — including `/help` and `/status` — must name a specific node id. There is **no**
 broadcast target, so no single message can address more than one node.
