@@ -18,8 +18,9 @@ CommandModule *commandModule;
 // ── Backpack output pins (verified against the board header photo, heltec_front_back/) ──
 #define BUZZER_PIN   39   // passive buzzer via PN2222 low-side driver — needs a PWM tone, not DC
 #define VIBRATE_PIN  40   // vibration motor via PN2222 low-side driver — plain on/off
-#define LED_PIN      35   // PLACEHOLDER: onboard white LED. The real RGB (SK6812 on GPIO26) is
-                          //   not wired yet; /led toggles this until it is.
+#define LED_PIN      35   // onboard white LED — kept as a simple on/off mirror of the RGB state
+#define RGB_LED_PIN  26   // external SK6812 (WS2812 family) data line — driven via neopixelWrite()
+#define RGB_BRIGHT   64   // 0-255 cap; a status LED at ~1/4 is plenty and easy on the 3.3V rail
 #define WIPE_BTN_PIN 37   // tact switch to GND; INPUT_PULLUP, so a press reads LOW
 
 #define BUZZ_FREQ         2000  // Hz — passive buzzers are loudest in the 2–4 kHz range
@@ -137,7 +138,7 @@ void CommandModule::doHelp()
         "/status @id - armed, battery, uptime",
         "/arm @id - arm the node",
         "/disarm @id - disarm the node",
-        "/led @id <color|off> - status LED",
+        "/led @id <red|green|blue|off> - RGB",
         "/buzz @id [ms] - sound buzzer",
         "/vibrate @id [ms] - run vibration",
         "/wipe @id - factory reset (armed+confirm)",
@@ -158,14 +159,38 @@ void CommandModule::doStatus()
     enqueueReply(r);
 }
 
-// ── /led: placeholder on the onboard LED until the RGB on GPIO26 is wired ────────────
+// ── /led <color|off>: drive the external SK6812 on GPIO26 ────────────────────────────
+// neopixelWrite() (ESP32 core, RMT-backed) clocks one WS2812/SK6812 frame — no library needed.
+// The onboard GPIO35 LED mirrors on/off as a basic backup indicator. Colors are scaled to
+// RGB_BRIGHT so the LED stays a status light, not a flashlight.
 void CommandModule::doLed(const char *arg)
 {
-    bool off = arg && (strcasecmp(arg, "off") == 0 || strcmp(arg, "0") == 0);
-    digitalWrite(LED_PIN, off ? LOW : HIGH);
-    char r[40];
-    snprintf(r, sizeof(r), "LED %s", off ? "off" : (arg ? arg : "on"));
-    enqueueReply(r);
+    uint8_t r = 0, g = 0, b = 0;
+    const char *name = arg ? arg : "white";
+    if (strcasecmp(name, "off") == 0 || strcmp(name, "0") == 0) {
+        r = g = b = 0;
+    } else if (strcasecmp(name, "red") == 0) {
+        r = RGB_BRIGHT;
+    } else if (strcasecmp(name, "green") == 0) {
+        g = RGB_BRIGHT;
+    } else if (strcasecmp(name, "blue") == 0) {
+        b = RGB_BRIGHT;
+    } else if (strcasecmp(name, "yellow") == 0) {
+        r = g = RGB_BRIGHT;
+    } else if (strcasecmp(name, "cyan") == 0) {
+        g = b = RGB_BRIGHT;
+    } else if (strcasecmp(name, "magenta") == 0 || strcasecmp(name, "purple") == 0) {
+        r = b = RGB_BRIGHT;
+    } else { // "white", "on", or anything unrecognized
+        name = "white";
+        r = g = b = RGB_BRIGHT;
+    }
+
+    neopixelWrite(RGB_LED_PIN, r, g, b);
+    digitalWrite(LED_PIN, (r || g || b) ? HIGH : LOW); // onboard mirror
+    char reply[40];
+    snprintf(reply, sizeof(reply), "LED %s", name);
+    enqueueReply(reply);
 }
 
 // ── /wipe: two-step mesh path — issue a one-time token, then verify it. Armed-gated. ─
@@ -278,6 +303,7 @@ int32_t CommandModule::runOnce()
         digitalWrite(VIBRATE_PIN, LOW);
         pinMode(LED_PIN, OUTPUT);
         digitalWrite(LED_PIN, LOW);
+        neopixelWrite(RGB_LED_PIN, 0, 0, 0); // SK6812 dark at boot (no random-color power-on)
         pinMode(WIPE_BTN_PIN, INPUT_PULLUP);
         LOG_INFO("Command: init (buzz %d, vibrate %d, led %d, wipe-btn %d)", BUZZER_PIN, VIBRATE_PIN, LED_PIN,
                  WIPE_BTN_PIN);
