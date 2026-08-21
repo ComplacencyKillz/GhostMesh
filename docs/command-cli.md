@@ -38,13 +38,31 @@ every reply within the cap and leaves room for each command's help to grow.
 | `/status` | — | Replies with node state: armed/disarmed, battery %, last tamper, GPS fix. |
 | `/arm` | — | Arm the node (sets `ghostmesh_armed`); replies `ARMED`. |
 | `/disarm` | — | Disarm the node; replies `DISARMED`. |
-| `/led` | `<color/state>` | Set the RGB status LED (e.g. `green`, `red`, `off`). |
+| `/led` | `<color\|gradient\|off>` | Set the idle RGB colour (default off = covert), or run the looping green↔red gradient. |
 | `/buzz` | `[ms]` | Sound the buzzer (default: short beep). |
 | `/vibrate` | `[ms]` | Run the vibration motor. |
-| `/wipe` | `<token>` | Factory-reset the node. Requires armed + confirmation — see below. |
+| `/fx` | `<name>` | Play an indicator effect for tuning — `armed`/`disarmed`/`wipe`/`msg`/`cli`/`gradient`/`off`. Visual only; `/fx wipe` does **not** erase. |
+| `/wipe` | `<token>` | Complete flash erase. Requires armed + confirmation — see below. |
 
 Every command — including `/help` and `/status` — must name a specific node id. There is **no**
 broadcast target, so no single message can address more than one node.
+
+## Indicators (event-driven feedback)
+
+The backpack's LED, buzzer, and vibration motor fire automatically on events, as synced
+light/sound effects (`CommandModule`'s effect engine):
+
+| Event | LED | Sound / haptic |
+|-------|-----|----------------|
+| Armed | green→red ramp | rising two-note + vibration |
+| Disarmed | red→green ramp | falling two-note + vibration |
+| Wipe (confirmed) | 3 blue flashes → fade | low tone + long vibration (plays **before** the erase) |
+| Message received | 3 yellow flashes | buzz + vibration |
+| CLI command received | 2 green flashes | short buzz |
+
+Arm/disarm effects fire regardless of the source (switch, IR, or mesh). At rest the LED holds its
+steady colour — **off by default, for covert deployment**. Per-channel enables (LED / buzzer /
+vibration) are the covert toggle, configurable via the settings layer (planned).
 
 ## Wipe safety (defense in depth)
 
