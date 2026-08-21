@@ -109,10 +109,6 @@ CommandModule::CommandModule()
 // ── RX: called by the router for every decoded TEXT_MESSAGE_APP packet ──────────────
 ProcessMessage CommandModule::handleReceived(const meshtastic_MeshPacket &mp)
 {
-    // Ignore our own traffic — we broadcast replies and events on this same port.
-    if (isFromUs(&mp))
-        return ProcessMessage::CONTINUE;
-
     const meshtastic_Data &d = mp.decoded;
     if (d.payload.size == 0)
         return ProcessMessage::CONTINUE;
@@ -123,13 +119,20 @@ ProcessMessage CommandModule::handleReceived(const meshtastic_MeshPacket &mp)
     memcpy(text, d.payload.bytes, n);
     text[n] = '\0';
 
-    // Reception feedback: a command-form message (starts with '/') flashes the CLI effect, any
-    // other text flashes the message effect. Fires for all incoming traffic on the channel, not
-    // just commands aimed at us. An arm/disarm command overrides this via the arm-edge effect.
-    const char *p = text;
-    while (*p == ' ')
-        p++;
-    startEffect(*p == '/' ? FX_CLI : FX_MSG);
+    // We no longer blanket-ignore our own traffic. handleCommandText only acts on a '/'-command
+    // that names THIS node (targetsMe), so our own broadcasts (replies, ARMED, non-command chat)
+    // fall through harmlessly — but a self-directed command from the attached FAP (a local /set or
+    // /cfg addressed to this node) now gets processed. That's what enables local config.
+    bool fromUs = isFromUs(&mp);
+
+    // Reception feedback: only for genuinely incoming traffic, not our own self-sends. A '/'-command
+    // flashes the CLI effect; other text the message effect. An arm/disarm overrides via arm-edge.
+    if (!fromUs) {
+        const char *p = text;
+        while (*p == ' ')
+            p++;
+        startEffect(*p == '/' ? FX_CLI : FX_MSG);
+    }
 
     handleCommandText(text, getFrom(&mp));
     return ProcessMessage::CONTINUE; // let other modules (e.g. the app text view) see it too
