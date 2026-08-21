@@ -1,5 +1,6 @@
 #include "ProximityModule.h"
 #include "GhostMeshArming.h"
+#include "GhostMeshConfig.h"
 #include "MeshService.h"
 #include "configuration.h"
 #include "main.h"
@@ -46,22 +47,24 @@ int32_t ProximityModule::runOnce()
 {
     if (firstTime) {
         firstTime = false;
+        ghostmesh_config_ensure_loaded();
         pinMode(PROX_TRIG_PIN, OUTPUT);
         pinMode(PROX_ECHO_PIN, INPUT);
         digitalWrite(PROX_TRIG_PIN, LOW);
-        LOG_INFO("Proximity: init trig=GPIO%d echo=GPIO%d threshold=%dcm", PROX_TRIG_PIN, PROX_ECHO_PIN,
-                 PROX_THRESHOLD_CM);
+        LOG_INFO("Proximity: init trig=GPIO%d echo=GPIO%d threshold=%ucm", PROX_TRIG_PIN, PROX_ECHO_PIN,
+                 ghostmesh_config.proxThresholdCm);
         return PROX_POLL_MS;
     }
 
     long cm = measureCm();
-    LOG_DEBUG("Proximity: %ld cm", cm); // watch this to tune PROX_THRESHOLD_CM
+    LOG_DEBUG("Proximity: %ld cm", cm); // watch this to tune the threshold (/set prox N)
 
+    uint16_t thr = ghostmesh_config.proxThresholdCm; // live-tunable via the CLI
     bool isNear;
     if (cm < 0) {
         isNear = false; // no echo -> nothing in range
     } else {
-        isNear = wasNear ? (cm < PROX_THRESHOLD_CM + PROX_HYSTERESIS_CM) : (cm < PROX_THRESHOLD_CM);
+        isNear = wasNear ? (cm < thr + PROX_HYSTERESIS_CM) : (cm < thr);
     }
 
     // Fire only on the far -> near transition, rate-limited, and only when armed.

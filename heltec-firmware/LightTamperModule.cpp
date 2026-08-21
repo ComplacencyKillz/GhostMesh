@@ -1,5 +1,6 @@
 #include "LightTamperModule.h"
 #include "GhostMeshArming.h"
+#include "GhostMeshConfig.h"
 #include "MeshService.h"
 #include "configuration.h"
 #include "main.h"
@@ -31,18 +32,20 @@ int32_t LightTamperModule::runOnce()
 {
     if (firstTime) {
         firstTime = false;
+        ghostmesh_config_ensure_loaded();
         pinMode(LIGHT_TAMPER_PIN, INPUT);
-        LOG_INFO("LightTamper: init on GPIO%d, threshold=%d", LIGHT_TAMPER_PIN, LIGHT_TAMPER_THRESHOLD);
+        LOG_INFO("LightTamper: init on GPIO%d, threshold=%u", LIGHT_TAMPER_PIN,
+                 ghostmesh_config.lightThreshold);
         return LIGHT_POLL_INTERVAL_MS;
     }
 
     uint16_t raw = analogRead(LIGHT_TAMPER_PIN);
-    LOG_DEBUG("LightTamper: raw=%d", raw); // watch this to calibrate LIGHT_TAMPER_THRESHOLD
+    LOG_DEBUG("LightTamper: raw=%d", raw); // watch this to calibrate the threshold (/set light N)
 
     // Divider has the 10k on the 3.3V side and the photoresistor to GND, so bright = LOW reading.
     // Hysteresis: once "light", stay light until the reading rises well above the threshold.
-    bool isLight = wasLight ? (raw < LIGHT_TAMPER_THRESHOLD + LIGHT_TAMPER_HYSTERESIS)
-                            : (raw < LIGHT_TAMPER_THRESHOLD);
+    uint16_t thr = ghostmesh_config.lightThreshold; // live-tunable via the CLI
+    bool isLight = wasLight ? (raw < thr + LIGHT_TAMPER_HYSTERESIS) : (raw < thr);
 
     // Fire only on the dark -> light transition, rate-limited, and only when armed.
     if (isLight && !wasLight && ghostmesh_armed) {

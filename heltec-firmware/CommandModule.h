@@ -57,7 +57,7 @@ class CommandModule : public SinglePortModule, private concurrency::OSThread
     uint32_t fxSegStart = 0;
     bool     fxSegEntered = false; // has this segment's tone/vib been applied?
     uint8_t  steadyR = 0, steadyG = 0, steadyB = 0; // idle LED colour, restored after an effect
-    bool     enLed = true, enBuzz = true, enVib = true; // per-channel enable (covert toggle; config later)
+    // Per-channel enable (the covert toggle) lives in the persisted config: ghostmesh_config.notify*
     bool     lastArmedSeen = false; // arm-state edge detection → arm/disarm effects
     bool     eraseArmed = false;    // a wipe is scheduled once its effect finishes
     uint32_t eraseAt = 0;
@@ -69,6 +69,8 @@ class CommandModule : public SinglePortModule, private concurrency::OSThread
     void doStatus();
     void doLed(const char *arg);
     void doFx(const char *arg);          // /fx <name> — play an effect for tuning (no side effects)
+    void doSet(const char *key, const char *val); // /set <key> <val> — tune + persist config
+    void doCfg();                        // /cfg — reply the current config
     // indicator engine
     void startEffect(uint8_t fx);
     void tickEffect(uint32_t now);

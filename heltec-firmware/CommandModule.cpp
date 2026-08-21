@@ -1,5 +1,6 @@
 #include "CommandModule.h"
 #include "GhostMeshArming.h"
+#include "GhostMeshConfig.h"
 #include "GhostMeshWipe.h"
 #include "MeshService.h"
 #include "NodeDB.h"
@@ -146,9 +147,10 @@ void CommandModule::handleCommandText(char *text, uint32_t from)
         return; // not a command — ordinary chat / other modules' events pass through untouched
 
     char *save = nullptr;
-    char *cmd = strtok_r(s, " ", &save);      // "/help"
-    char *tgt = strtok_r(nullptr, " ", &save); // "@f69c" / "@ALL" / "ALL"
-    char *arg = strtok_r(nullptr, " ", &save); // optional: ms, token, color…
+    char *cmd = strtok_r(s, " ", &save);       // "/help"
+    char *tgt = strtok_r(nullptr, " ", &save); // "@f69c"
+    char *arg = strtok_r(nullptr, " ", &save); // optional: ms, token, color, /set key…
+    char *arg2 = strtok_r(nullptr, " ", &save); // optional 2nd arg: /set <key> <val>
     if (!cmd)
         return;
 
@@ -187,6 +189,10 @@ void CommandModule::handleCommandText(char *text, uint32_t from)
         doLed(arg);
     } else if (strcasecmp(cmd, "/fx") == 0) {
         doFx(arg);
+    } else if (strcasecmp(cmd, "/set") == 0) {
+        doSet(arg, arg2);
+    } else if (strcasecmp(cmd, "/cfg") == 0) {
+        doCfg();
     } else if (strcasecmp(cmd, "/wipe") == 0) {
         doWipeCommand(arg);
     } else {
@@ -220,7 +226,9 @@ void CommandModule::doHelp()
         "/led @id <red|green|blue|gradient|off>",
         "/buzz @id [ms] - sound buzzer",
         "/vibrate @id [ms] - run vibration",
-        "/wipe @id - factory reset (armed+confirm)",
+        "/set @id <prox|light|led|buzz|vib|notify> <val>",
+        "/cfg @id - report current config",
+        "/wipe @id - complete erase (armed+confirm)",
     };
     for (const char *l : lines)
         enqueueReply(l);
@@ -236,6 +244,61 @@ void CommandModule::doStatus()
     snprintf(r, sizeof(r), "STATUS %s: %s bat %u%% up %us", me, ghostmesh_armed ? "ARMED" : "DISARMED",
              bat, (unsigned)(millis() / 1000));
     enqueueReply(r);
+}
+
+// ── /set <key> <val>: tune a config value live and persist it to NVS ─────────────────
+// Keys: prox <cm>, light <counts>, led|buzz|vib <on|off>, notify <on|off> (all three at once).
+static bool parse_onoff(const char *v, bool *out) {
+    if (!v) return false;
+    if (strcasecmp(v, "on") == 0 || strcmp(v, "1") == 0) { *out = true; return true; }
+    if (strcasecmp(v, "off") == 0 || strcmp(v, "0") == 0) { *out = false; return true; }
+    return false;
+}
+
+void CommandModule::doSet(const char *key, const char *val)
+{
+    if (!key || !val) {
+        enqueueReply("SET needs <key> <val>");
+        return;
+    }
+    char reply[48];
+    bool onoff;
+    if (strcasecmp(key, "prox") == 0) {
+        ghostmesh_config.proxThresholdCm = (uint16_t)atoi(val);
+        snprintf(reply, sizeof(reply), "prox=%u", ghostmesh_config.proxThresholdCm);
+    } else if (strcasecmp(key, "light") == 0) {
+        ghostmesh_config.lightThreshold = (uint16_t)atoi(val);
+        snprintf(reply, sizeof(reply), "light=%u", ghostmesh_config.lightThreshold);
+    } else if (strcasecmp(key, "led") == 0 && parse_onoff(val, &onoff)) {
+        ghostmesh_config.notifyLed = onoff;
+        if (!onoff && curFx == FX_NONE) setSteadyLed(steadyR, steadyG, steadyB); // repaint (off)
+        snprintf(reply, sizeof(reply), "led=%d", onoff);
+    } else if (strcasecmp(key, "buzz") == 0 && parse_onoff(val, &onoff)) {
+        ghostmesh_config.notifyBuzz = onoff;
+        snprintf(reply, sizeof(reply), "buzz=%d", onoff);
+    } else if (strcasecmp(key, "vib") == 0 && parse_onoff(val, &onoff)) {
+        ghostmesh_config.notifyVib = onoff;
+        snprintf(reply, sizeof(reply), "vib=%d", onoff);
+    } else if (strcasecmp(key, "notify") == 0 && parse_onoff(val, &onoff)) {
+        ghostmesh_config.notifyLed = ghostmesh_config.notifyBuzz = ghostmesh_config.notifyVib = onoff;
+        if (!onoff && curFx == FX_NONE) setSteadyLed(steadyR, steadyG, steadyB);
+        snprintf(reply, sizeof(reply), "notify=%d (led/buzz/vib)", onoff);
+    } else {
+        enqueueReply("SET: bad key/val");
+        return;
+    }
+    ghostmesh_config_save();
+    enqueueReply(reply);
+}
+
+// ── /cfg: reply the current config in one compact message ────────────────────────────
+void CommandModule::doCfg()
+{
+    char reply[64];
+    snprintf(reply, sizeof(reply), "CFG prox=%u light=%u led=%d buzz=%d vib=%d",
+             ghostmesh_config.proxThresholdCm, ghostmesh_config.lightThreshold,
+             ghostmesh_config.notifyLed, ghostmesh_config.notifyBuzz, ghostmesh_config.notifyVib);
+    enqueueReply(reply);
 }
 
 // ── /led <color|gradient|off>: set the idle colour, or run the gradient effect ───────
@@ -303,7 +366,7 @@ void CommandModule::setSteadyLed(uint8_t r, uint8_t g, uint8_t b)
     steadyG = g;
     steadyB = b;
     if (curFx == FX_NONE) { // only paint now if no effect owns the LED
-        neopixelWrite(RGB_LED_PIN, enLed ? r : 0, enLed ? g : 0, enLed ? b : 0);
+        neopixelWrite(RGB_LED_PIN, ghostmesh_config.notifyLed ? r : 0, ghostmesh_config.notifyLed ? g : 0, ghostmesh_config.notifyLed ? b : 0);
         digitalWrite(LED_PIN, (r || g || b) ? HIGH : LOW);
     }
 }
@@ -327,7 +390,7 @@ void CommandModule::stopEffect()
     digitalWrite(BUZZER_PIN, LOW);
     digitalWrite(VIBRATE_PIN, LOW);
     // Restore the idle LED.
-    neopixelWrite(RGB_LED_PIN, enLed ? steadyR : 0, enLed ? steadyG : 0, enLed ? steadyB : 0);
+    neopixelWrite(RGB_LED_PIN, ghostmesh_config.notifyLed ? steadyR : 0, ghostmesh_config.notifyLed ? steadyG : 0, ghostmesh_config.notifyLed ? steadyB : 0);
     digitalWrite(LED_PIN, (steadyR || steadyG || steadyB) ? HIGH : LOW);
 }
 
@@ -342,13 +405,13 @@ void CommandModule::tickEffect(uint32_t now)
     // Apply the tone + vibration once when a segment begins.
     if (!fxSegEntered) {
         fxSegEntered = true;
-        if (enBuzz && s.buzz_hz) {
+        if (ghostmesh_config.notifyBuzz && s.buzz_hz) {
             tone(BUZZER_PIN, s.buzz_hz);
         } else {
             noTone(BUZZER_PIN);
             digitalWrite(BUZZER_PIN, LOW);
         }
-        digitalWrite(VIBRATE_PIN, (enVib && s.vib) ? HIGH : LOW);
+        digitalWrite(VIBRATE_PIN, (ghostmesh_config.notifyVib && s.vib) ? HIGH : LOW);
     }
 
     // Interpolate the colour across the segment each tick.
@@ -357,7 +420,7 @@ void CommandModule::tickEffect(uint32_t now)
     uint8_t r = (uint8_t)((int)s.r0 + ((int)s.r1 - (int)s.r0) * (int)el / s.dur_ms);
     uint8_t g = (uint8_t)((int)s.g0 + ((int)s.g1 - (int)s.g0) * (int)el / s.dur_ms);
     uint8_t b = (uint8_t)((int)s.b0 + ((int)s.b1 - (int)s.b0) * (int)el / s.dur_ms);
-    neopixelWrite(RGB_LED_PIN, enLed ? r : 0, enLed ? g : 0, enLed ? b : 0);
+    neopixelWrite(RGB_LED_PIN, ghostmesh_config.notifyLed ? r : 0, ghostmesh_config.notifyLed ? g : 0, ghostmesh_config.notifyLed ? b : 0);
     digitalWrite(LED_PIN, (r || g || b) ? HIGH : LOW);
 
     // Advance at the end of the segment.
@@ -484,6 +547,7 @@ int32_t CommandModule::runOnce()
         digitalWrite(LED_PIN, LOW);
         neopixelWrite(RGB_LED_PIN, 0, 0, 0); // SK6812 dark at boot (no random-color power-on)
         pinMode(WIPE_BTN_PIN, INPUT_PULLUP);
+        ghostmesh_config_ensure_loaded();
         lastArmedSeen = ghostmesh_armed; // seed the edge detector — don't fire on boot
         LOG_INFO("Command: init (buzz %d, vibrate %d, led %d/rgb %d, wipe-btn %d)", BUZZER_PIN, VIBRATE_PIN,
                  LED_PIN, RGB_LED_PIN, WIPE_BTN_PIN);
