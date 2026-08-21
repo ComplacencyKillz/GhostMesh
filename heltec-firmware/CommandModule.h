@@ -81,6 +81,15 @@ class CommandModule : public SinglePortModule, private concurrency::OSThread
     void doFactoryWipe();
     void enqueueReply(const char *msg);
     void sendText(const char *msg);
+
+    // ── payload file transfer (/put) — defined in CommandModule_payload.cpp ──
+    // The web configurator's file uploader. Chunked base64 over the PROTO text channel (the only
+    // channel a Meshtastic node exposes on serial), reassembled to LittleFS and CRC32-verified.
+    void handlePut(char *text);            // dispatch a '/put ...' line addressed to us
+    void putBegin(char *save);             // open file, reset bitmap, size checks
+    void putData(char *save);              // one base64 data chunk -> flash (silent)
+    void putEnd(char *save);               // completeness + size + CRC32 -> reply ok/need/fail
+    void servicePutTimeout(uint32_t now);  // called from runOnce: abort a stalled transfer
 };
 
 extern CommandModule *commandModule;

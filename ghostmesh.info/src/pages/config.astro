@@ -70,26 +70,19 @@ import SubLayout from '../layouts/SubLayout.astro';
     </p>
     <div id="gm-flasher"></div>
 
-    <!-- USB FILE UPLOAD SECTION (YMODEM) -->
+    <!-- PAYLOAD UPLOAD SECTION (/put protocol) -->
     <div class="scene-divider" style="margin:1.8rem 0 1rem;"></div>
-    <h2>USB FILE UPLOAD <span class="tag">YMODEM-1K</span></h2>
+    <h2>PAYLOAD UPLOAD <span class="tag">/put</span></h2>
     <p style="margin-top:0.5rem; font-size:0.85rem; color:var(--text-dim); line-height:1.5;">
-      Upload firmware or data files directly to the device via USB using the YMODEM-1K protocol.
-      Supports up to 10 MB. The device must be listening on the serial console.
+      Push a file to the node's storage. It is base64-chunked over the same PROTO channel this page
+      already speaks, reassembled on the node, and <strong>CRC32-verified</strong> — missing chunks
+      are re-sent automatically. Lands in <code style="color:var(--blue);">/ghostmesh/</code> on the
+      node. Over USB this is fast and reliable; the same transfer works over the mesh, slower. Ceiling
+      is the node's free flash (a few hundred KB). See
+      <a href="https://github.com/ComplacencyKillz/GhostMesh/blob/main/docs/command-cli.md"
+         target="_blank" rel="noopener" style="color:var(--terminal);">command-cli.md</a>.
     </p>
     <div id="gm-uploader"></div>
-
-    <!-- MESH COMMANDS SECTION -->
-    <div class="scene-divider" style="margin:1.8rem 0 1rem;"></div>
-    <h2>MESH COMMANDS <span class="tag">PAYLOAD</span></h2>
-    <p style="margin-top:0.5rem; font-size:0.85rem; color:var(--text-dim); line-height:1.5;">
-      Transmit command files (.txt, .cmd, .sh) to a mesh node. Files up to 50 KB are automatically
-      base64-encoded and chunked for LoRa MTU. See
-      <a href="https://github.com/ComplacencyKillz/GhostMesh/blob/main/docs/command-cli.md"
-         target="_blank" rel="noopener" style="color:var(--terminal);">command-cli.md</a>
-      for format details.
-    </p>
-    <div id="gm-executor"></div>
   </div>
 
   <h2>TRACE</h2>
@@ -139,8 +132,8 @@ import SubLayout from '../layouts/SubLayout.astro';
   .gm-log .gm-rx { color:var(--terminal); }
   .gm-log .gm-err { color:#e88; }
 
-  /* Flasher, Uploader & Executor container tweaks */
-  #gm-flasher, #gm-uploader, #gm-executor {
+  /* Flasher & uploader container tweaks */
+  #gm-flasher, #gm-uploader {
     margin: 1rem 0;
   }
 </style>
@@ -154,8 +147,7 @@ import SubLayout from '../layouts/SubLayout.astro';
 
   // Import component modules
   import { flasherInit } from '/lib/firmware-flasher.js';
-  import { meshExecInit } from '/lib/executor-ui.js';
-  import { ymodemInit } from '/lib/ymodem-uploader.js';
+  import { putUploaderInit } from '/lib/payload-uploader.js';
 
   const NONCE = 42;
 
@@ -184,7 +176,7 @@ import SubLayout from '../layouts/SubLayout.astro';
 
   // ── state ──
   let port = null, writer = null, reader = null, nodeNum = 0, connected = false;
-  let flasherElement = null, uploaderElement = null, executorElement = null;
+  let flasherElement = null, uploader = null;
   const $ = (id) => document.getElementById(id);
   const logEl = $('gm-log');
   function log(msg, cls) { const s = document.createElement('span'); s.className = cls || 'gm-dim'; s.textContent = msg + '\n'; logEl.appendChild(s); logEl.scrollTop = logEl.scrollHeight; }
@@ -214,6 +206,9 @@ import SubLayout from '../layouts/SubLayout.astro';
       applyCfg({ prox: g('prox'), light: g('light'), led: g('led'), buzz: g('buzz'), vib: g('vib') });
       log('< ' + t, 'gm-rx');
       $('gm-panel').style.display = 'block';
+    } else if (t.startsWith('PUT ')) {
+      if (uploader) uploader.onReply(t); // file-transfer verify/resume replies
+      log('< ' + t, 'gm-rx');
     } else if (t.includes('=')) {
       log('< ' + t, 'gm-rx'); // /set echo
     }
@@ -229,33 +224,25 @@ import SubLayout from '../layouts/SubLayout.astro';
   async function requestCfg() { await send(encTextTo('/cfg @' + last4(), nodeNum), '/cfg @' + last4()); }
   async function setKey(key, val) { const cmd = '/set @' + last4() + ' ' + key + ' ' + val; await send(encTextTo(cmd, nodeNum), cmd); }
 
-  // Initialize flasher, uploader, and executor after handshake
+  // Initialize the flasher and the /put payload uploader after handshake.
   async function initializeTools() {
     try {
-      // Initialize flasher
       if (!flasherElement && port) {
         log('Initializing firmware flasher…', 'gm-dim');
         flasherElement = await flasherInit(port);
         $('gm-flasher').appendChild(flasherElement);
       }
 
-      // Initialize YMODEM uploader
-      if (!uploaderElement && port) {
-        log('Initializing USB uploader…', 'gm-dim');
-        uploaderElement = ymodemInit(port);
-        $('gm-uploader').appendChild(uploaderElement);
-      }
-
-      // Initialize mesh executor with write wrapper
-      if (!executorElement && port && nodeNum) {
-        log('Initializing mesh commands…', 'gm-dim');
-        const serialConnection = {
-          write: async (text) => {
-            await send(encTextTo(text, nodeNum), text);
-          }
-        };
-        executorElement = meshExecInit(serialConnection, nodeNum);
-        $('gm-executor').appendChild(executorElement);
+      // Payload uploader speaks the /put protocol over the PROTO text channel. sendCmd wraps a
+      // text command in a self-addressed frame (no mesh broadcast); PUT replies route via onText.
+      if (!uploader && port && nodeNum) {
+        log('Initializing payload uploader…', 'gm-dim');
+        uploader = putUploaderInit({
+          sendCmd: (text) => { send(encTextTo(text, nodeNum)); },
+          nodeIdHex: last4(),
+          log,
+        });
+        $('gm-uploader').appendChild(uploader.element);
       }
     } catch (e) {
       log('TOOL INIT FAILED: ' + e.message, 'gm-err');

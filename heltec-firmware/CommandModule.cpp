@@ -125,6 +125,19 @@ ProcessMessage CommandModule::handleReceived(const meshtastic_MeshPacket &mp)
     // /cfg addressed to this node) now gets processed. That's what enables local config.
     bool fromUs = isFromUs(&mp);
 
+    // Payload transfer (/put ...) is high-rate: intercept it BEFORE the reception effect and the
+    // command tokenizer, so a stream of hundreds of data chunks neither strobes the LED nor runs
+    // the generic dispatch. handlePut targets-checks internally and stays silent on data chunks.
+    {
+        const char *p = text;
+        while (*p == ' ')
+            p++;
+        if (strncasecmp(p, "/put ", 5) == 0) {
+            handlePut(text);
+            return ProcessMessage::CONTINUE;
+        }
+    }
+
     // Reception feedback: only for genuinely incoming traffic, not our own self-sends. A '/'-command
     // flashes the CLI effect; other text the message effect. An arm/disarm overrides via arm-edge.
     if (!fromUs) {
@@ -601,6 +614,7 @@ int32_t CommandModule::runOnce()
     }
 
     serviceWipeButton(now);
+    servicePutTimeout(now); // abort a file transfer that has gone quiet mid-stream
 
     // Emit one queued reply per REPLY_SPACING_MS so /help doesn't hog the airtime.
     if (replyHead != replyTail && now >= nextReplyAt) {

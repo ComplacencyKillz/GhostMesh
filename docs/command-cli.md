@@ -45,6 +45,34 @@ every reply within the cap and leaves room for each command's help to grow.
 | `/set` | `<key> <val>` | Tune + persist a setting: `prox <cm>`, `light <counts>`, `led\|buzz\|vib <on\|off>`, `notify <on\|off>` (all three). |
 | `/cfg` | — | Report the current config in one message. |
 | `/wipe` | `<token>` | Complete flash erase. Requires armed + confirmation — see below. |
+| `/put` | `begin\|d\|end …` | Chunked file upload to the node's flash. Machine protocol — the web configurator drives it, not humans. See below. |
+
+## File transfer (`/put`)
+
+A Meshtastic node exposes only its **PROTO StreamAPI** on serial — the USB port is the same
+protobuf console the phone/web client does `want_config` over, not a raw TTY. So there is no pipe to
+run YMODEM/XMODEM on: their framing would be parsed as malformed protobuf. A file instead rides the
+**one channel we control** — `TEXT_MESSAGE_APP` — base64-chunked, reassembled on the node to
+LittleFS, and CRC32-verified. USB is just the fast, reliable case; the identical protocol works
+(slower) over the mesh. The web configurator's *Payload Upload* is the client.
+
+```
+/put @id begin <fid> <nchunks> <bytes> <crc32hex> <name>   → PUT <fid> ready <n>
+/put @id d <fid> <index> <base64>                          → (silent; written to flash)
+/put @id end <fid>                                         → PUT <fid> ok <bytes>
+                                                              | need <i,i,…>   (client resends, re-ends)
+                                                              | crcfail | sizefail | toobig | nospace | timeout
+```
+
+- **Chunk = 132 bytes** (base64 = 176 chars, no padding) — fits under the ~231-byte text cap.
+- **fid** is a client-chosen id echoed in every reply, so overlapping/retried transfers don't collide.
+- **Data chunks are silent** — no reply, no LED/buzzer effect — so a stream of hundreds doesn't flood
+  airtime or strobe the node. Only `begin`/`end` reply.
+- **Resumable:** `end` returns `need <list>` for any missing chunks; the client resends just those and
+  re-sends `end`. On success the node CRC32s the reassembled file and replies `ok <bytes>`.
+- **Lands in** `/ghostmesh/<name>` on the node's LittleFS. **Ceiling** is free flash (a few hundred
+  KB); an oversized transfer is rejected at `begin` with `toobig`/`nospace`.
+- A transfer that goes quiet mid-stream is aborted after ~15 s (`timeout`).
 
 ## Configuration (persisted)
 
