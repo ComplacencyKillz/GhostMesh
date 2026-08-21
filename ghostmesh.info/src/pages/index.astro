@@ -520,29 +520,8 @@ const menuItems = [
   .menu-item--4 { bottom: 18%; left: 5vw;   }
   .menu-item--5 { bottom: 12%; right: 11vw; }
 
-  /* Auxiliary utility (quick-access) — positioned bottom-right, responds to same states */
+  /* Auxiliary utility (quick-access) — positioned bottom-right */
   .menu-item--6 { bottom: 28%; right: 3.5vw; }
-  .menu-item--aux .item-num {
-    font-size: 0.48rem;
-  }
-  .menu-item--aux .item-label {
-    font-size: clamp(0.65rem, 1.1vw, 0.85rem);
-  }
-  .menu-item--aux .item-sub {
-    font-size: 0.52rem;
-  }
-  .menu-item--aux.is-selected .item-label {
-    color: var(--blue);
-    text-shadow: 0 0 20px rgba(0, 212, 255, 0.6);
-  }
-  .menu-item--aux.is-cycling .item-label {
-    color: var(--blue);
-    text-shadow: 0 0 20px rgba(0, 212, 255, 0.45);
-  }
-  .menu-item--aux:hover .item-label {
-    color: var(--text);
-    text-shadow: 0 0 12px rgba(0, 0, 0, 0.9), 0 0 24px rgba(0, 0, 0, 0.7);
-  }
 
   /* ── Main menu return — sits below corner bracket ──────── */
   .main-menu-link {
@@ -1152,7 +1131,7 @@ const menuItems = [
   }
 
   function startIdleCycle() {
-    var indices = [0, 1, 2, 3, 4, 5];
+    var indices = [0, 1, 2, 3, 4, 5, 6];
     var order   = [];
     var pos     = 0;
 
