@@ -104,7 +104,7 @@ import SubLayout from '../layouts/SubLayout.astro';
 
 </SubLayout>
 
-<script src="https://cdn.jsdelivr.net/npm/esptool-js@0.4.0/dist/bundle.js"></script>
+<script is:inline src="https://cdn.jsdelivr.net/npm/esptool-js@0.4.0/dist/bundle.js"></script>
 
 <style>
   .gm-note { border:1px solid var(--blue); padding:0.8rem 1rem; margin:1rem 0;
@@ -145,15 +145,17 @@ import SubLayout from '../layouts/SubLayout.astro';
   }
 </style>
 
-<script type="module">
+<script is:inline type="module">
   // ── GhostMesh Web Serial configurator ──────────────────────────────────────
   // Speaks the minimal Meshtastic StreamAPI our FAP uses: 0x94 0xC3 [len_hi][len_lo][protobuf].
   // want_config → learn our node num → send self-addressed /cfg and /set text commands.
+  // is:inline so the browser does native ESM resolution of the /lib/*.js modules
+  // (served from public/) instead of Astro trying to bundle a page-inline script.
 
   // Import component modules
-  import { flasherInit } from '../lib/firmware-flasher.js';
-  import { meshExecInit } from '../lib/executor-ui.js';
-  import { ymodemInit } from '../lib/ymodem-uploader.js';
+  import { flasherInit } from '/lib/firmware-flasher.js';
+  import { meshExecInit } from '/lib/executor-ui.js';
+  import { ymodemInit } from '/lib/ymodem-uploader.js';
 
   const NONCE = 42;
 
