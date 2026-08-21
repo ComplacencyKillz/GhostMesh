@@ -520,27 +520,28 @@ const menuItems = [
   .menu-item--4 { bottom: 18%; left: 5vw;   }
   .menu-item--5 { bottom: 12%; right: 11vw; }
 
-  /* Auxiliary utility (quick-access) — positioned bottom-right, distinct styling */
+  /* Auxiliary utility (quick-access) — positioned bottom-right, responds to same states */
   .menu-item--6 { bottom: 28%; right: 3.5vw; }
   .menu-item--aux .item-num {
     font-size: 0.48rem;
-    color: rgba(0, 212, 255, 0.6);
   }
   .menu-item--aux .item-label {
     font-size: clamp(0.65rem, 1.1vw, 0.85rem);
-    color: rgba(0, 212, 255, 0.85);
   }
   .menu-item--aux .item-sub {
     font-size: 0.52rem;
-    color: rgba(0, 212, 255, 0.5);
   }
   .menu-item--aux.is-selected .item-label {
     color: var(--blue);
     text-shadow: 0 0 20px rgba(0, 212, 255, 0.6);
   }
+  .menu-item--aux.is-cycling .item-label {
+    color: var(--blue);
+    text-shadow: 0 0 20px rgba(0, 212, 255, 0.45);
+  }
   .menu-item--aux:hover .item-label {
-    color: rgba(0, 255, 65, 0.9);
-    text-shadow: 0 0 12px rgba(0, 255, 65, 0.5);
+    color: var(--text);
+    text-shadow: 0 0 12px rgba(0, 0, 0, 0.9), 0 0 24px rgba(0, 0, 0, 0.7);
   }
 
   /* ── Main menu return — sits below corner bracket ──────── */
