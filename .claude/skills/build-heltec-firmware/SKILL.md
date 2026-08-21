@@ -70,6 +70,12 @@ so the user can flash it from the Windows host (the boards live on Windows USB �
    DST=/media/sf_my-vm-share/repos/ghostmesh/ghostmesh-heltec-v3-<feature>.factory.bin
    cp "$SRC" "$DST" && sha256sum "$SRC" "$DST"   # the two hashes must match
    ```
+   **Also refresh the web flasher's hosted copy** so ghostmesh.info/config offers the latest build:
+   ```bash
+   cp "$SRC" /home/servermonk/repos/ghostmesh/ghostmesh.info/public/firmware/ghostmesh-heltec-v3.factory.bin
+   ```
+   (Then rebuild + deploy the site — `ghostmesh-website-access` skill. That bin is committed so the
+   deploy always has it; the flasher's "latest" dropdown fetches it from `/firmware/`.)
 
 7. **Tell the user how to flash** (they do it on Windows — esptool-js web flasher or `esptool`):
    flash the delivered bin at offset **`0x0`**, **NO erase** — that preserves channel keys + config
@@ -79,6 +85,11 @@ so the user can flash it from the Windows host (the boards live on Windows USB �
 ## Gotchas
 
 - **`pio` is not on PATH** — always use the full venv path `/home/servermonk/.pio-venv/bin/pio`.
+- **Incremental builds can leave a stale `firmware.factory.bin`.** An incremental `pio run` may relink
+  `firmware.elf` (new mtime) without regenerating `firmware.bin` / `firmware.factory.bin` (old mtime).
+  If the `.factory.bin` timestamp is older than `firmware.elf`, force a fresh flashable image:
+  `rm .pio/build/heltec-v3/firmware.bin .pio/build/heltec-v3/firmware.factory.bin && <pio> run -e heltec-v3`
+  (quick — just the objcopy + esptool merge steps). Confirm `firmware.factory.bin` is newer than `.elf`.
 - **Flash at `0x0`, no erase.** `firmware.factory.bin` is the merged image (bootloader + partitions
   + app). Erasing wipes the user's channel/config.
 - **The `meshtastic-firmware` checkout is a separate repo** — its `Modules.cpp` change and the copied

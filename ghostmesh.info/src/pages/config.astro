@@ -62,14 +62,6 @@ import SubLayout from '../layouts/SubLayout.astro';
       <button id="gm-refresh" class="gm-btn gm-btn--ghost">[ QUERY NODE ]</button>
     </div>
 
-    <!-- FIRMWARE SECTION -->
-    <h2>FIRMWARE <span class="tag">UPDATE</span></h2>
-    <p style="margin-top:0.5rem; font-size:0.85rem; color:var(--text-dim); line-height:1.5;">
-      Reflash the Heltec ESP32-S3 with a new firmware binary. The node will reboot automatically
-      when complete. Requires USB connection — battery will not interrupt the write cycle.
-    </p>
-    <div id="gm-flasher"></div>
-
     <!-- PAYLOAD UPLOAD SECTION (/put protocol) -->
     <div class="scene-divider" style="margin:1.8rem 0 1rem;"></div>
     <h2>PAYLOAD UPLOAD <span class="tag">/put</span></h2>
@@ -85,6 +77,18 @@ import SubLayout from '../layouts/SubLayout.astro';
     <div id="gm-uploader"></div>
   </div>
 
+  <!-- FIRMWARE FLASH — always available; it owns its own port (does NOT need ESTABLISH LINK) -->
+  <div class="scene-divider" style="margin:1.8rem 0 1rem;"></div>
+  <h2>FIRMWARE <span class="tag">FLASH</span></h2>
+  <p style="margin-top:0.5rem; font-size:0.85rem; color:var(--text-dim); line-height:1.5;">
+    Reflash the Heltec ESP32-S3 — the latest GhostMesh build, or your own <code style="color:var(--blue);">.bin</code>.
+    This takes over the USB port to reach the ROM bootloader, so it works even if the node isn't
+    talking (you don't need to <strong>ESTABLISH LINK</strong> first) — pick the device again when the
+    browser asks. Flashes at <code style="color:var(--blue);">0x0</code> without erasing, so channel
+    keys and config survive. Chrome/Edge, USB only.
+  </p>
+  <div id="gm-flasher"></div>
+
   <h2>TRACE</h2>
   <div class="gm-log" id="gm-log"><span class="gm-dim">No link. Standing by.</span></div>
 
@@ -96,8 +100,6 @@ import SubLayout from '../layouts/SubLayout.astro';
   </div>
 
 </SubLayout>
-
-<script is:inline src="https://cdn.jsdelivr.net/npm/esptool-js@0.4.0/dist/bundle.js"></script>
 
 <style>
   .gm-note { border:1px solid var(--blue); padding:0.8rem 1rem; margin:1rem 0;
@@ -176,7 +178,7 @@ import SubLayout from '../layouts/SubLayout.astro';
 
   // ── state ──
   let port = null, writer = null, reader = null, nodeNum = 0, connected = false;
-  let flasherElement = null, uploader = null;
+  let uploader = null;
   const $ = (id) => document.getElementById(id);
   const logEl = $('gm-log');
   function log(msg, cls) { const s = document.createElement('span'); s.className = cls || 'gm-dim'; s.textContent = msg + '\n'; logEl.appendChild(s); logEl.scrollTop = logEl.scrollHeight; }
@@ -224,15 +226,10 @@ import SubLayout from '../layouts/SubLayout.astro';
   async function requestCfg() { await send(encTextTo('/cfg @' + last4(), nodeNum), '/cfg @' + last4()); }
   async function setKey(key, val) { const cmd = '/set @' + last4() + ' ' + key + ' ' + val; await send(encTextTo(cmd, nodeNum), cmd); }
 
-  // Initialize the flasher and the /put payload uploader after handshake.
+  // The /put payload uploader needs a live connection + node id, so it inits after handshake.
+  // (The firmware flasher does NOT — it owns its own port and is mounted on page load; see init().)
   async function initializeTools() {
     try {
-      if (!flasherElement && port) {
-        log('Initializing firmware flasher…', 'gm-dim');
-        flasherElement = await flasherInit(port);
-        $('gm-flasher').appendChild(flasherElement);
-      }
-
       // Payload uploader speaks the /put protocol over the PROTO text channel. sendCmd wraps a
       // text command in a self-addressed frame (no mesh broadcast); PUT replies route via onText.
       if (!uploader && port && nodeNum) {
@@ -289,6 +286,13 @@ import SubLayout from '../layouts/SubLayout.astro';
     for (const [id, key] of [['gm-led', 'led'], ['gm-buzz', 'buzz'], ['gm-vib', 'vib']]) {
       $(id).addEventListener('click', () => { const on = $(id).dataset.on === '1' ? 0 : 1; setToggle(id, on); setKey(key, on ? 'on' : 'off'); });
     }
+
+    // Firmware flasher is standalone (owns its own port) — mount it now, no connection required.
+    $('gm-flasher').appendChild(flasherInit({
+      hostedUrl: '/firmware/ghostmesh-heltec-v3.factory.bin',
+      hostedLabel: 'GhostMesh Heltec V3 — latest',
+      log,
+    }));
   }
 
   // Astro defers module scripts, so DOMContentLoaded may have already fired.
