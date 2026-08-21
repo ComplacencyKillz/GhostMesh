@@ -61,6 +61,26 @@ import SubLayout from '../layouts/SubLayout.astro';
     <div class="scene-divider">
       <button id="gm-refresh" class="gm-btn gm-btn--ghost">[ QUERY NODE ]</button>
     </div>
+
+    <!-- FIRMWARE SECTION -->
+    <h2>FIRMWARE <span class="tag">UPDATE</span></h2>
+    <p style="margin-top:0.5rem; font-size:0.85rem; color:var(--text-dim); line-height:1.5;">
+      Reflash the Heltec ESP32-S3 with a new firmware binary. The node will reboot automatically
+      when complete. Requires USB connection — battery will not interrupt the write cycle.
+    </p>
+    <div id="gm-flasher"></div>
+
+    <!-- COMMAND FILES SECTION -->
+    <div class="scene-divider" style="margin:1.8rem 0 1rem;"></div>
+    <h2>COMMAND FILES <span class="tag">MESH PAYLOAD</span></h2>
+    <p style="margin-top:0.5rem; font-size:0.85rem; color:var(--text-dim); line-height:1.5;">
+      Transmit payload files (.bin, .txt, .dat, .cmd) to a node over the mesh. The file is
+      automatically chunked and reassembled on the backpack. See
+      <a href="https://github.com/ComplacencyKillz/GhostMesh/blob/main/docs/command-cli.md"
+         target="_blank" rel="noopener" style="color:var(--terminal);">command-cli.md</a>
+      for format details.
+    </p>
+    <div id="gm-executor"></div>
   </div>
 
   <h2>TRACE</h2>
@@ -74,6 +94,8 @@ import SubLayout from '../layouts/SubLayout.astro';
   </div>
 
 </SubLayout>
+
+<script src="https://cdn.jsdelivr.net/npm/esptool-js@0.4.0/dist/bundle.js"></script>
 
 <style>
   .gm-note { border:1px solid var(--blue); padding:0.8rem 1rem; margin:1rem 0;
@@ -107,12 +129,21 @@ import SubLayout from '../layouts/SubLayout.astro';
   .gm-log .gm-tx { color:var(--blue); }
   .gm-log .gm-rx { color:var(--terminal); }
   .gm-log .gm-err { color:#e88; }
+
+  /* Flasher & Executor container tweaks */
+  #gm-flasher, #gm-executor {
+    margin: 1rem 0;
+  }
 </style>
 
-<script>
+<script type="module">
   // ── GhostMesh Web Serial configurator ──────────────────────────────────────
   // Speaks the minimal Meshtastic StreamAPI our FAP uses: 0x94 0xC3 [len_hi][len_lo][protobuf].
   // want_config → learn our node num → send self-addressed /cfg and /set text commands.
+
+  // Import component modules
+  import { flasherInit } from '../lib/firmware-flasher.js';
+  import { executorInit } from '../lib/executor-ui.js';
 
   const NONCE = 42;
 
@@ -141,6 +172,7 @@ import SubLayout from '../layouts/SubLayout.astro';
 
   // ── state ──
   let port = null, writer = null, reader = null, nodeNum = 0, connected = false;
+  let flasherElement = null, executorElement = null;
   const $ = (id) => document.getElementById(id);
   const logEl = $('gm-log');
   function log(msg, cls) { const s = document.createElement('span'); s.className = cls || 'gm-dim'; s.textContent = msg + '\n'; logEl.appendChild(s); logEl.scrollTop = logEl.scrollHeight; }
@@ -160,7 +192,7 @@ import SubLayout from '../layouts/SubLayout.astro';
   function handleFrame(payload) {
     const fr = parseFromRadio(payload);
     if (fr.nodeNum && !gotNode) { nodeNum = fr.nodeNum; gotNode = true; log('NODE !' + (nodeNum >>> 0).toString(16).padStart(8, '0') + ' (@' + last4() + ')', 'gm-rx'); }
-    if (fr.complete === NONCE && !handshakeDone) { handshakeDone = true; log('HANDSHAKE COMPLETE. Reading config…', 'gm-dim'); requestCfg(); }
+    if (fr.complete === NONCE && !handshakeDone) { handshakeDone = true; log('HANDSHAKE COMPLETE. Reading config…', 'gm-dim'); requestCfg(); initializeTools(); }
     if (fr.text) onText(fr.text);
   }
 
@@ -184,6 +216,32 @@ import SubLayout from '../layouts/SubLayout.astro';
 
   async function requestCfg() { await send(encTextTo('/cfg @' + last4(), nodeNum), '/cfg @' + last4()); }
   async function setKey(key, val) { const cmd = '/set @' + last4() + ' ' + key + ' ' + val; await send(encTextTo(cmd, nodeNum), cmd); }
+
+  // Initialize flasher and executor after handshake
+  async function initializeTools() {
+    try {
+      // Initialize flasher
+      if (!flasherElement && port) {
+        log('Initializing firmware flasher…', 'gm-dim');
+        flasherElement = await flasherInit(port);
+        $('gm-flasher').appendChild(flasherElement);
+      }
+
+      // Initialize executor with write wrapper
+      if (!executorElement && port && nodeNum) {
+        log('Initializing payload executor…', 'gm-dim');
+        const serialConnection = {
+          write: async (text) => {
+            await send(encTextTo(text, nodeNum), text);
+          }
+        };
+        executorElement = executorInit(serialConnection, nodeNum);
+        $('gm-executor').appendChild(executorElement);
+      }
+    } catch (e) {
+      log('TOOL INIT FAILED: ' + e.message, 'gm-err');
+    }
+  }
 
   async function readLoop() {
     try {
