@@ -1,0 +1,231 @@
+---
+import SubLayout from '../layouts/SubLayout.astro';
+---
+
+<SubLayout title="CONFIGURATOR" section="CONFIG"
+  classification="CLASSIFICATION: FIELD CONFIG / TRANSPORT: WEB SERIAL / USB"
+  introLines={[
+    "Plug the node in.",
+    "Set its behaviour.",
+    "Nothing leaves the wire.",
+  ]}
+  introAction="[ CONNECT ]">
+
+  <p>Configure a GhostMesh backpack over USB — no app, no install. This talks to the node
+  directly from your browser over <strong>Web Serial</strong>, the same way the Meshtastic web
+  client does. Config commands are addressed to the node itself, so nothing is broadcast over LoRa.</p>
+
+  <div id="gm-unsupported" class="gm-note gm-note--warn" style="display:none;">
+    Web Serial isn't available in this browser. Use <strong>Chrome</strong> or <strong>Edge</strong>
+    on desktop, over https (you're on it here).
+  </div>
+
+  <div id="gm-connect-row">
+    <button id="gm-connect" class="gm-btn">[ CONNECT NODE ]</button>
+    <span id="gm-status" class="gm-status">disconnected</span>
+  </div>
+
+  <div id="gm-panel" style="display:none;">
+    <h2>SENSING</h2>
+    <div class="gm-field">
+      <label>Proximity trip</label>
+      <div class="gm-ctl">
+        <input type="range" id="gm-prox" min="20" max="400" step="5" />
+        <output id="gm-prox-out">— cm</output>
+      </div>
+    </div>
+    <div class="gm-field">
+      <label>Light threshold</label>
+      <div class="gm-ctl">
+        <input type="range" id="gm-light" min="0" max="4095" step="50" />
+        <output id="gm-light-out">—</output>
+      </div>
+    </div>
+
+    <h2>NOTIFICATIONS <span class="tag">COVERT TOGGLE</span></h2>
+    <div class="gm-field gm-field--row">
+      <label>Status LED</label>
+      <button class="gm-toggle" id="gm-led" data-on="0">OFF</button>
+    </div>
+    <div class="gm-field gm-field--row">
+      <label>Buzzer</label>
+      <button class="gm-toggle" id="gm-buzz" data-on="0">OFF</button>
+    </div>
+    <div class="gm-field gm-field--row">
+      <label>Vibration</label>
+      <button class="gm-toggle" id="gm-vib" data-on="0">OFF</button>
+    </div>
+
+    <div class="scene-divider">
+      <button id="gm-refresh" class="gm-btn gm-btn--ghost">[ RE-READ NODE ]</button>
+    </div>
+  </div>
+
+  <h2>LOG</h2>
+  <div class="gm-log" id="gm-log"><span class="gm-dim">Awaiting connection…</span></div>
+
+  <div class="scene-divider">
+    <p>Prefer the terminal? The same settings over the mesh CLI or a Python tool →
+      <a href="https://github.com/ComplacencyKillz/GhostMesh/blob/main/docs/command-cli.md"
+         target="_blank" rel="noopener">docs/command-cli.md</a>
+    </p>
+  </div>
+
+</SubLayout>
+
+<style>
+  .gm-note { border:1px solid var(--blue); padding:0.8rem 1rem; margin:1rem 0;
+    font-size:0.85rem; line-height:1.5; }
+  .gm-note--warn { border-color:#c96; color:#eca; }
+  #gm-connect-row { display:flex; align-items:center; gap:1rem; margin:1.2rem 0; flex-wrap:wrap; }
+  .gm-btn { background:transparent; border:1px solid var(--terminal); color:var(--terminal);
+    font-family:inherit; font-size:0.9rem; padding:0.55rem 1.1rem; cursor:pointer; letter-spacing:1px;
+    transition:background .15s,color .15s; }
+  .gm-btn:hover { background:var(--terminal); color:#000; }
+  .gm-btn--ghost { border-color:var(--text-dim); color:var(--text-dim); }
+  .gm-btn--ghost:hover { background:var(--text-dim); color:#000; }
+  .gm-status { font-size:0.8rem; color:var(--text-dim); letter-spacing:1px; }
+  .gm-status.on { color:var(--terminal); }
+  .gm-field { margin:0.9rem 0; }
+  .gm-field label { display:block; font-size:0.75rem; color:var(--text-dim);
+    letter-spacing:1.5px; text-transform:uppercase; margin-bottom:0.35rem; }
+  .gm-field--row { display:flex; align-items:center; justify-content:space-between; max-width:340px; }
+  .gm-field--row label { margin:0; }
+  .gm-ctl { display:flex; align-items:center; gap:0.9rem; max-width:420px; }
+  .gm-ctl input[type=range] { flex:1; accent-color:var(--terminal); }
+  .gm-ctl output { min-width:64px; color:var(--blue); font-size:0.9rem; text-align:right; }
+  .gm-toggle { background:transparent; border:1px solid var(--text-dim); color:var(--text-dim);
+    font-family:inherit; font-size:0.75rem; padding:0.3rem 0.9rem; cursor:pointer; letter-spacing:1px;
+    min-width:56px; }
+  .gm-toggle[data-on="1"] { border-color:var(--terminal); color:var(--terminal); }
+  .gm-log { background:rgba(0,0,0,0.5); border:1px solid rgba(120,160,140,0.25);
+    padding:0.7rem 0.9rem; font-size:0.78rem; line-height:1.6; height:150px; overflow-y:auto;
+    white-space:pre-wrap; word-break:break-word; }
+  .gm-log .gm-dim { color:var(--text-dim); }
+  .gm-log .gm-tx { color:var(--blue); }
+  .gm-log .gm-rx { color:var(--terminal); }
+  .gm-log .gm-err { color:#e88; }
+</style>
+
+<script>
+  // ── GhostMesh Web Serial configurator ──────────────────────────────────────
+  // Speaks the minimal Meshtastic StreamAPI our FAP uses: 0x94 0xC3 [len_hi][len_lo][protobuf].
+  // want_config → learn our node num → send self-addressed /cfg and /set text commands.
+
+  const NONCE = 42;
+
+  // ── protobuf helpers ──
+  const enc = new TextEncoder();
+  const tag = (f, w) => (f << 3) | w;
+  function wVarint(v, out) { v = v >>> 0; while (v > 0x7f) { out.push((v & 0x7f) | 0x80); v = Math.floor(v / 128); } out.push(v & 0x7f); }
+  function wVarintField(out, f, v) { wVarint(tag(f, 0), out); wVarint(v, out); }
+  function wBytesField(out, f, data) { wVarint(tag(f, 2), out); wVarint(data.length, out); for (const b of data) out.push(b); }
+  function wFixed32Field(out, f, v) { wVarint(tag(f, 5), out); out.push(v & 0xff, (v >>> 8) & 0xff, (v >>> 16) & 0xff, (v >>> 24) & 0xff); }
+  function rVarint(b, pos) { let r = 0, s = 0, x; do { x = b[pos.i++]; r += (x & 0x7f) * Math.pow(2, s); s += 7; } while (x & 0x80); return r; }
+
+  function frame(payload) { const n = payload.length; return new Uint8Array([0x94, 0xc3, (n >> 8) & 0xff, n & 0xff, ...payload]); }
+  function encWantConfig() { const p = []; wVarintField(p, 3, NONCE); return frame(p); }
+  function encTextTo(text, toAddr) {
+    const data = []; wVarintField(data, 1, 1); wBytesField(data, 2, Array.from(enc.encode(text)));
+    const mesh = []; wFixed32Field(mesh, 2, toAddr); wBytesField(mesh, 4, data); wVarintField(mesh, 9, 3);
+    const radio = []; wBytesField(radio, 1, mesh);
+    return frame(radio);
+  }
+
+  function parseMyInfo(b) { const pos = { i: 0 }; let num = 0; while (pos.i < b.length) { const t = rVarint(b, pos), f = t >>> 3, w = t & 7; if (w === 0) { const v = rVarint(b, pos); if (f === 1) num = v; } else if (w === 2) { const l = rVarint(b, pos); pos.i += l; } else if (w === 5) pos.i += 4; else if (w === 1) pos.i += 8; else break; } return num; }
+  function parseData(b) { const pos = { i: 0 }; let port = 0, text = null; while (pos.i < b.length) { const t = rVarint(b, pos), f = t >>> 3, w = t & 7; if (w === 0) { const v = rVarint(b, pos); if (f === 1) port = v; } else if (w === 2) { const l = rVarint(b, pos); const s = b.slice(pos.i, pos.i + l); pos.i += l; if (f === 2) text = new TextDecoder().decode(s); } else if (w === 5) pos.i += 4; else if (w === 1) pos.i += 8; else break; } return port === 1 ? text : null; }
+  function parsePacketText(b) { const pos = { i: 0 }; let text = null; while (pos.i < b.length) { const t = rVarint(b, pos), f = t >>> 3, w = t & 7; if (w === 0) rVarint(b, pos); else if (w === 5) pos.i += 4; else if (w === 1) pos.i += 8; else if (w === 2) { const l = rVarint(b, pos); const s = b.slice(pos.i, pos.i + l); pos.i += l; if (f === 4) text = parseData(s); } else break; } return text; }
+  function parseFromRadio(b) { const pos = { i: 0 }, out = {}; while (pos.i < b.length) { const t = rVarint(b, pos), f = t >>> 3, w = t & 7; if (w === 0) { const v = rVarint(b, pos); if (f === 7) out.complete = v; } else if (w === 2) { const l = rVarint(b, pos); const s = b.slice(pos.i, pos.i + l); pos.i += l; if (f === 3) out.nodeNum = parseMyInfo(s); else if (f === 2) out.text = parsePacketText(s); } else if (w === 5) pos.i += 4; else if (w === 1) pos.i += 8; else break; } return out; }
+
+  // ── state ──
+  let port = null, writer = null, reader = null, nodeNum = 0, connected = false;
+  const $ = (id) => document.getElementById(id);
+  const logEl = $('gm-log');
+  function log(msg, cls) { const s = document.createElement('span'); s.className = cls || 'gm-dim'; s.textContent = msg + '\n'; logEl.appendChild(s); logEl.scrollTop = logEl.scrollHeight; }
+  function last4() { return (nodeNum & 0xffff).toString(16).padStart(4, '0'); }
+
+  async function send(bytes, echo) { if (writer) { await writer.write(bytes); if (echo) log('> ' + echo, 'gm-tx'); } }
+
+  // Frame sync state machine over the incoming byte stream.
+  let st = 0, len = 0, buf = [], gotNode = false, handshakeDone = false;
+  function onByte(x) {
+    if (st === 0) { if (x === 0x94) st = 1; }
+    else if (st === 1) { st = x === 0xc3 ? 2 : 0; }
+    else if (st === 2) { len = x << 8; st = 3; }
+    else if (st === 3) { len |= x; buf = []; st = len > 0 && len < 512 ? 4 : 0; }
+    else if (st === 4) { buf.push(x); if (buf.length >= len) { handleFrame(new Uint8Array(buf)); st = 0; } }
+  }
+  function handleFrame(payload) {
+    const fr = parseFromRadio(payload);
+    if (fr.nodeNum && !gotNode) { nodeNum = fr.nodeNum; gotNode = true; log('node !' + (nodeNum >>> 0).toString(16).padStart(8, '0') + ' (@' + last4() + ')', 'gm-rx'); }
+    if (fr.complete === NONCE && !handshakeDone) { handshakeDone = true; log('handshake complete — reading config…', 'gm-dim'); requestCfg(); }
+    if (fr.text) onText(fr.text);
+  }
+
+  function onText(t) {
+    if (t.startsWith('CFG ')) {
+      const g = (k) => { const m = t.match(new RegExp(k + '=(\\d+)')); return m ? parseInt(m[1]) : null; };
+      applyCfg({ prox: g('prox'), light: g('light'), led: g('led'), buzz: g('buzz'), vib: g('vib') });
+      log('< ' + t, 'gm-rx');
+      $('gm-panel').style.display = 'block';
+    } else if (t.includes('=')) {
+      log('< ' + t, 'gm-rx'); // /set echo
+    }
+  }
+
+  function applyCfg(c) {
+    if (c.prox != null) { $('gm-prox').value = c.prox; $('gm-prox-out').textContent = c.prox + ' cm'; }
+    if (c.light != null) { $('gm-light').value = c.light; $('gm-light-out').textContent = c.light; }
+    setToggle('gm-led', c.led); setToggle('gm-buzz', c.buzz); setToggle('gm-vib', c.vib);
+  }
+  function setToggle(id, on) { const b = $(id); if (on == null) return; b.dataset.on = on ? '1' : '0'; b.textContent = on ? 'ON' : 'OFF'; }
+
+  async function requestCfg() { await send(encTextTo('/cfg @' + last4(), nodeNum), '/cfg @' + last4()); }
+  async function setKey(key, val) { const cmd = '/set @' + last4() + ' ' + key + ' ' + val; await send(encTextTo(cmd, nodeNum), cmd); }
+
+  async function readLoop() {
+    try {
+      while (port && port.readable) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        for (const x of value) onByte(x);
+      }
+    } catch (e) { log('read error: ' + e.message, 'gm-err'); }
+  }
+
+  async function connect() {
+    if (!('serial' in navigator)) { $('gm-unsupported').style.display = 'block'; return; }
+    try {
+      port = await navigator.serial.requestPort();
+      await port.open({ baudRate: 115200 });
+      writer = port.writable.getWriter();
+      reader = port.readable.getReader();
+      connected = true; gotNode = false; handshakeDone = false;
+      $('gm-status').textContent = 'connected'; $('gm-status').classList.add('on');
+      $('gm-connect').textContent = '[ CONNECTED ]';
+      log('port open @115200 — requesting node config…', 'gm-dim');
+      readLoop();
+      await send(encWantConfig(), 'want_config');
+      // If the node is mid-stream, retry the handshake a couple of times.
+      setTimeout(() => { if (!handshakeDone && connected) send(encWantConfig()); }, 2200);
+      setTimeout(() => { if (!handshakeDone && connected) log('no reply — is this the Heltec USB port, and GhostMesh firmware?', 'gm-err'); }, 6000);
+    } catch (e) { log('connect cancelled/failed: ' + e.message, 'gm-err'); }
+  }
+
+  function init() {
+    if (!('serial' in navigator)) $('gm-unsupported').style.display = 'block';
+    $('gm-connect').addEventListener('click', connect);
+    $('gm-refresh').addEventListener('click', requestCfg);
+    $('gm-prox').addEventListener('change', (e) => { const v = e.target.value; $('gm-prox-out').textContent = v + ' cm'; setKey('prox', v); });
+    $('gm-prox').addEventListener('input', (e) => { $('gm-prox-out').textContent = e.target.value + ' cm'; });
+    $('gm-light').addEventListener('change', (e) => { const v = e.target.value; $('gm-light-out').textContent = v; setKey('light', v); });
+    $('gm-light').addEventListener('input', (e) => { $('gm-light-out').textContent = e.target.value; });
+    for (const [id, key] of [['gm-led', 'led'], ['gm-buzz', 'buzz'], ['gm-vib', 'vib']]) {
+      $(id).addEventListener('click', () => { const on = $(id).dataset.on === '1' ? 0 : 1; setToggle(id, on); setKey(key, on ? 'on' : 'off'); });
+    }
+  }
+
+  // Astro defers module scripts, so DOMContentLoaded may have already fired.
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+</script>
