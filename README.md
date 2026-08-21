@@ -60,7 +60,7 @@ The backpack is a **shield.** It plugs onto the Flipper Zero's GPIO header, taps
 **Backpack — custom Heltec firmware**
 - Tamper detection: tilt (moved), photoresistor (case opened), ultrasonic proximity (approach)
 - Arming gate — sensors report only when armed; flipped by a switch, the mesh, or IR
-- Indicators: buzzer, vibration motor (RGB LED pin reserved)
+- Indicators: buzzer, vibration motor, RGB status LED (colors + a green↔red gradient)
 - Mesh command CLI — `/cmd @target`: status, arm / disarm, buzz, vibrate, wipe
 - IR line-of-sight control (NECext): arm / disarm / the `ARM → WIPE → CONFIRM` destruct
 - Destruct: armed-gated **complete flash erase** — firmware, config, and channel keys wiped to USB download mode; recover by reflash + encrypted-backup restore

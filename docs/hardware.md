@@ -22,7 +22,7 @@ Every part in the build, with the maker and part marking to chase down a datashe
 | Light sensor | GL5528 photoresistor (LDR) | generic | Tamper — case opened | ADC |
 | Ultrasonic ranger | HC-SR04 (deploy: RCWL-1601) | generic | Proximity — approach | GPIO (5 V) |
 | IR receiver | VS1838B | generic | NEC IR remote control | GPIO (38 kHz demod) |
-| RGB indicator | SK6812 | Adafruit-compatible | Status LED (planned) | 1-wire addressable |
+| RGB indicator | SK6812 | Adafruit-compatible | Status LED (`/led`, working) | 1-wire addressable |
 | Buzzer | passive magnetic buzzer | generic | Audible indicator (tones) | GPIO PWM via driver |
 | Haptic | 3 V coin/cyl vibration motor | generic | Vibration indicator | GPIO via driver |
 | Driver (bench) | PN2222A (TO-92) | generic NPN BJT | Low-side switch for buzzer/motor | — |
@@ -104,10 +104,10 @@ custom Meshtastic modules.
 | 19 | ❌ USB D- | ESP32-S3 native USB |
 | 20 | ❌ USB D+ | ESP32-S3 native USB |
 | 21 | ❌ OLED reset | Hardwired OLED reset — NOT free (HC-SR04 trigger uses GPIO38 instead) |
-| 26 | 🚧 RGB status LED | External SK6812 data line (`/led`, planned) — NOT Vext (that's GPIO36) |
+| 26 | ✅ RGB status LED | External SK6812 data (`/led` via `neopixelWrite`; colors + gradient, working) — NOT Vext (that's GPIO36) |
 | 33 | ✅ Free — confirmed | GPS UART1 TX (Heltec → BN-220 RX) |
 | 34 | ✅ Free — confirmed | GPS UART1 RX (BN-220 TX → Heltec) |
-| 35 | ❌ Onboard LED | White user LED (does NOT work as a UART RX); `CommandModule` `/led` placeholder until GPIO26 RGB is wired |
+| 35 | ❌ Onboard LED | White user LED (does NOT work as a UART RX); `CommandModule` mirrors the `/led` on/off state here (backup to the GPIO26 RGB) |
 | 36 | ❌ Vext control | Powers OLED + external 3.3V rail (Meshtastic `VEXT_ENABLE`, active LOW) |
 | 37 | 🚧 Wipe button | Tact switch, INPUT_PULLUP → `CommandModule` factory reset (armed + double-press) |
 | 39 | 🚧 Buzzer | Passive buzzer via PN2222 low-side driver — PWM tone (`CommandModule` `/buzz`) |

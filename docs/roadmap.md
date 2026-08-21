@@ -360,7 +360,7 @@ over LoRa, or protect itself.
 | IR receiver arm/disarm | ❌ | ✅ IRModule (built) |
 | Slide-switch arm/disarm | ❌ | ✅ ArmingModule (built) |
 | HC-SR04 proximity alert | ❌ | ✅ ProximityModule (built) |
-| Buzzer / vibration / LED / wipe (mesh-triggered) | ❌ | ✅ CommandModule (written, untested) |
+| Buzzer / vibration / LED / wipe (mesh-triggered) | ❌ | ✅ CommandModule (buzzer/vibration/LED working on HW; wipe built) |
 | MAX17048 accurate SOC | ❌ | Custom module |
 | Jammer detection | ❌ | Custom module |
 | UART encryption | ❌ | Full custom firmware layer |

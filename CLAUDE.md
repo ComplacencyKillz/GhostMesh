@@ -65,9 +65,9 @@ Flipper GND                  ────  Heltec GND
 | HC-SR04 ultrasonic → `PERSON_DETECTED` | GPIO | GPIO38 trig / 47 echo | 11 | 🚧 `ProximityModule` — bench only (needs 5V+divider or a 3.3V RCWL-1601) |
 | IR receiver (NEC remote) → arm/disarm | GPIO | GPIO48 | 10 | ✅ `IRModule` |
 | MAX17048 (LiPo fuel gauge) | I2C bus 2 | 0x36 — GPIO41/42 | 9 | 🚧 on-bus, not read (connector mismatch) |
-| Passive buzzer via PN2222 → `/buzz` | GPIO (PWM tone) | GPIO39 | 10 | 🚧 `CommandModule` — wired, untested |
-| Vibration motor via PN2222 + 1N4007 → `/vibrate` | GPIO | GPIO40 | 10 | 🚧 `CommandModule` — wired, untested |
-| RGB status LED (SK6812) → `/led` | GPIO (addressable) | GPIO26 | 10 | 🚧 planned; `CommandModule` drives onboard GPIO35 until it's wired |
+| Passive buzzer via PN2222 → `/buzz` | GPIO (PWM tone) | GPIO39 | 10 | ✅ `CommandModule` — working on HW |
+| Vibration motor via PN2222 + 1N4007 → `/vibrate` | GPIO | GPIO40 | 10 | ✅ `CommandModule` — working on HW |
+| RGB status LED (SK6812) → `/led` | GPIO (addressable) | GPIO26 | 10 | ✅ `CommandModule` — `neopixelWrite`; colors + green↔red gradient sweep, working on HW |
 | Wipe button (tact switch) → factory reset | GPIO (INPUT_PULLUP) | GPIO37 | 10 | 🚧 `CommandModule` — armed + double-press |
 
 **On Flipper ProtoBoard (operator controls):**
@@ -108,10 +108,10 @@ Bus 2 — GPIO41 SDA / GPIO42 SCL
 - `43–44`: UART0 / CP2102 USB console — do NOT use for the Flipper link (clamps on battery)
 - `39`: passive buzzer via PN2222 driver (`CommandModule` `/buzz`)
 - `40`: vibration motor via PN2222 driver + 1N4007 flyback (`CommandModule` `/vibrate`)
-- `26`: external RGB status LED — SK6812 data (`CommandModule` `/led`; planned). NOT Vext.
+- `26`: external RGB status LED — SK6812 data (`CommandModule` `/led`, `neopixelWrite`; working). NOT Vext.
 - `37`: wipe button — tact switch, INPUT_PULLUP (`CommandModule` factory reset)
 - `21`: OLED reset (hardwired — not free; do not use for HC-SR04 trigger)
-- `35`: onboard white LED — `CommandModule` uses it as the `/led` placeholder until the SK6812 on GPIO26 is wired
+- `35`: onboard white LED — `CommandModule` mirrors the `/led` on/off state here (backup indicator alongside the SK6812 on GPIO26)
 - `36`: Vext — powers the OLED + external 3.3V rail (software gated, active LOW). GPIO26 is NOT Vext.
 - Only free non-strapping header pins on the V3 were `26 / 37 / 39 / 40` — now all four used.
 
