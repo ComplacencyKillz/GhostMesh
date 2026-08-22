@@ -1,0 +1,66 @@
+diff --git a/src/gps/GPS.cpp b/src/gps/GPS.cpp
+index 6c6cdba..9ff2072 100644
+--- a/src/gps/GPS.cpp
++++ b/src/gps/GPS.cpp
+@@ -1884,4 +1884,18 @@ void GPS::toggleGpsMode()
+         enable();
+     }
+ }
++
++// GhostMesh vendor patch: silence the u-blox timepulse (CFG-TP5), which drives the BN-220's PPS/fix
++// LED, for stealth mode. Best-effort: on=false sends the disable; on=true is a no-op because reliably
++// re-enabling PPS needs a GPS reset. RAM-only on the module (reverts on GPS power-cycle).
++void GPS::setTimepulseEnabled(bool on)
++{
++    if (!_serial_gps)
++        return; // no serial GPS on this build
++    if (on)
++        return; // leave the module default (LED on); we only actively silence it
++    uint8_t msglen = makeUBXPacket(0x06, 0x31, sizeof(_message_GM_CFG_TP5_DISABLE), _message_GM_CFG_TP5_DISABLE);
++    _serial_gps->write(UBXscratch, msglen);
++    LOG_INFO("GhostMesh: GPS timepulse disabled (CFG-TP5) to silence the PPS LED");
++}
+ #endif // Exclude GPS
+diff --git a/src/gps/GPS.h b/src/gps/GPS.h
+index 8ba1ce0..e8fca63 100644
+--- a/src/gps/GPS.h
++++ b/src/gps/GPS.h
+@@ -94,6 +94,10 @@ class GPS : private concurrency::OSThread
+     // toggle between enabled/disabled
+     void toggleGpsMode();
+ 
++    // GhostMesh vendor patch: disable (on=false) the u-blox timepulse (CFG-TP5) to silence the
++    // BN-220 PPS/fix LED for stealth mode. on=true is a no-op (re-enable needs a GPS reset).
++    void setTimepulseEnabled(bool on);
++
+     // Change the power state of the GPS - for power saving / shutdown
+     void setPowerState(GPSPowerState newState, uint32_t sleepMs = 0);
+ 
+diff --git a/src/gps/ubx.h b/src/gps/ubx.h
+index 0fe2f01..10ede66 100644
+--- a/src/gps/ubx.h
++++ b/src/gps/ubx.h
+@@ -9,6 +9,23 @@ static const char *failMessage = "Unable to %s";
+         }                                                                                                                        \
+     } while (0)
+ 
++// ── GhostMesh vendor patch ────────────────────────────────────────────────────────────
++// CFG-TP5 (class 0x06, id 0x31) timepulse DISABLE: 32-byte payload, all zero → flags.active=0, so
++// the u-blox stops driving its PPS/timepulse output and the BN-220's onboard PPS/fix LED goes dark.
++// Best-effort silent-mode helper (RAM-only; reverts if the GPS is power-cycled). Sent by
++// GPS::setTimepulseEnabled(false). NOT part of the ghostmesh repo — re-apply on a fresh checkout
++// (see heltec-firmware/README.md). tpIdx=0, version=1, everything else 0.
++static const uint8_t _message_GM_CFG_TP5_DISABLE[] PROGMEM = {
++    0x00, 0x01, 0x00, 0x00, // tpIdx=0, version=1, reserved1
++    0x00, 0x00, 0x00, 0x00, // antCableDelay, rfGroupDelay
++    0x00, 0x00, 0x00, 0x00, // freqPeriod
++    0x00, 0x00, 0x00, 0x00, // freqPeriodLock
++    0x00, 0x00, 0x00, 0x00, // pulseLenRatio
++    0x00, 0x00, 0x00, 0x00, // pulseLenRatioLock
++    0x00, 0x00, 0x00, 0x00, // userConfigDelay
++    0x00, 0x00, 0x00, 0x00, // flags (bit0 active = 0 → timepulse off)
++};
++
+ // Power Management
+ 
+ static uint8_t _message_PMREQ[] PROGMEM = {

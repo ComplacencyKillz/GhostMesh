@@ -21,14 +21,17 @@ nodes. A different tag may build fine but can shift file layout / APIs.
 3. Register each module in `src/modules/Modules.cpp` — add an `#include` and a
    `new XxxModule();` line in `setupModules()`.
 3b. **Apply the GPS vendor patch** (required for the silent-mode `gpsled` toggle). This is the ONE
-   change that lives in the vendored tree, not in this directory, so it must be re-applied on a fresh
-   checkout. In `meshtastic-firmware/src/gps/`:
-   - `ubx.h` — add `_message_GM_CFG_TP5_DISABLE[32]` (all-zero CFG-TP5 payload → timepulse off).
-   - `GPS.h` — declare `public: void setTimepulseEnabled(bool on);`.
-   - `GPS.cpp` — implement it (send CFG-TP5 disable over the GPS UART; `on==true` is a no-op).
-   See the "GhostMesh vendor patch" comment blocks in each. Without it, `CommandModule` won't link
-   (it calls `gps->setTimepulseEnabled`). Best-effort: silences the BN-220 PPS/fix LED; may persist
-   on modules whose LED isn't PPS-driven.
+   change that touches Meshtastic's *own* source (not `src/modules/`), so it can't be a drop-in module
+   — it's kept as a tracked diff here and re-applied on a fresh checkout:
+   ```bash
+   cd meshtastic-firmware
+   git apply /path/to/ghostmesh/heltec-firmware/gps-timepulse.patch   # touches src/gps/{GPS.cpp,GPS.h,ubx.h}
+   ```
+   It adds `GPS::setTimepulseEnabled(bool)` (sends a CFG-TP5 timepulse-disable over the GPS UART) so
+   `CommandModule` can silence the BN-220 PPS/fix LED. Without it the build won't link (CommandModule
+   calls `gps->setTimepulseEnabled`). Best-effort: may persist on modules whose LED isn't PPS-driven.
+   The patch is a plain `git diff` against tag `v2.7.15.567b8ea`; if it ever stops applying on a newer
+   tag, re-create it from the "GhostMesh vendor patch" comment blocks in those three files.
 4. Build for the Heltec V3:
    ```bash
    pip install platformio           # once; a venv is fine
