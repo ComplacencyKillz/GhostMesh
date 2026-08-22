@@ -540,9 +540,7 @@ void CommandModule::sendText(const char *msg)
     sendTextTo(msg, NODENUM_BROADCAST); // replies broadcast so every operator sees them
 }
 
-// Like sendText, but addressed to a specific node. Addressing a reply to OURSELVES makes it a
-// phone/serial-only delivery (ccToPhone) with no LoRa broadcast — used for /put chunk acks so a
-// USB file transfer stays entirely off the air.
+// Like sendText, but addressed to a specific node.
 void CommandModule::sendTextTo(const char *msg, uint32_t to)
 {
     meshtastic_MeshPacket *p = allocDataPacket(); // portnum = TEXT_MESSAGE_APP
@@ -554,6 +552,24 @@ void CommandModule::sendTextTo(const char *msg, uint32_t to)
     p->decoded.payload.size = n;
     memcpy(p->decoded.payload.bytes, msg, n);
     service->sendToMesh(p, RX_SRC_LOCAL, true); // ccToPhone=true → also reaches the FAP/app
+}
+
+// Deliver a reply ONLY to the connected StreamAPI client (USB/BLE — the web GUI, FAP, or app),
+// via the FromRadio queue, with NO LoRa transmit. "Phone" is Meshtastic's name for that client; it
+// is whatever is reading the serial stream, not a literal phone. Used for the high-rate /put acks so
+// a USB file transfer never spends LoRa airtime (a mesh-transmitted ack costs ~1s each and throttled
+// the whole transfer to a crawl).
+void CommandModule::sendTextToPhone(const char *msg)
+{
+    meshtastic_MeshPacket *p = allocDataPacket(); // portnum = TEXT_MESSAGE_APP
+    p->to = nodeDB->getNodeNum();
+    p->want_ack = false;
+    size_t n = strlen(msg);
+    if (n > sizeof(p->decoded.payload.bytes))
+        n = sizeof(p->decoded.payload.bytes);
+    p->decoded.payload.size = n;
+    memcpy(p->decoded.payload.bytes, msg, n);
+    service->sendToPhone(p); // straight to the FromRadio queue — no mesh transmit, no airtime
 }
 
 // ── Main loop: actuate outputs on a timer, pace replies, watch the wipe button ───────

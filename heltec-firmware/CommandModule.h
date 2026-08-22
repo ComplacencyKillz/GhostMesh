@@ -81,7 +81,8 @@ class CommandModule : public SinglePortModule, private concurrency::OSThread
     void doFactoryWipe();
     void enqueueReply(const char *msg);
     void sendText(const char *msg);
-    void sendTextTo(const char *msg, uint32_t to); // like sendText but to a specific node (self = off-air)
+    void sendTextTo(const char *msg, uint32_t to);  // like sendText but to a specific node
+    void sendTextToPhone(const char *msg);          // deliver ONLY to the USB/BLE client — no LoRa TX
 
     // ── payload file transfer (/put) — defined in CommandModule_payload.cpp ──
     // The web configurator's file uploader. Chunked base64 over the PROTO text channel (the only

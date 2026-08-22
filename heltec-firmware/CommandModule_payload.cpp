@@ -12,9 +12,9 @@
 //
 // WHY stop-and-wait: a rapid BURST of self-addressed packets overruns Meshtastic's serial ingest —
 // the first gets through and the rest are dropped before they ever reach a module. So the node ACKs
-// every data chunk (immediately, self-addressed so it stays off the air), and the client sends the
-// next chunk only after the ACK. That paces the sender to the node's real capacity and makes each
-// chunk individually confirmed — no burst, no silent loss.
+// every data chunk (immediately, delivered phone-only via sendToPhone so it costs no LoRa airtime),
+// and the client sends the next chunk only after the ACK. That paces the sender to the node's real
+// capacity and makes each chunk individually confirmed — no burst, no silent loss.
 //
 // Wire protocol (each line is one addressed text message; @id = this node's last-4 hex):
 //   /put @id begin <fid> <nchunks> <totalbytes> <crc32hex> <name>   -> PUT <fid> ready <n>
@@ -135,7 +135,7 @@ void CommandModule::putBegin(char *save)
     char *crcS = strtok_r(nullptr, " ", &save);
     char *nameS = strtok_r(nullptr, " ", &save);
     if (!fidS || !nS || !totS || !crcS || !nameS) {
-        enqueueReply("PUT begin: bad args");
+        sendTextToPhone("PUT begin: bad args");
         return;
     }
 
@@ -147,13 +147,13 @@ void CommandModule::putBegin(char *save)
     char reply[64];
     if (nchunks == 0 || nchunks > PUT_MAX_CHUNKS || total == 0 || total > PUT_MAX_BYTES) {
         snprintf(reply, sizeof(reply), "PUT %x toobig max=%uKB", (unsigned)fid, (unsigned)(PUT_MAX_BYTES / 1024));
-        enqueueReply(reply);
+        sendTextToPhone(reply);
         return;
     }
     uint32_t freeb = (uint32_t)(FSCom.totalBytes() - FSCom.usedBytes());
     if (total + PUT_FREE_MARGIN > freeb) {
         snprintf(reply, sizeof(reply), "PUT %x nospace free=%uKB", (unsigned)fid, (unsigned)(freeb / 1024));
-        enqueueReply(reply);
+        sendTextToPhone(reply);
         return;
     }
 
@@ -165,7 +165,7 @@ void CommandModule::putBegin(char *save)
     s_file = FSCom.open(s_path, FILE_O_WRITE); // truncate; we append in order
     if (!s_file) {
         snprintf(reply, sizeof(reply), "PUT %x open-fail", (unsigned)fid);
-        enqueueReply(reply);
+        sendTextToPhone(reply);
         return;
     }
 
@@ -181,7 +181,7 @@ void CommandModule::putBegin(char *save)
     LOG_INFO("PUT begin fid=%x '%s' %u chunks / %u bytes", (unsigned)fid, s_name, (unsigned)nchunks,
              (unsigned)total);
     snprintf(reply, sizeof(reply), "PUT %x ready %u", (unsigned)fid, (unsigned)nchunks);
-    enqueueReply(reply);
+    sendTextToPhone(reply);
 }
 
 // ── /put d: one in-order data chunk → append + ACK. Tokens: <fid> <index> <base64> ─────
@@ -224,13 +224,13 @@ void CommandModule::putEnd(char *save)
 
     if (!s_active || fid != s_fid) {
         snprintf(reply, sizeof(reply), "PUT %x noxfer", (unsigned)fid);
-        enqueueReply(reply);
+        sendTextToPhone(reply);
         return;
     }
     if (s_nextIdx < s_nchunks) {
         // Missing the tail — tell the client where to resume (stop-and-wait shouldn't reach here).
         snprintf(reply, sizeof(reply), "PUT %x need %u", (unsigned)fid, (unsigned)s_nextIdx);
-        enqueueReply(reply);
+        sendTextToPhone(reply);
         return;
     }
 
@@ -241,7 +241,7 @@ void CommandModule::putEnd(char *save)
     if (!rf) {
         s_active = false;
         snprintf(reply, sizeof(reply), "PUT %x reopen-fail", (unsigned)fid);
-        enqueueReply(reply);
+        sendTextToPhone(reply);
         return;
     }
     uint32_t sz = rf.size();
@@ -249,7 +249,7 @@ void CommandModule::putEnd(char *save)
         rf.close();
         s_active = false;
         snprintf(reply, sizeof(reply), "PUT %x sizefail got=%u", (unsigned)fid, (unsigned)sz);
-        enqueueReply(reply);
+        sendTextToPhone(reply);
         return;
     }
     uint32_t crc = 0;
@@ -262,13 +262,13 @@ void CommandModule::putEnd(char *save)
 
     if (crc != s_crc) {
         snprintf(reply, sizeof(reply), "PUT %x crcfail", (unsigned)fid);
-        enqueueReply(reply);
+        sendTextToPhone(reply);
         return;
     }
 
     LOG_INFO("PUT ok fid=%x '%s' %u bytes crc=%x", (unsigned)fid, s_name, (unsigned)sz, (unsigned)crc);
     snprintf(reply, sizeof(reply), "PUT %x ok %u", (unsigned)fid, (unsigned)sz);
-    enqueueReply(reply);
+    sendTextToPhone(reply);
 }
 
 // ── Dispatcher: called from handleReceived for any '/put ...' line addressed to us ─────
@@ -292,8 +292,9 @@ void CommandModule::handlePut(char *text)
 }
 
 // ── Called every runOnce tick: emit a pending chunk ACK immediately (not via the 800 ms reply
-// queue — flow control must be fast). Self-addressed so the ack reaches the USB client via
-// ccToPhone WITHOUT a LoRa broadcast, keeping a USB transfer entirely off the air.
+// queue — flow control must be fast). Delivered phone-only (sendToPhone) so it reaches the connected
+// web/serial client with NO LoRa transmit — a mesh-transmitted ack costs ~1 s of airtime each and
+// throttled the whole transfer to a crawl.
 void CommandModule::servicePutAck()
 {
     if (s_ackIdx == PUT_ACK_NONE)
@@ -301,7 +302,7 @@ void CommandModule::servicePutAck()
     char r[24];
     snprintf(r, sizeof(r), "PUT %x a %ld", (unsigned)s_fid, s_ackIdx);
     s_ackIdx = PUT_ACK_NONE;
-    sendTextTo(r, nodeDB->getNodeNum()); // to self → delivered to the phone/serial client, no air TX
+    sendTextToPhone(r); // straight to the connected client, no LoRa TX — keeps acks ~instant
 }
 
 // ── Called from runOnce: abort a transfer that has gone quiet mid-stream ────────────────
@@ -314,5 +315,5 @@ void CommandModule::servicePutTimeout(uint32_t now)
     char reply[32];
     snprintf(reply, sizeof(reply), "PUT %x timeout", (unsigned)s_fid);
     abortTransfer();
-    enqueueReply(reply);
+    sendTextToPhone(reply);
 }
