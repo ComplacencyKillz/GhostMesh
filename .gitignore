@@ -17,3 +17,6 @@ ghostmesh.info/parameters.ghostmeshinfo.yaml
 *.lck
 *autosave*
 *auto_save*
+# kicad-happy analyzer output (regenerable) + python bytecode caches
+analysis/
+__pycache__/
