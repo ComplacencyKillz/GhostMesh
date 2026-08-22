@@ -79,11 +79,16 @@ Even on a private channel, Meshtastic broadcasts metadata by default:
 - **Device metrics** — battery and uptime, periodically.
 
 For covert deployment:
-- Disable position broadcasting (Module Config → GPS).
-- Disable device-metrics telemetry (Module Config → Telemetry).
-- Set the role to **ROUTER** — relays traffic without announcing itself, invisible to standard "who's on the mesh" queries.
+- Silence emissions with GhostMesh's own config (`/set`, web configurator, or FAP Settings): `silent on`
+  kills all physical outputs (OLED screen, RGB + onboard LEDs, buzzer, vibration; `gpsled` disables the
+  GPS PPS LED, best-effort), `gps off` / `gpsint` / `telint` cut or slow position + telemetry, and the
+  `rep_*`/`bc_*` flags stop mesh chatter (routine command replies are off by default).
+- Set the role to **ROUTER** (Meshtastic Module Config) — relays traffic without announcing itself,
+  invisible to standard "who's on the mesh" queries.
 
-> Planned (Phase 6): a single Stealth Mode toggle in the FAP that sends all three, plus kills the OLED and status LEDs.
+> Built: per-element output silencing + a `silent` master + GPS/telemetry control all ship in the
+> config layer. Still Phase 6: a single one-press Stealth Mode toggle in the FAP that also flips the
+> ROUTER role in the same action.
 
 ---
 

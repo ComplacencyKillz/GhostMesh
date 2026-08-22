@@ -6,8 +6,8 @@
 //
 // One struct the modules read at runtime, backed by NVS (ESP32 Preferences) so changes survive
 // reboot — until a wipe, which erases NVS along with everything else. Tunable live over the mesh
-// CLI (`/set <key> <val>`, `/cfg`) so a deployed node can be re-tuned without a reflash, and
-// (later) from the FAP settings screen.
+// CLI (`/set <key> <val>`, `/cfg`), from the web configurator, and from the FAP Settings screen —
+// all send the same self-addressed /set + /cfg over the local link, no reflash needed.
 //
 // Defaults below match the modules' original compile-time constants, so a fresh node behaves
 // exactly as before until something is changed.

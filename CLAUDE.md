@@ -190,9 +190,12 @@ flipper-app/
 │   ├── uart_helper.c/.h         — USART1 init, async RX ISR, TX helper
 │   ├── profile_manager.c/.h     — Built-in profiles + SD YAML loader
 │   ├── log_manager.c/.h         — SD card CSV append
+│   ├── gm_backup.c/.h, sha256.c/.h — encrypted config backup (AES-256-GCM)
+│   ├── ir_tx.c/.h               — NEC IR transmit (Control screen)
 │   └── proto_notes.md           — Protocol field number reference
 └── views/
-    └── main_view.c/.h           — Four-screen UI (Profile/Messages/RX history/Sensors), marquee scrolling, ViewPort draw callback
+    ├── main_view.c/.h           — 8-screen menu-hub UI (Profile/Messages/RX history/Sensors/Status/Control/Backup/Settings), marquee, ViewPort draw callback
+    └── gm_settings.c/.h         — data-driven descriptor table driving the Settings screen
 ```
 
 ### Key Design Decisions
@@ -238,10 +241,11 @@ Phases 10+ add sensors Meshtastic doesn't support natively. Rather than fork Mes
 repo vendors just the **custom module source** in `heltec-firmware/`; you drop it into a
 Meshtastic firmware checkout at the pinned tag and build. See `heltec-firmware/README.md`.
 
-**Build:** clone `meshtastic/firmware` at tag **`v2.7.15.567b8ea`** (the deployed version),
-copy the modules into `src/modules/`, register each in `src/modules/Modules.cpp` (`#include` +
-`new XxxModule();` in `setupModules()`), then `pio run -e heltec-v3`. Output:
-`.pio/build/heltec-v3/firmware.factory.bin` — flash at offset `0x0` (no erase, to keep config).
+**Build:** clone `meshtastic/firmware` at tag **`v2.7.15.567b8ea`** (the deployed version), run
+`heltec-firmware/setup.sh` (idempotent — copies the modules into `src/modules/`, registers them in
+`Modules.cpp`, and applies `gps-timepulse.patch`, which the build won't link without), then
+`pio run -e heltec-v3`. Output: `.pio/build/heltec-v3/firmware.factory.bin` — flash at offset `0x0`
+(no erase, to keep config). We vendor only the custom modules + patch, not a Meshtastic fork.
 
 **Modules** (each broadcasts a plain-text mesh packet → shows on the Meshtastic app AND the FAP):
 
@@ -252,6 +256,12 @@ copy the modules into `src/modules/`, register each in `src/modules/Modules.cpp`
 | `LightTamperModule` | GPIO5 (photoresistor ADC) | `TAMPER_LIGHT` | Fires when light rises above ambient |
 | `ProximityModule` | GPIO38/47 (RCWL-1601, 3.3V) | `PERSON_DETECTED` | Fires when distance drops below threshold |
 | `IRModule` | GPIO48 (VS1838B, NEC) | `ARMED` / `DISARMED` | Remote arm/disarm; sets `ghostmesh_armed` (alongside the slide switch — last action wins). Flipper remote: `flipper-app/GhostMeshBackpack.ir` |
+| `CommandModule` | GPIO39/40/26/35/37 outputs | replies (gated) | The *receiving* module: parses `/cmd @target` text — outputs (buzzer/vibration/LED), arm/disarm, wipe, live config (`/set`/`/cfg`), `/put` file upload. `CommandModule_payload.cpp` holds `/put`. |
+| `GhostMeshConfig` | — | — | NVS-backed config (~23 settings) every module reads; `/set`/`/cfg` + `ghostmesh_apply_native_config()` (GPS/telemetry). Not a mesh module. |
+| `GhostMeshWipe` | — | — | The complete-flash destruct, shared by `CommandModule` + `IRModule`. Not a mesh module. |
+
+> Note: only the top five broadcast plain-text events. `CommandModule`'s replies are individually
+> gated by config (`rep_*`/`bc_*`, most off by default), so a node is quiet unless configured to talk.
 
 **Armed gate:** `ArmingModule` reads the slide switch into `volatile bool ghostmesh_armed`
 (`GhostMeshArming.h`). The three tamper modules only broadcast when armed — so the backpack can
@@ -277,7 +287,7 @@ Deploy credentials live in `parameters.cicd.yaml` (gitignored). Template at `par
 
 Use the **`/ghostmesh-website-access`** skill for deploy workflows. Use **`/brand_voice_and_content_tone`** before writing any web copy.
 
-**Pages:** index, mission, hardware, software, usecases, roadmap, docs
+**Pages:** index, mission, hardware, software, usecases, roadmap, docs, config (the web configurator — Web Serial `/set`/`/cfg`, esptool-js firmware flasher, `/put` payload upload)
 **Animations:** mesh canvas (all pages), scrolling sys-bar, title scramble effects
 **Tone:** Afternow universe, Server Monk aesthetic — see brand voice skill
 

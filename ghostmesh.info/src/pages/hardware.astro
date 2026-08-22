@@ -23,20 +23,24 @@ import SubLayout from '../layouts/SubLayout.astro';
     </tbody>
   </table>
 
-  <h2>SENSOR EXPANSION (PLANNED)</h2>
+  <h2>SENSOR &amp; OUTPUT EXPANSION</h2>
+  <p>All on the Heltec backpack — the Flipper carries no control hardware; it drives everything over
+  the 3-wire link and the mesh.</p>
   <table class="data-table">
-    <thead><tr><th>SENSOR</th><th>INTERFACE</th><th>FUNCTION</th><th>PHASE</th></tr></thead>
+    <thead><tr><th>PART</th><th>INTERFACE</th><th>FUNCTION</th><th>PHASE</th><th>STATUS</th></tr></thead>
     <tbody>
-      <tr><td>BME280</td><td>I2C (0x76)</td><td>Temp / humidity / pressure</td><td>07</td></tr>
-      <tr><td>MAX17048</td><td>I2C (0x36)</td><td>LiPo fuel gauge</td><td>09</td></tr>
-      <tr><td>BN-220 GPS</td><td>UART1 9600 baud</td><td>Position + timestamp</td><td>08</td></tr>
-      <tr><td>HC-SR04</td><td>GPIO 21/47</td><td>Proximity — dead-drop detection</td><td>11</td></tr>
-      <tr><td>SW-520D tilt</td><td>GPIO 2</td><td>Tamper — node disturbed</td><td>10</td></tr>
-      <tr><td>Slide switch</td><td>Heltec GPIO4 / Flipper pin 6 (PB2)</td><td>Physical arm/disarm</td><td>10</td></tr>
-      <tr><td>Photoresistor</td><td>ADC GPIO 5</td><td>Tamper — case opened</td><td>10</td></tr>
-      <tr><td>IR receiver</td><td>GPIO 48</td><td>Remote arm/disarm ~10m</td><td>10</td></tr>
-      <tr><td>Vibration motor</td><td>Flipper pin 3 (PA6) via AO3400</td><td>Haptic RX alert</td><td>10</td></tr>
-      <tr><td>Active buzzer</td><td>Flipper pin 2 (PA7) via PN2222</td><td>Audible RX alert</td><td>10</td></tr>
+      <tr><td>BME280</td><td>I2C (0x76)</td><td>Temp / humidity / pressure</td><td>07</td><td>✅</td></tr>
+      <tr><td>BN-220 GPS</td><td>UART1 9600 (GPIO34/33)</td><td>Position + timestamp</td><td>08</td><td>✅</td></tr>
+      <tr><td>MAX17048</td><td>I2C (0x36)</td><td>LiPo fuel gauge</td><td>09</td><td>🚧 on-bus, unread</td></tr>
+      <tr><td>SW-520D tilt</td><td>GPIO2</td><td>Tamper — node disturbed</td><td>10</td><td>✅</td></tr>
+      <tr><td>Photoresistor</td><td>ADC GPIO5</td><td>Tamper — case opened</td><td>10</td><td>✅</td></tr>
+      <tr><td>Slide switch</td><td>GPIO4</td><td>Physical arm/disarm</td><td>10</td><td>✅</td></tr>
+      <tr><td>IR receiver</td><td>GPIO48</td><td>Remote arm/disarm ~10m</td><td>10</td><td>✅</td></tr>
+      <tr><td>RCWL-1601</td><td>GPIO38/47 (3.3V)</td><td>Proximity — dead-drop detection</td><td>11</td><td>✅</td></tr>
+      <tr><td>Passive buzzer</td><td>GPIO39 via PN2222</td><td>Audible indicator (PWM tone)</td><td>10</td><td>✅</td></tr>
+      <tr><td>Vibration motor</td><td>GPIO40 via PN2222 + 1N4007</td><td>Haptic indicator</td><td>10</td><td>✅</td></tr>
+      <tr><td>RGB LED (SK6812)</td><td>GPIO26</td><td>Status indicator</td><td>10</td><td>✅</td></tr>
+      <tr><td>Wipe button</td><td>GPIO37</td><td>Physical destruct trigger</td><td>10</td><td>✅</td></tr>
     </tbody>
   </table>
 
@@ -57,7 +61,8 @@ Each device runs from its own battery.</pre></div>
   <div class="code-block"><pre>[Flipper battery]  →  Flipper Zero       (independent)
 [Heltec battery]   →  Heltec ESP32-S3    (independent)
                             │
-                       [GPIO26 Vext]  →  Sensor 3.3V rail</pre></div>
+                       Heltec 3V3  →  sensors + outputs (always on)
+                       Vext (GPIO36, software-gated)  →  OLED display</pre></div>
 
   <h2>SAFETY NOTES</h2>
   <p><span class="tag tag--warn">REQUIRED</span> Attach the 915MHz antenna before
@@ -65,8 +70,9 @@ Each device runs from its own battery.</pre></div>
   <p><span class="tag tag--warn">REQUIRED</span> Install the 1N4007 flyback diode
   across the vibration motor terminals before the MOSFET. The motor is an inductive
   load — without the diode, back-EMF spikes will damage the AO3400.</p>
-  <p><span class="tag tag--warn">NOTE</span> Standard HC-SR04 requires 5V. Verify
-  your module's datasheet. The Heltec 5V pin is only live when USB-powered.</p>
+  <p><span class="tag tag--warn">NOTE</span> The deployed proximity sensor is the RCWL-1601 —
+  3.3V-native, no divider needed. A substitute HC-SR04 requires 5V (only live on USB) plus a divider
+  on its Echo line.</p>
 
   <div class="scene-divider">
     <p>Full pinout and sensor wiring →

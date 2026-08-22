@@ -268,7 +268,7 @@ UART1 (GPIO34 RX / GPIO33 TX):
 
 ## Confirmed Working State
 
-- FAP: menu-hub UI (Messages / RX History / Sensors / Control / Status / Backup); `RDY` after the handshake
+- FAP: menu-hub UI (Messages / RX History / Sensors / Control / Status / Backup / Settings); `RDY` after the handshake
 - TX/RX text over the mesh; per-message RSSI/SNR; dated CSV logging; marquee display
 - Telemetry: BME280 temp/humidity/pressure, BN-220 GPS position, battery % in the title bar
 - Backpack firmware: tamper (tilt / light), proximity (RCWL-1601 at 3.3V), arming toggle, buzzer + vibration + RGB LED — all over the private mesh, arm-gated

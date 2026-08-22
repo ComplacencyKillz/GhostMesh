@@ -11,7 +11,7 @@ Menu hub ─[OK]→ Messages ─[OK]→ Profiles ─[OK]→ that profile's messa
    │                                                   (OK sends)
    ├─→ RX History        ├─→ Control (IR)
    ├─→ Sensors           ├─→ Status
-   └─→ Backup
+   └─→ Backup            └─→ Settings
 
 BACK always steps back one level.
 ```
@@ -38,6 +38,7 @@ The hub. Up/Down to choose, OK to open.
 │   Sensors                  │
 │   Control                  │
 │   Status · Backup          │
+│   Settings                 │
 ├────────────────────────────┤
 │ f69c: TAMPER               │ ← last received, scrolling
 └────────────────────────────┘
@@ -118,7 +119,7 @@ Temp/humidity/pressure come from the BME280; the GPS line shows the last fix or 
 
 ## Control
 
-`Menu → Control`. Drives a backpack over **IR** — point the Flipper's emitter at the node. The `Node:` line reflects the last `ARMED`/`DISARMED` the backpack broadcast, so you get confirmation the command landed.
+`Menu → Control`. Drives a backpack over **IR** — point the Flipper's emitter at the node. The `Node:` line reflects the last `ARMED`/`DISARMED` the backpack broadcast — but note that arm/disarm broadcasts are gated by the `rep_arm` setting, which is **off by default** (covert), so the line only updates if you've turned `rep_arm` on (Settings screen or `/set`).
 
 ```
 ┌────────────────────────────┐
@@ -135,7 +136,7 @@ Temp/humidity/pressure come from the BME280; the GPS line shows the last fix or 
 
 | Action | Effect |
 |--------|--------|
-| **Arm** / **Disarm** | Transmits one IR command; the node flips its arm state and broadcasts it back |
+| **Arm** / **Disarm** | Transmits one IR command; the node flips its arm state (and broadcasts it back only if `rep_arm` is enabled) |
 | **Wipe** | Opens an on-screen confirmation (defaults to **Cancel**). Confirm and the FAP sends the `ARM → WIPE → CONFIRM` IR sequence — the **complete-erase destruct** |
 
 The wipe confirm is deliberate: Cancel is preselected, and the toggle ignores held keys so a stray press can't reach Confirm. The destruct erases the backpack (see [opsec.md](opsec.md)) — only use it on a node you mean to burn.
@@ -168,6 +169,41 @@ The wipe confirm is deliberate: Cancel is preselected, and the toggle ignores he
 3. The screen reports `Saved backup_<id>.gmb` (or `Cancelled` / an error).
 
 The passphrase is never stored — a captured Flipper yields only ciphertext. To restore after reflashing a wiped node, copy the `.gmb` to a PC and run `tools/restore_backpack.py` (see [command-cli.md](command-cli.md) and the tool's header). Requires `pip install meshtastic cryptography`.
+
+---
+
+## Settings
+
+`Menu → Settings`. Live node configuration, sent to the attached backpack over the local link
+(self-addressed, off-air) — the same `/set`/`/cfg` you can drive from the web configurator or the
+mesh CLI. On open it queries the node and populates from the reply.
+
+A scrolling, sectioned list of ~23 settings:
+
+```
+┌────────────────────────────┐
+│ Settings              77%  │
+├────────────────────────────┤
+│ -SENSING-                  │
+│ ► prox      200 cm         │
+│   light     2000           │
+│ -REPLIES-                  │
+│   arm       off            │
+├────────────────────────────┤
+│ Up/Dn pick  Lt/Rt set      │
+└────────────────────────────┘
+```
+
+- **Up/Down** move between rows (section headers are skipped).
+- **Left/Right** change the selected value — a slider steps its number, a toggle flips on/off — and
+  the change is sent to the node immediately.
+- **OK** re-queries the node; **BACK** returns to the menu.
+
+Sections: **Sensing** (proximity / light thresholds), **Replies** (per-command mesh-reply gates —
+`arm`, `buzz`, `vib`, `led`, `wipe`, and the tamper broadcasts; routine replies are off by default),
+**Outputs** (physical indicators — LED, buzzer, vibration, screen, onboard LED, GPS LED — for silent
+mode), **Inputs** (per-sensor enable, to save battery), and **GPS/Telem** (GPS on/off + update
+intervals). See [command-cli.md](command-cli.md) for every key.
 
 ---
 

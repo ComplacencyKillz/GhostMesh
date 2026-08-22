@@ -16,6 +16,20 @@ import SubLayout from '../layouts/SubLayout.astro';
     no install, nothing on the air: <a href="/config"><strong>[ CONFIGURATOR ]</strong></a></p>
   </div>
 
+  <h2>THE WEB CONFIGURATOR</h2>
+  <p>The build steps below are for developers. Most operators never touch them — the
+  <a href="/config">browser configurator</a> (Chrome/Edge, USB, no install) does three things over
+  Web Serial:</p>
+  <ul>
+    <li><strong>Configure</strong> — every node setting as a slider/toggle: per-command mesh replies
+    on/off, a <strong>silent</strong> stealth mode (screen + LEDs + buzzer/vibration dark), per-sensor
+    battery gating, GPS/telemetry rate. Live, persisted to the node, no reflash.</li>
+    <li><strong>Flash firmware</strong> — esptool-js in the browser flashes the latest GhostMesh build
+    (or your own <code>.bin</code>) straight to the Heltec.</li>
+    <li><strong>Payload upload</strong> — <code>/put</code> pushes a file to the node's flash,
+    chunked and CRC32-verified.</li>
+  </ul>
+
   <h2>REQUIREMENTS</h2>
   <p>Python 3.8+, pip, and a Flipper Zero running official or compatible firmware.
   On the Heltec, enable the Meshtastic Serial module in PROTO mode (RX GPIO7, TX GPIO6,

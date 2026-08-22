@@ -108,7 +108,7 @@ static bool skip_field(const uint8_t* buf, size_t len, size_t* pos, uint32_t wir
 //   MeshPacket.decoded   = field 4, bytes
 //   MeshPacket.hop_limit = field 9, varint               — NOT field 13
 //
-// MED-5: Stack buffer sizes in proto_encode_text are bounded by text_len <= 80:
+// MED-5: Stack buffer sizes in proto_encode_text_to are bounded by text_len <= 80:
 //   data_buf[96]:  portnum(2) + payload_hdr(2) + text(80) = 84 bytes max
 //   mesh_buf[160]: to(5) + decoded_hdr(2) + data(84) + hop_limit(2) = 93 bytes max
 //   radio_buf[256]: packet_hdr(2) + mesh(93) = 95 bytes max

@@ -17,29 +17,25 @@ nodes. A different tag may build fine but can shift file layout / APIs.
    git clone --depth 1 --branch v2.7.15.567b8ea --recurse-submodules --shallow-submodules \
      https://github.com/meshtastic/firmware.git meshtastic-firmware
    ```
-2. Copy the module `.cpp/.h` from this directory into `meshtastic-firmware/src/modules/`.
-3. Register each module in `src/modules/Modules.cpp` — add an `#include` and a
-   `new XxxModule();` line in `setupModules()`.
-3b. **Apply the GPS vendor patch** (required for the silent-mode `gpsled` toggle). This is the ONE
-   change that touches Meshtastic's *own* source (not `src/modules/`), so it can't be a drop-in module
-   — it's kept as a tracked diff here and re-applied on a fresh checkout:
+2. Run the setup script from this directory — copies the modules in, registers them in
+   `src/modules/Modules.cpp`, and applies the GPS vendor patch. Idempotent (safe to re-run):
    ```bash
-   cd meshtastic-firmware
-   git apply /path/to/ghostmesh/heltec-firmware/gps-timepulse.patch   # touches src/gps/{GPS.cpp,GPS.h,ubx.h}
+   ./setup.sh path/to/meshtastic-firmware      # defaults to ~/repos/meshtastic-firmware
    ```
-   It adds `GPS::setTimepulseEnabled(bool)` (sends a CFG-TP5 timepulse-disable over the GPS UART) so
-   `CommandModule` can silence the BN-220 PPS/fix LED. Without it the build won't link (CommandModule
-   calls `gps->setTimepulseEnabled`). Best-effort: may persist on modules whose LED isn't PPS-driven.
-   The patch is a plain `git diff` against tag `v2.7.15.567b8ea`; if it ever stops applying on a newer
-   tag, re-create it from the "GhostMesh vendor patch" comment blocks in those three files.
-4. Build for the Heltec V3:
+   Everything GhostMesh-specific lives in this directory: the modules (`*.cpp/.h`), the module
+   registration (encoded in `setup.sh`), and the one change to Meshtastic's *own* source —
+   `gps-timepulse.patch` (a `git diff` vs the pinned tag adding `GPS::setTimepulseEnabled()`, needed
+   for the silent-mode `gpsled` toggle; the build won't link without it). We vendor **only** these,
+   not a full Meshtastic fork — `setup.sh` drops them into a stock checkout.
+3. Build for the Heltec V3:
    ```bash
    pip install platformio           # once; a venv is fine
    cd meshtastic-firmware
    pio run -e heltec-v3
    ```
    Output: `.pio/build/heltec-v3/firmware.factory.bin`.
-5. Flash `firmware.factory.bin` to the Heltec (from Windows or wherever your flasher runs).
+4. Flash `firmware.factory.bin` to the Heltec (from Windows or wherever your flasher runs). Or flash
+   from the browser at **ghostmesh.info/config** (Web Serial + esptool-js — hosts the latest build).
 
 ## Modules
 

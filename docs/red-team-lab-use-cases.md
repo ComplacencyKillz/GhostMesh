@@ -39,7 +39,7 @@ unavailable, GhostMesh provides a fallback coordination channel over LoRa mesh.
 
 ## 2. Burn-Proof Protocol (Destruct + Stealth)
 
-**Status: destruct built (untested on a spare board); stealth + key-gen planned (Phase 6)**
+**Status: destruct built (untested on a spare board); output/GPS/telemetry silencing built via the config layer (`silent`, `screen`/`hbled`/`gpsled`, `gps`/`gpsint`/`telint`); one-press stealth (role→ROUTER in a single toggle) + key-gen still Phase 6**
 
 Ensures the device cannot be used against the operator if discovered.
 

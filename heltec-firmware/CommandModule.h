@@ -33,7 +33,7 @@ class CommandModule : public SinglePortModule, private concurrency::OSThread
     uint32_t reqBuzzMs = 0, buzzUntil = 0;
     uint32_t reqVibrateMs = 0, vibrateUntil = 0;
 
-    // ── spaced reply queue (so /help's 8 messages don't flood the airtime) ──
+    // ── spaced reply queue (so /help's 11 messages don't flood the airtime) ──
     // Slot is 96 (not 64) so the compact /cfg bitmask line (~74 chars) isn't truncated at source.
     static constexpr uint8_t kReplyQ = 12;
     char replyQ[kReplyQ][96];
@@ -59,6 +59,7 @@ class CommandModule : public SinglePortModule, private concurrency::OSThread
     bool     fxSegEntered = false; // has this segment's tone/vib been applied?
     uint8_t  steadyR = 0, steadyG = 0, steadyB = 0; // idle LED colour, restored after an effect
     // Per-channel enable (the covert toggle) lives in the persisted config: ghostmesh_config.notify*
+    // /out* (screen/hbled/gpsled) — and the `silent` master flips all six physical outputs at once.
     bool     lastArmedSeen = false; // arm-state edge detection → arm/disarm effects
     bool     eraseArmed = false;    // a wipe is scheduled once its effect finishes
     uint32_t eraseAt = 0;

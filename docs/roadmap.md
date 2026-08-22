@@ -205,9 +205,9 @@ any backpack over the mesh or IR, no Flipper required. See `docs/command-cli.md`
 
 | Heltec GPIO | Component | Behavior |
 |-------------|-----------|----------|
-| 39 | Passive buzzer via PN2222 | `/buzz [ms]` — PWM tone; distinct tones per event (planned) |
+| 39 | Passive buzzer via PN2222 | `/buzz [ms]` — PWM tone; distinct per-event tones via the indicator effect engine |
 | 40 | Vibration motor via PN2222 + 1N4007 | `/vibrate [ms]` — haptic alert |
-| 26 | RGB LED (SK6812) | `/led <color\|off>` — status indicator (planned; onboard GPIO35 for now) |
+| 26 | RGB LED (SK6812) | `/led <color\|off>` — status indicator, working; onboard GPIO35 mirrors its on/off state |
 | 37 | Wipe button (tact) | Factory reset — armed + double-press (2–5 s gap) |
 
 - [x] `CommandModule`: parse `/cmd @target [args]`, per-node targeting (last-4 id only — **no broadcast/`@ALL`**), spaced `/help`. Working on hardware 2026-08-18.
@@ -215,8 +215,8 @@ any backpack over the mesh or IR, no Flipper required. See `docs/command-cli.md`
 - [x] RGB SK6812 on GPIO26 — `/led` colours + green↔red gradient via `neopixelWrite`. Working 2026-08-20.
 - [x] IR wipe path: `IRModule` NECext `ARM → WIPE → CONFIRM` sequence + `.ir` buttons. Working (decode) 2026-08-19.
 - [x] **Indicator effect engine** — synced LED+buzzer+vibration effects bound to events (armed/disarmed/wipe/message/CLI); `/fx` to tune. Built 2026-08-20.
-- [x] **Config layer** — `/set` + `/cfg`, NVS-persisted (prox/light thresholds, notify led/buzz/vib = covert toggle). Tunable over the mesh, no reflash. Built 2026-08-20.
-- [ ] **FAP Settings screen** — dial the config on-screen and push it to a node. OPEN DESIGN Q: local-node config from the attached FAP needs the mesh-loopback behaviour confirmed on hardware (does a FAP-sent command reach the local `CommandModule`?); remote-node config over the mesh works today. Decide before building.
+- [x] **Config layer** — `/set` + `/cfg`, NVS-persisted, ~23 settings: prox/light thresholds, per-command mesh-reply gates (`rep_*`/`bc_*`), per-element outputs (`led/buzz/vib/screen/hbled/gpsled`) + `silent` master, per-sensor input enables (`in_*`) + `sensors` master, and Meshtastic-native `gps`/`gpsint`/`telint`. `/cfg` returns a compact bitmask line. Tunable over the mesh / USB, no reflash. Built 2026-08-20; expanded 2026-08-22.
+- [x] **FAP Settings screen** — a data-driven, multi-section table (Sensing / Replies / Outputs / Inputs / GPS+Telem) that sends the same self-addressed `/set`+`/cfg` over the local link. Mesh-loopback confirmed on hardware. Built (`flipper-app/views/gm_settings.{c,h}`).
 - [ ] FAP: parse incoming TAMPER / TAMPER_LIGHT / PERSON_DETECTED mesh packets and trigger a dedicated alert UI (visual — the Flipper carries no outputs)
 - [ ] Indicator polish: per-CLI-command buzz/vibration variants; tune colours/tones/timing on hardware
 
@@ -404,7 +404,7 @@ operator can trigger it over the mesh or IR. The Flipper carries no control hard
 | v0.8 | 8 | GPS + wardriving — ✅ GPS done, wardriving deferred · **current stable** |
 | v0.9 | 9 | Battery intelligence (MAX17048) — ⏳ wired, not read (parked) |
 | v1.0 | 10 | Physical controls, alerting, tamper detection |
-| v1.1 | 11 | Dead-drop surveillance (HC-SR04) |
+| v1.1 | 11 | Dead-drop surveillance (RCWL-1601) |
 | v1.2 | 12 | SIGINT, jammer detection, advanced wardriving |
 | v1.3 | 13 | Remote payload execution (BadUSB, NFC, Sub-GHz relay) |
 | v1.4 | 14 | UART encryption (ChaCha20-Poly1305) |

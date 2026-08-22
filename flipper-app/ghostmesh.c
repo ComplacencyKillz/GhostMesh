@@ -669,8 +669,9 @@ int32_t ghostmesh_app(void* p) {
             DateTime dt;
             furi_hal_rtc_get_datetime(&dt);
 
-            // Status bar: sender + full message text (marquee scrolls it)
-            // rx_text_buf is char[64], max strlen 63; %.68s is capped by source.
+            // Status bar: sender + message text (marquee scrolls it). rx_text_buf is char[96];
+            // %.68s truncates a long line into last_rx[80] — cosmetic only (the /cfg parser reads
+            // the full rx_text_buf, not last_rx).
             snprintf(state.last_rx, sizeof(state.last_rx),
                      "%.7s: %.68s", app->rx_sender, app->rx_text_buf);
             state.last_rx[sizeof(state.last_rx) - 1] = '\0';

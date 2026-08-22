@@ -4,7 +4,8 @@
 
 // GhostMesh proximity module (dead-drop surveillance).
 //
-// Pings an HC-SR04 ultrasonic sensor and broadcasts "PERSON_DETECTED" over LoRa when
+// Pings an RCWL-1601 ultrasonic sensor (HC-SR04-compatible, 3.3V-native) and broadcasts
+// "PERSON_DETECTED" over LoRa when
 // something comes within a threshold distance. Sent as a plain TEXT_MESSAGE_APP packet so it
 // surfaces on both the Meshtastic app and the GhostMesh FAP. Broadcasting over the mesh lets a
 // deployed backpack alert an operator who is nowhere near it.

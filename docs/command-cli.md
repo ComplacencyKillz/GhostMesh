@@ -2,7 +2,7 @@
 
 A text-based command interface carried over the Meshtastic mesh. Any operator can query and
 control any backpack — or all of them — by sending ordinary mesh text messages. Implemented in
-the Heltec custom firmware as `heltec-firmware/CommandModule` (planned).
+the Heltec custom firmware as `heltec-firmware/CommandModule`.
 
 ## Why it exists
 
@@ -149,18 +149,19 @@ The same `/set`/`/cfg` backend is reachable three ways:
 
 | Surface | Transport | Use |
 |---------|-----------|-----|
-| Mesh CLI | over the air, from another node | tune / silence a **deployed** node remotely |
+| **Web configurator** (`ghostmesh.info/config`) | **USB Web Serial** (browser), self-addressed (off-air) | primary no-install tool: sliders/toggles for every setting, plus firmware flash + `/put` upload |
 | FAP Settings screen | Flipper link, self-addressed (off-air) | configure the backpack on your Flipper |
-| `tools/configure_backpack.py` | **USB serial → PC**, self-addressed (off-air) | bench / provisioning config, **no Flipper needed** |
+| Mesh CLI | over the air, from another node | tune / silence a **deployed** node remotely |
+| `tools/configure_backpack.py` | **USB serial → PC**, self-addressed (off-air) | older scripted path, **no Flipper needed** |
 
-The FAP and USB paths address the command to the node's own id, so Meshtastic delivers it in-node
-without transmitting — config commands stay off the air.
+The web, FAP, and USB paths address the command to the node's own id, so Meshtastic delivers it
+in-node without transmitting — config commands stay off the air.
 
 ```
 pip install meshtastic
 python tools/configure_backpack.py --port /dev/ttyUSB0              # show current config
 python tools/configure_backpack.py --port /dev/ttyUSB0 --set prox 150
-python tools/configure_backpack.py --port COM5 --set notify off     # silence everything
+python tools/configure_backpack.py --port COM5 --set silent on       # all physical outputs off
 ```
 
 Every command — including `/help` and `/status` — must name a specific node id. There is **no**
@@ -180,8 +181,9 @@ light/sound effects (`CommandModule`'s effect engine):
 | CLI command received | 2 green flashes | short buzz |
 
 Arm/disarm effects fire regardless of the source (switch, IR, or mesh). At rest the LED holds its
-steady colour — **off by default, for covert deployment**. Per-channel enables (LED / buzzer /
-vibration) are the covert toggle, configurable via the settings layer (planned).
+steady colour — **off by default, for covert deployment**. Per-element output enables
+(`led`/`buzz`/`vib`/`screen`/`hbled`/`gpsled`) are the covert toggles, and the `silent` master
+flips all six off at once — all configurable via the settings layer (`/set`, web, or FAP).
 
 ## Wipe safety (defense in depth)
 

@@ -156,7 +156,7 @@ ProcessMessage CommandModule::handleReceived(const meshtastic_MeshPacket &mp)
 // ── Parse "/command @target [arg]" and dispatch ─────────────────────────────────────
 void CommandModule::handleCommandText(char *text, uint32_t from)
 {
-    (void)from; // replies are broadcast, not directed — every operator sees the response
+    (void)from; // any reply we DO send is broadcast, not directed (many are gated off by rep_* config)
 
     char *s = text;
     while (*s == ' ')
@@ -266,7 +266,8 @@ void CommandModule::doStatus()
 }
 
 // ── /set <key> <val>: tune a config value live and persist it to NVS ─────────────────
-// Keys: prox <cm>, light <counts>, led|buzz|vib <on|off>, notify <on|off> (all three at once).
+// Keys: numerics prox <cm>, light <counts>, gpsint/telint <s>; outputs led|buzz|vib|screen|hbled|
+// gpsled|gps <on|off>; masters notify|silent|sensors <on|off>; flags rep_*/bc_*/in_* <on|off>.
 static bool parse_onoff(const char *v, bool *out) {
     if (!v) return false;
     if (strcasecmp(v, "on") == 0 || strcmp(v, "1") == 0) { *out = true; return true; }

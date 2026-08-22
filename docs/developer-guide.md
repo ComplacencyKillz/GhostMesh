@@ -16,7 +16,8 @@ helpers/
   gm_backup.c/.h     — AES-256-GCM encrypted config backup → SD
   sha256.c/.h        — bundled SHA-256 (the backup KDF)
 views/
-  main_view.c/.h     — menu-hub UI (7 screens), shared chrome, marquee, ViewPort callbacks
+  main_view.c/.h     — menu-hub UI (8 hub screens), shared chrome, marquee, ViewPort callbacks
+  views/gm_settings.c/.h — data-driven descriptor table driving the Settings screen
 ```
 
 ---
@@ -84,6 +85,7 @@ typedef enum {
     GhostMeshScreenStatus,     // node state overview
     GhostMeshScreenControl,    // IR arm / disarm / wipe
     GhostMeshScreenBackup,     // encrypted config backup
+    GhostMeshScreenSettings,   // live node config (/set + /cfg over the local link)
 } GhostMeshScreen;
 ```
 
@@ -206,10 +208,12 @@ Each phase gets its own branch: `phase-N-short-description`. All changes for tha
 land on the branch before merging to main. The roadmap (`docs/roadmap.md`) tracks what
 each phase covers and what requires custom Meshtastic firmware vs. FAP-only changes.
 
-Phases 9+ introduce custom Meshtastic modules on the Heltec. Their source lives in the
-`heltec-firmware/` directory in this repo (module `.cpp/.h` plus build notes). To build,
-drop them into a checkout of the Meshtastic firmware at the pinned tag and compile with
-PlatformIO for the `heltec-v3` environment. See `heltec-firmware/README.md` for the steps.
+Phases 10+ introduce custom Meshtastic modules on the Heltec. Their source lives in the
+`heltec-firmware/` directory in this repo (module `.cpp/.h`, plus `gps-timepulse.patch` and
+`setup.sh`). To build, clone the Meshtastic firmware at the pinned tag, run
+`heltec-firmware/setup.sh` (copies the modules in, registers them in `Modules.cpp`, and applies
+the GPS patch — the build won't link without it), then `pio run -e heltec-v3`. See
+`heltec-firmware/README.md` for the steps.
 
 ### The Heltec module system
 
@@ -226,15 +230,17 @@ already handles them; there is no separate serial "sentinel" protocol. Broadcast
 mesh (rather than the wire) is what lets a deployed backpack alert the operator when the
 Flipper is nowhere near it.
 
-**GhostMesh's Heltec modules** live in `heltec-firmware/` (drop into a Meshtastic checkout at
-tag `v2.7.15.567b8ea`, register in `Modules.cpp`, `pio run -e heltec-v3`):
+**GhostMesh's Heltec modules** live in `heltec-firmware/` (run `setup.sh` against a Meshtastic
+checkout at tag `v2.7.15.567b8ea`, then `pio run -e heltec-v3`):
 
 - `ArmingModule` (GPIO4) — toggle switch; any flip inverts `volatile bool ghostmesh_armed` (`GhostMeshArming.h`) and broadcasts `ARMED`/`DISARMED`
 - `TiltModule` (GPIO2) → `TAMPER` — **replaces the built-in Detection Sensor (disable it in the app)**
 - `LightTamperModule` (GPIO5 ADC) → `TAMPER_LIGHT`
 - `ProximityModule` (GPIO38/47) → `PERSON_DETECTED`
 - `IRModule` (GPIO48) — NECext decode (addr `0x474D`); arm / disarm + the `ARM→WIPE→CONFIRM` destruct
-- `CommandModule` — **listens** for `/cmd @target` mesh text; drives buzzer/vibration/LED, status, arm/disarm, wipe (the first *receiving* module)
+- `CommandModule` — **listens** for `/cmd @target` mesh text; drives buzzer/vibration/LED, status, arm/disarm, wipe, live config (`/set`/`/cfg`), and `/put` file upload (the first *receiving* module)
+- `CommandModule_payload.cpp` — the `/put` chunked-file receiver (base64 over PROTO → LittleFS, CRC32-verified), a split-out part of `CommandModule`
+- `GhostMeshConfig` — the NVS-backed config layer (~23 settings) read by every module; `/set`/`/cfg` and `ghostmesh_apply_native_config()`
 - `GhostMeshWipe` — the complete-flash destruct, shared by `CommandModule` and `IRModule`
 
 The tamper modules check `ghostmesh_armed` and only broadcast when armed. Alerts are plain

@@ -55,13 +55,19 @@ The backpack is a **shield.** It plugs onto the Flipper Zero's GPIO header, taps
 - Send / receive text over the mesh; canned message profiles (3 built-in + up to 5 from SD YAML)
 - RX history, RSSI / SNR, marquee display, dated CSV logging (→ KML via `tools/log_to_kml.py`)
 - Live telemetry: temperature / humidity / pressure (BME280), GPS position, battery %
-- Menu-hub UI with a **Control** screen (IR arm / disarm / wipe) and **encrypted config backup**
+- Menu-hub UI with **Control** (IR arm / disarm / wipe), **encrypted config backup**, and a live **Settings** screen
+
+**Web configurator — [ghostmesh.info/config](https://ghostmesh.info/config)** (Chrome/Edge, USB, no install)
+- Live node config over Web Serial (`/set`/`/cfg`) — every setting as a slider/toggle
+- **Firmware flasher** (esptool-js) — flash the latest build or your own `.bin` from the browser
+- **Payload Upload** — `/put` chunked file transfer to the node's flash, CRC32-verified
 
 **Backpack — custom Heltec firmware**
-- Tamper detection: tilt (moved), photoresistor (case opened), ultrasonic proximity (approach)
+- Tamper detection: tilt (moved), photoresistor (case opened), ultrasonic proximity (RCWL-1601, approach)
 - Arming gate — sensors report only when armed; flipped by a switch, the mesh, or IR
 - Indicators: buzzer, vibration motor, RGB status LED (colors + a green↔red gradient)
-- Mesh command CLI — `/cmd @target`: status, arm / disarm, buzz, vibrate, wipe
+- Mesh command CLI — `/cmd @target`: status, arm/disarm, buzz, vibrate, led, fx, `/set`/`/cfg`, `/put`, wipe
+- **Configurable everything**: per-command mesh replies on/off, a `silent` stealth mode (screen + LEDs + buzzer/vibration off), per-sensor battery gating, GPS/telemetry rate control — all live, no reflash
 - IR line-of-sight control (NECext): arm / disarm / the `ARM → WIPE → CONFIRM` destruct
 - Destruct: armed-gated **complete flash erase** — firmware, config, and channel keys wiped to USB download mode; recover by reflash + encrypted-backup restore
 
