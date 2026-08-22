@@ -1,5 +1,6 @@
 #include "IRModule.h"
 #include "GhostMeshArming.h"
+#include "GhostMeshConfig.h"
 #include "GhostMeshWipe.h"
 #include "MeshService.h"
 #include "configuration.h"
@@ -11,6 +12,7 @@ IRModule *irModule;
 // VS1838B IR receiver on GPIO48 (OUT->GPIO48, VCC->3.3V, GND->GND). Demodulated, active-low.
 #define IR_PIN     48
 #define IR_POLL_MS 50
+#define IR_DISABLED_MS 3000 // when in_ir is off: idle poll (ISR detached) so a re-enable is noticed
 
 // ── GhostMesh NECext command set ────────────────────────────────────────────────────
 // 16-bit address = our namespace so random remotes / room noise never match. Commands select the
@@ -80,10 +82,26 @@ int32_t IRModule::runOnce()
     if (firstTime) {
         firstTime = false;
         pinMode(IR_PIN, INPUT);
-        attachInterrupt(digitalPinToInterrupt(IR_PIN), ir_isr, FALLING);
+        ghostmesh_config_ensure_loaded();
         LOG_INFO("IR: init on GPIO%d (NECext addr 0x%04X)", IR_PIN, GM_IR_ADDR);
-        return IR_POLL_MS;
+        // ISR is attached by the in_ir edge logic below (honors the config at boot).
     }
+
+    // in_ir gate: attach/detach the falling-edge ISR to match config. Detaching stops all IR wakeups
+    // (the interrupt is the cost driver); clearing the ISR statics avoids a stale frame on re-attach.
+    if (ghostmesh_config.inIr && !irAttached) {
+        ir_ready = false;
+        ir_inFrame = false;
+        attachInterrupt(digitalPinToInterrupt(IR_PIN), ir_isr, FALLING);
+        irAttached = true;
+    } else if (!ghostmesh_config.inIr && irAttached) {
+        detachInterrupt(digitalPinToInterrupt(IR_PIN));
+        irAttached = false;
+        ir_ready = false;
+        ir_inFrame = false;
+    }
+    if (!irAttached)
+        return IR_DISABLED_MS; // disabled — nothing to service
 
     if (ir_ready) {
         uint32_t raw = ir_decoded;
@@ -144,6 +162,7 @@ void IRModule::handleCommand(uint8_t cmd)
 
 void IRModule::broadcastArmState(bool armed)
 {
+    if (!ghostmesh_config.repArm) return; // IR arm/disarm mesh announce gated by rep_arm (default off)
     meshtastic_MeshPacket *p = allocDataPacket(); // portnum = TEXT_MESSAGE_APP
     p->want_ack = false;
     const char *msg = armed ? "ARMED" : "DISARMED";

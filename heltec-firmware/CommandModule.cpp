@@ -8,6 +8,8 @@
 #include "PowerStatus.h"
 #include "configuration.h"
 #include "main.h"
+#include "gps/GPS.h"          // gps global + GPS::setTimepulseEnabled (silent-mode GPS LED / native cfg)
+#include "graphics/Screen.h"  // screen->setOn() for the OLED-off silent-mode toggle
 #include <Arduino.h>
 #include <string.h>
 #include <strings.h> // strcasecmp
@@ -181,10 +183,10 @@ void CommandModule::handleCommandText(char *text, uint32_t from)
         doStatus();
     } else if (strcasecmp(cmd, "/arm") == 0) {
         ghostmesh_armed = true; // NOTE: the physical slide switch overrides on its next toggle
-        enqueueReply("ARMED");
+        if (ghostmesh_config.repArm) enqueueReply("ARMED");
     } else if (strcasecmp(cmd, "/disarm") == 0) {
         ghostmesh_armed = false;
-        enqueueReply("DISARMED");
+        if (ghostmesh_config.repArm) enqueueReply("DISARMED");
     } else if (strcasecmp(cmd, "/buzz") == 0) {
         uint32_t ms = arg ? (uint32_t)atoi(arg) : 300;
         if (ms > 5000)
@@ -192,7 +194,7 @@ void CommandModule::handleCommandText(char *text, uint32_t from)
         reqBuzzMs = ms ? ms : 300;
         char r[32];
         snprintf(r, sizeof(r), "BUZZ %ums", (unsigned)reqBuzzMs);
-        enqueueReply(r);
+        if (ghostmesh_config.repBuzz) enqueueReply(r);
     } else if (strcasecmp(cmd, "/vibrate") == 0) {
         uint32_t ms = arg ? (uint32_t)atoi(arg) : 500;
         if (ms > 5000)
@@ -200,7 +202,7 @@ void CommandModule::handleCommandText(char *text, uint32_t from)
         reqVibrateMs = ms ? ms : 500;
         char r[32];
         snprintf(r, sizeof(r), "VIBRATE %ums", (unsigned)reqVibrateMs);
-        enqueueReply(r);
+        if (ghostmesh_config.repVib) enqueueReply(r);
     } else if (strcasecmp(cmd, "/led") == 0) {
         doLed(arg);
     } else if (strcasecmp(cmd, "/fx") == 0) {
@@ -242,8 +244,9 @@ void CommandModule::doHelp()
         "/led @id <red|green|blue|gradient|off>",
         "/buzz @id [ms] - sound buzzer",
         "/vibrate @id [ms] - run vibration",
-        "/set @id <prox|light|led|buzz|vib|notify> <val>",
-        "/cfg @id - report current config",
+        "/set @id <key> <val> - prox light led buzz vib screen hbled gpsled",
+        "/set @id <key> - rep_* bc_* in_* silent sensors gps gpsint telint",
+        "/cfg @id - report current config (bitmask)",
         "/wipe @id - complete erase (armed+confirm)",
     };
     for (const char *l : lines)
@@ -277,28 +280,80 @@ void CommandModule::doSet(const char *key, const char *val)
         enqueueReply("SET needs <key> <val>");
         return;
     }
+    GhostMeshConfig &c = ghostmesh_config;
     char reply[48];
     bool onoff;
+
+    // ── Plain on/off flags: stored only; the owning module reads them next poll. No side effect. ──
+    static const struct { const char *k; bool *f; } kFlags[] = {
+        {"rep_arm", &ghostmesh_config.repArm},   {"rep_buzz", &ghostmesh_config.repBuzz},
+        {"rep_vib", &ghostmesh_config.repVib},   {"rep_led", &ghostmesh_config.repLed},
+        {"rep_wipe", &ghostmesh_config.repWipe}, {"bc_tilt", &ghostmesh_config.bcTilt},
+        {"bc_light", &ghostmesh_config.bcLight}, {"bc_prox", &ghostmesh_config.bcProx},
+        {"in_tilt", &ghostmesh_config.inTilt},   {"in_light", &ghostmesh_config.inLight},
+        {"in_prox", &ghostmesh_config.inProx},   {"in_ir", &ghostmesh_config.inIr},
+    };
+    for (auto &kf : kFlags) {
+        if (strcasecmp(key, kf.k) == 0) {
+            if (!parse_onoff(val, &onoff)) { enqueueReply("SET: bad key/val"); return; }
+            *kf.f = onoff;
+            snprintf(reply, sizeof(reply), "%s=%d", kf.k, onoff);
+            ghostmesh_config_save();
+            enqueueReply(reply);
+            return;
+        }
+    }
+
+    // ── Numerics + side-effect keys + masters ──
     if (strcasecmp(key, "prox") == 0) {
-        ghostmesh_config.proxThresholdCm = (uint16_t)atoi(val);
-        snprintf(reply, sizeof(reply), "prox=%u", ghostmesh_config.proxThresholdCm);
+        c.proxThresholdCm = (uint16_t)atoi(val);
+        snprintf(reply, sizeof(reply), "prox=%u", c.proxThresholdCm);
     } else if (strcasecmp(key, "light") == 0) {
-        ghostmesh_config.lightThreshold = (uint16_t)atoi(val);
-        snprintf(reply, sizeof(reply), "light=%u", ghostmesh_config.lightThreshold);
+        c.lightThreshold = (uint16_t)atoi(val);
+        snprintf(reply, sizeof(reply), "light=%u", c.lightThreshold);
+    } else if (strcasecmp(key, "gpsint") == 0) {
+        c.gpsUpdateSecs = (uint16_t)atoi(val);
+        ghostmesh_apply_native_config();
+        snprintf(reply, sizeof(reply), "gpsint=%u", c.gpsUpdateSecs);
+    } else if (strcasecmp(key, "telint") == 0) {
+        c.telUpdateSecs = (uint16_t)atoi(val);
+        ghostmesh_apply_native_config();
+        snprintf(reply, sizeof(reply), "telint=%u", c.telUpdateSecs);
     } else if (strcasecmp(key, "led") == 0 && parse_onoff(val, &onoff)) {
-        ghostmesh_config.notifyLed = onoff;
-        if (!onoff && curFx == FX_NONE) setSteadyLed(steadyR, steadyG, steadyB); // repaint (off)
+        c.notifyLed = onoff;
+        if (curFx == FX_NONE) setSteadyLed(steadyR, steadyG, steadyB); // repaint
         snprintf(reply, sizeof(reply), "led=%d", onoff);
     } else if (strcasecmp(key, "buzz") == 0 && parse_onoff(val, &onoff)) {
-        ghostmesh_config.notifyBuzz = onoff;
+        c.notifyBuzz = onoff;
         snprintf(reply, sizeof(reply), "buzz=%d", onoff);
     } else if (strcasecmp(key, "vib") == 0 && parse_onoff(val, &onoff)) {
-        ghostmesh_config.notifyVib = onoff;
+        c.notifyVib = onoff;
         snprintf(reply, sizeof(reply), "vib=%d", onoff);
+    } else if (strcasecmp(key, "screen") == 0 && parse_onoff(val, &onoff)) {
+        c.outScreen = onoff; applyOutputState();
+        snprintf(reply, sizeof(reply), "screen=%d", onoff);
+    } else if (strcasecmp(key, "hbled") == 0 && parse_onoff(val, &onoff)) {
+        c.outHbled = onoff; applyOutputState();
+        snprintf(reply, sizeof(reply), "hbled=%d", onoff);
+    } else if (strcasecmp(key, "gpsled") == 0 && parse_onoff(val, &onoff)) {
+        c.outGpsled = onoff; applyOutputState();
+        snprintf(reply, sizeof(reply), "gpsled=%d", onoff);
+    } else if (strcasecmp(key, "gps") == 0 && parse_onoff(val, &onoff)) {
+        c.gpsOn = onoff; ghostmesh_apply_native_config();
+        snprintf(reply, sizeof(reply), "gps=%d", onoff);
     } else if (strcasecmp(key, "notify") == 0 && parse_onoff(val, &onoff)) {
-        ghostmesh_config.notifyLed = ghostmesh_config.notifyBuzz = ghostmesh_config.notifyVib = onoff;
-        if (!onoff && curFx == FX_NONE) setSteadyLed(steadyR, steadyG, steadyB);
-        snprintf(reply, sizeof(reply), "notify=%d (led/buzz/vib)", onoff);
+        c.notifyLed = c.notifyBuzz = c.notifyVib = onoff;
+        if (curFx == FX_NONE) setSteadyLed(steadyR, steadyG, steadyB);
+        snprintf(reply, sizeof(reply), "notify=%d", onoff);
+    } else if (strcasecmp(key, "silent") == 0 && parse_onoff(val, &onoff)) {
+        bool en = !onoff; // silent on ⇒ every physical output OFF
+        c.notifyLed = c.notifyBuzz = c.notifyVib = en;
+        c.outScreen = c.outHbled = c.outGpsled = en;
+        applyOutputState();
+        snprintf(reply, sizeof(reply), "silent=%d", onoff);
+    } else if (strcasecmp(key, "sensors") == 0 && parse_onoff(val, &onoff)) {
+        c.inTilt = c.inLight = c.inProx = c.inIr = onoff;
+        snprintf(reply, sizeof(reply), "sensors=%d", onoff);
     } else {
         enqueueReply("SET: bad key/val");
         return;
@@ -307,14 +362,46 @@ void CommandModule::doSet(const char *key, const char *val)
     enqueueReply(reply);
 }
 
-// ── /cfg: reply the current config in one compact message ────────────────────────────
+// ── /cfg: reply the current config as one compact bitmask line ───────────────────────
+// rep bits: 0 arm,1 buzz,2 vib,3 led,4 wipe,5 tilt-bc,6 light-bc,7 prox-bc
+// out bits: 0 led,1 buzz,2 vib,3 screen,4 hbled,5 gpsled ; in bits: 0 tilt,1 light,2 prox,3 ir
 void CommandModule::doCfg()
 {
-    char reply[64];
-    snprintf(reply, sizeof(reply), "CFG prox=%u light=%u led=%d buzz=%d vib=%d",
-             ghostmesh_config.proxThresholdCm, ghostmesh_config.lightThreshold,
-             ghostmesh_config.notifyLed, ghostmesh_config.notifyBuzz, ghostmesh_config.notifyVib);
+    const GhostMeshConfig &c = ghostmesh_config;
+    uint8_t rep = (c.repArm) | (c.repBuzz << 1) | (c.repVib << 2) | (c.repLed << 3) | (c.repWipe << 4) |
+                  (c.bcTilt << 5) | (c.bcLight << 6) | (c.bcProx << 7);
+    uint8_t out = (c.notifyLed) | (c.notifyBuzz << 1) | (c.notifyVib << 2) | (c.outScreen << 3) |
+                  (c.outHbled << 4) | (c.outGpsled << 5);
+    uint8_t in = (c.inTilt) | (c.inLight << 1) | (c.inProx << 2) | (c.inIr << 3);
+    char reply[96];
+    snprintf(reply, sizeof(reply),
+             "CFG prox=%u light=%u rep=%x out=%x in=%x gps=%u gpsint=%u telint=%u",
+             c.proxThresholdCm, c.lightThreshold, rep, out, in, c.gpsOn, c.gpsUpdateSecs, c.telUpdateSecs);
     enqueueReply(reply);
+}
+
+// (Re)apply the physical output state from config: OLED on/off, onboard heartbeat LED, RGB (+mirror),
+// and the best-effort GPS PPS/fix LED. Called from /set of any output key, silent, and at boot.
+void CommandModule::applyOutputState()
+{
+    if (screen) screen->setOn(ghostmesh_config.outScreen);            // OLED
+    config.device.led_heartbeat_disabled = !ghostmesh_config.outHbled; // stop Meshtastic heartbeat toggling
+    if (!ghostmesh_config.outHbled) digitalWrite(LED_PIN, LOW);        // force GPIO35 dark now
+    if (curFx == FX_NONE) setSteadyLed(steadyR, steadyG, steadyB);     // repaint RGB + mirror per flags
+    if (gps) gps->setTimepulseEnabled(ghostmesh_config.outGpsled);     // GPS LED (best-effort UBX)
+}
+
+// Apply our GPS/telemetry settings to Meshtastic's own config, live, and persist. Defined here (not
+// in GhostMeshConfig.cpp) so it can reach the Meshtastic globals (config/moduleConfig/gps/nodeDB).
+void ghostmesh_apply_native_config()
+{
+    GhostMeshConfig &c = ghostmesh_config;
+    config.position.gps_mode =
+        c.gpsOn ? meshtastic_Config_PositionConfig_GpsMode_ENABLED : meshtastic_Config_PositionConfig_GpsMode_DISABLED;
+    if (gps) { if (c.gpsOn) gps->enable(); else gps->disable(); }
+    if (c.gpsUpdateSecs) config.position.gps_update_interval = c.gpsUpdateSecs;   // secs; re-read live
+    if (c.telUpdateSecs) moduleConfig.telemetry.environment_update_interval = c.telUpdateSecs;
+    if (nodeDB) nodeDB->saveToDisk(SEGMENT_CONFIG | SEGMENT_MODULECONFIG);
 }
 
 // ── /led <color|gradient|off>: set the idle colour, or run the gradient effect ───────
@@ -326,7 +413,7 @@ void CommandModule::doLed(const char *arg)
 
     if (strcasecmp(name, "gradient") == 0 || strcasecmp(name, "sweep") == 0) {
         startEffect(FX_GRADIENT);
-        enqueueReply("LED gradient");
+        if (ghostmesh_config.repLed) enqueueReply("LED gradient");
         return;
     }
 
@@ -354,7 +441,7 @@ void CommandModule::doLed(const char *arg)
     setSteadyLed(r, g, b);
     char reply[40];
     snprintf(reply, sizeof(reply), "LED %s", name);
-    enqueueReply(reply);
+    if (ghostmesh_config.repLed) enqueueReply(reply);
 }
 
 // ── /fx <name>: play an indicator effect for tuning (VISUAL only — never triggers a wipe) ──
@@ -372,7 +459,7 @@ void CommandModule::doFx(const char *arg)
     startEffect(fx); // fx==FX_NONE just stops
     char reply[32];
     snprintf(reply, sizeof(reply), "FX %s", arg ? arg : "off");
-    enqueueReply(reply);
+    if (ghostmesh_config.repLed) enqueueReply(reply);
 }
 
 // ── Indicator engine ──────────────────────────────────────────────────────────────────
@@ -383,7 +470,7 @@ void CommandModule::setSteadyLed(uint8_t r, uint8_t g, uint8_t b)
     steadyB = b;
     if (curFx == FX_NONE) { // only paint now if no effect owns the LED
         neopixelWrite(RGB_LED_PIN, ghostmesh_config.notifyLed ? r : 0, ghostmesh_config.notifyLed ? g : 0, ghostmesh_config.notifyLed ? b : 0);
-        digitalWrite(LED_PIN, (r || g || b) ? HIGH : LOW);
+        digitalWrite(LED_PIN, (ghostmesh_config.outHbled && (r || g || b)) ? HIGH : LOW);
     }
 }
 
@@ -407,7 +494,7 @@ void CommandModule::stopEffect()
     digitalWrite(VIBRATE_PIN, LOW);
     // Restore the idle LED.
     neopixelWrite(RGB_LED_PIN, ghostmesh_config.notifyLed ? steadyR : 0, ghostmesh_config.notifyLed ? steadyG : 0, ghostmesh_config.notifyLed ? steadyB : 0);
-    digitalWrite(LED_PIN, (steadyR || steadyG || steadyB) ? HIGH : LOW);
+    digitalWrite(LED_PIN, (ghostmesh_config.outHbled && (steadyR || steadyG || steadyB)) ? HIGH : LOW);
 }
 
 void CommandModule::tickEffect(uint32_t now)
@@ -437,7 +524,7 @@ void CommandModule::tickEffect(uint32_t now)
     uint8_t g = (uint8_t)((int)s.g0 + ((int)s.g1 - (int)s.g0) * (int)el / s.dur_ms);
     uint8_t b = (uint8_t)((int)s.b0 + ((int)s.b1 - (int)s.b0) * (int)el / s.dur_ms);
     neopixelWrite(RGB_LED_PIN, ghostmesh_config.notifyLed ? r : 0, ghostmesh_config.notifyLed ? g : 0, ghostmesh_config.notifyLed ? b : 0);
-    digitalWrite(LED_PIN, (r || g || b) ? HIGH : LOW);
+    digitalWrite(LED_PIN, (ghostmesh_config.outHbled && (r || g || b)) ? HIGH : LOW);
 
     // Advance at the end of the segment.
     if (now - fxSegStart >= s.dur_ms) {
@@ -456,8 +543,12 @@ void CommandModule::tickEffect(uint32_t now)
 // can never wipe the fleet. Still armed-gated + one-time token on top of that.
 void CommandModule::doWipeCommand(const char *arg)
 {
+    // NOTE on rep_wipe: the guards below silence only the wipe REPLY TEXT. The armed gate, the
+    // one-time token mint/verify, and the erase itself are outside the guards — wipe SAFETY is
+    // unchanged. (With rep_wipe off the mesh two-step /wipe can't be completed because the token is
+    // never shown — that's the operator's choice; the physical double-press and IR paths still work.)
     if (!ghostmesh_armed) {
-        enqueueReply("WIPE denied: not armed");
+        if (ghostmesh_config.repWipe) enqueueReply("WIPE denied: not armed");
         return;
     }
 
@@ -470,23 +561,23 @@ void CommandModule::doWipeCommand(const char *arg)
         wipeTokenAt = millis();
         char r[28];
         snprintf(r, sizeof(r), "WIPE confirm: send %04X", wipeToken);
-        enqueueReply(r);
+        if (ghostmesh_config.repWipe) enqueueReply(r);
         return;
     }
 
     // Stage 2: verify the echoed token.
     if (wipeToken == 0 || (millis() - wipeTokenAt) > WIPE_TOKEN_TTL_MS) {
         wipeToken = 0;
-        enqueueReply("WIPE: token expired, retry");
+        if (ghostmesh_config.repWipe) enqueueReply("WIPE: token expired, retry");
         return;
     }
     uint16_t got = (uint16_t)strtoul(arg, nullptr, 16);
     if (got != wipeToken) {
-        enqueueReply("WIPE: bad token");
+        if (ghostmesh_config.repWipe) enqueueReply("WIPE: bad token");
         return;
     }
     wipeToken = 0;
-    enqueueReply("WIPING");
+    if (ghostmesh_config.repWipe) enqueueReply("WIPING");
     wipePending = true; // runOnce fires it once this reply has actually gone out
 }
 
@@ -504,7 +595,7 @@ void CommandModule::serviceWipeButton(uint32_t now)
             uint32_t dt = now - btnFirstAt;
             if (ghostmesh_armed && dt > WIPE_DBL_MIN_MS && dt < WIPE_DBL_MAX_MS) {
                 LOG_WARN("Command: WIPE via physical double-press");
-                enqueueReply("WIPING (button)");
+                if (ghostmesh_config.repWipe) enqueueReply("WIPING (button)");
                 wipePending = true;
             }
             btnFirstAt = 0; // reset whether it fired or was mistimed
@@ -589,6 +680,9 @@ int32_t CommandModule::runOnce()
         neopixelWrite(RGB_LED_PIN, 0, 0, 0); // SK6812 dark at boot (no random-color power-on)
         pinMode(WIPE_BTN_PIN, INPUT_PULLUP);
         ghostmesh_config_ensure_loaded();
+        applyOutputState(); // boot into the configured silent-mode output state (screen/LEDs/GPS-LED)
+        // Native GPS/telemetry settings are persisted in Meshtastic's own config, so they restore on
+        // boot without us re-applying (avoids a boot-time flash write + a GPS-init race).
         lastArmedSeen = ghostmesh_armed; // seed the edge detector — don't fire on boot
         LOG_INFO("Command: init (buzz %d, vibrate %d, led %d/rgb %d, wipe-btn %d)", BUZZER_PIN, VIBRATE_PIN,
                  LED_PIN, RGB_LED_PIN, WIPE_BTN_PIN);

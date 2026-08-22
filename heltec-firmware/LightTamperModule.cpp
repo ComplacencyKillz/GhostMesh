@@ -22,6 +22,7 @@ LightTamperModule *lightTamperModule;
 #define LIGHT_TAMPER_HYSTERESIS 200
 #define LIGHT_POLL_INTERVAL_MS  500   // how often to sample the ADC
 #define LIGHT_MIN_BROADCAST_MS  60000 // minimum interval between alerts (anti-spam)
+#define LIGHT_DISABLED_MS       3000  // when in_light is off: idle poll (skip the ADC read) — battery
 
 LightTamperModule::LightTamperModule()
     : SinglePortModule("lighttamper", meshtastic_PortNum_TEXT_MESSAGE_APP), concurrency::OSThread("LightTamper")
@@ -38,6 +39,8 @@ int32_t LightTamperModule::runOnce()
                  ghostmesh_config.lightThreshold);
         return LIGHT_POLL_INTERVAL_MS;
     }
+
+    if (!ghostmesh_config.inLight) return LIGHT_DISABLED_MS; // sensor disabled — skip the ADC (battery)
 
     uint16_t raw = analogRead(LIGHT_TAMPER_PIN);
     LOG_DEBUG("LightTamper: raw=%d", raw); // watch this to calibrate the threshold (/set light N)
@@ -62,6 +65,7 @@ int32_t LightTamperModule::runOnce()
 
 void LightTamperModule::broadcastTamperLight(uint16_t raw)
 {
+    if (!ghostmesh_config.bcLight) return; // TAMPER_LIGHT announce gated by bc_light (default on)
     meshtastic_MeshPacket *p = allocDataPacket(); // portnum = TEXT_MESSAGE_APP
     p->want_ack = false;
     const char *msg = "TAMPER_LIGHT";

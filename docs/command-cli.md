@@ -36,14 +36,14 @@ every reply within the cap and leaves room for each command's help to grow.
 |---------|------|--------|
 | `/help` | — | Replies with **one message per command** (name + args + confirmation rule). |
 | `/status` | — | Replies with node state: armed/disarmed, battery %, last tamper, GPS fix. |
-| `/arm` | — | Arm the node (sets `ghostmesh_armed`); replies `ARMED`. |
-| `/disarm` | — | Disarm the node; replies `DISARMED`. |
-| `/led` | `<color\|gradient\|off>` | Set the idle RGB colour (default off = covert), or run the looping green↔red gradient. |
-| `/buzz` | `[ms]` | Sound the buzzer (default: short beep). |
-| `/vibrate` | `[ms]` | Run the vibration motor. |
-| `/fx` | `<name>` | Play an indicator effect for tuning — `armed`/`disarmed`/`wipe`/`msg`/`cli`/`gradient`/`off`. Visual only; `/fx wipe` does **not** erase. |
-| `/set` | `<key> <val>` | Tune + persist a setting: `prox <cm>`, `light <counts>`, `led\|buzz\|vib <on\|off>`, `notify <on\|off>` (all three). |
-| `/cfg` | — | Report the current config in one message. |
+| `/arm` | — | Arm the node (sets `ghostmesh_armed`). Mesh reply gated by `rep_arm` (default **off**). |
+| `/disarm` | — | Disarm the node. Mesh reply gated by `rep_arm` (default **off**). |
+| `/led` | `<color\|gradient\|off>` | Set the idle RGB colour (default off = covert), or run the looping green↔red gradient. Reply gated by `rep_led`. |
+| `/buzz` | `[ms]` | Sound the buzzer (default: short beep). Reply gated by `rep_buzz`. |
+| `/vibrate` | `[ms]` | Run the vibration motor. Reply gated by `rep_vib`. |
+| `/fx` | `<name>` | Play an indicator effect for tuning — `armed`/`disarmed`/`wipe`/`msg`/`cli`/`gradient`/`off`. Visual only; `/fx wipe` does **not** erase. Reply gated by `rep_led`. |
+| `/set` | `<key> <val>` | Tune + persist a setting — see the key tables below. |
+| `/cfg` | — | Report the current config as one compact bitmask line (see below). |
 | `/wipe` | `<token>` | Complete flash erase. Requires armed + confirmation — see below. |
 | `/put` | `begin\|d\|end …` | Chunked file upload to the node's flash. Machine protocol — the web configurator drives it, not humans. See below. |
 
@@ -79,14 +79,69 @@ LittleFS, and CRC32-verified. USB is just the fast, reliable case; the identical
 `/set` tunes a deployed node live — no reflash — and the change is saved to NVS, so it survives
 reboot (until a wipe, which erases NVS too). `/cfg` reads the current values back.
 
+**Sensing**
+
 | Key | Effect |
 |-----|--------|
 | `prox <cm>` | Proximity trip distance (`PERSON_DETECTED`) |
 | `light <counts>` | Light-tamper ADC threshold (`TAMPER_LIGHT`) |
-| `led` / `buzz` / `vib` `<on\|off>` | Enable/disable each indicator channel |
-| `notify <on\|off>` | All three indicator channels at once — the **covert toggle** for a silent deployment |
 
-Example: `/set @f69c prox 150` then `/cfg @f69c` → `CFG prox=150 light=2000 led=1 buzz=1 vib=1`.
+**Mesh replies & broadcasts** — what the node *announces on the channel* (orthogonal to the physical
+outputs below). Turn these off to stop the chatter and let the LED/buzzer/vibration be the feedback.
+
+| Key `<on\|off>` | Gates | Default |
+|-----|--------|---------|
+| `rep_arm` | `/arm`+`/disarm` replies **and** the slide-switch / IR `ARMED`/`DISARMED` broadcasts | **off** |
+| `rep_buzz` / `rep_vib` / `rep_led` | the `/buzz` / `/vibrate` / `/led`+`/fx` confirmation replies | **off** |
+| `rep_wipe` | the `/wipe` reply **text** only — wipe *safety* (armed + confirm token + erase) is unchanged | **on** |
+| `bc_tilt` / `bc_light` / `bc_prox` | the `TAMPER` / `TAMPER_LIGHT` / `PERSON_DETECTED` broadcasts | **on** |
+
+> With `rep_wipe off`, the two-step mesh `/wipe` can't be completed (the token is never shown) — the
+> physical double-press and IR `ARM→WIPE→CONFIRM` paths still work. `/help`, `/status`, `/cfg`, and
+> `/set` echoes are always sent (they're replies to an explicit query).
+
+**Physical outputs** — does the hardware fire (the covert toggle)?
+
+| Key `<on\|off>` | Effect | Default |
+|-----|--------|---------|
+| `led` / `buzz` / `vib` | RGB status LED / buzzer / vibration motor | on |
+| `screen` | OLED display on/off (`Screen::setOn`) | on |
+| `hbled` | onboard heartbeat LED (GPIO35) | on |
+| `gpsled` | GPS PPS/fix LED — **best-effort** (UBX timepulse disable; may persist on some modules) | on |
+| `notify` | led+buzz+vib at once (legacy covert toggle) | — |
+| `silent <on\|off>` | **master:** `on` = all six outputs off (screen dark, no LEDs, no sound) | — |
+
+**Sensor inputs (battery)** — does the module poll its hardware?
+
+| Key `<on\|off>` | Effect | Default |
+|-----|--------|---------|
+| `in_tilt` / `in_light` / `in_prox` / `in_ir` | enable/disable each sensor's polling | on |
+| `sensors <on\|off>` | **master:** all four inputs at once | — |
+
+**GPS & telemetry (Meshtastic-native — applied to Meshtastic config, persisted, live/no reboot)**
+
+| Key | Effect | Default |
+|-----|--------|---------|
+| `gps <on\|off>` | GPS on/off (`config.position.gps_mode`) | on |
+| `gpsint <secs>` | GPS update interval (`0` = Meshtastic default) | 0 |
+| `telint <secs>` | environment (BME280) telemetry interval (`0` = default) | 0 |
+
+### `/cfg` reply format
+
+`/cfg` returns one compact line with the booleans packed into three hex bitmasks:
+
+```
+CFG prox=<u> light=<u> rep=<hex> out=<hex> in=<hex> gps=<u> gpsint=<u> telint=<u>
+```
+
+| Mask | bit0 | bit1 | bit2 | bit3 | bit4 | bit5 | bit6 | bit7 |
+|------|------|------|------|------|------|------|------|------|
+| `rep` | arm | buzz | vib | led | wipe | tilt-bc | light-bc | prox-bc |
+| `out` | led | buzz | vib | screen | hbled | gpsled | — | — |
+| `in`  | tilt | light | prox | ir | — | — | — | — |
+
+Example: `/cfg @f69c` → `CFG prox=200 light=2000 rep=f0 out=3f in=f gps=1 gpsint=0 telint=0`
+(here `rep=f0` = wipe+all tamper broadcasts on, routine command replies off — the default).
 
 ### Three ways to configure a node
 

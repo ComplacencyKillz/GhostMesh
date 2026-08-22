@@ -24,6 +24,7 @@ class IRModule : public SinglePortModule, private concurrency::OSThread
 
   private:
     bool firstTime = true;
+    bool irAttached = false; // is the GPIO48 falling-edge ISR currently attached? (in_ir gate)
 
     // ARM → WIPE → CONFIRM sequence state (the out-of-band destruct).
     uint8_t  wipeStep = 0; // 0 = idle, 1 = WIPE seen (armed), awaiting CONFIRM

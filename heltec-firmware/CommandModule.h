@@ -34,8 +34,9 @@ class CommandModule : public SinglePortModule, private concurrency::OSThread
     uint32_t reqVibrateMs = 0, vibrateUntil = 0;
 
     // ── spaced reply queue (so /help's 8 messages don't flood the airtime) ──
+    // Slot is 96 (not 64) so the compact /cfg bitmask line (~74 chars) isn't truncated at source.
     static constexpr uint8_t kReplyQ = 12;
-    char replyQ[kReplyQ][64];
+    char replyQ[kReplyQ][96];
     uint8_t replyHead = 0, replyTail = 0;
     uint32_t nextReplyAt = 0;
 
@@ -70,7 +71,8 @@ class CommandModule : public SinglePortModule, private concurrency::OSThread
     void doLed(const char *arg);
     void doFx(const char *arg);          // /fx <name> — play an effect for tuning (no side effects)
     void doSet(const char *key, const char *val); // /set <key> <val> — tune + persist config
-    void doCfg();                        // /cfg — reply the current config
+    void doCfg();                        // /cfg — reply the current config (bitmask form)
+    void applyOutputState();             // (re)apply screen / heartbeat-LED / RGB / GPS-LED from config
     // indicator engine
     void startEffect(uint8_t fx);
     void tickEffect(uint32_t now);

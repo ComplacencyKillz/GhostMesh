@@ -5,6 +5,7 @@
 #include <furi.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "gm_settings.h"
 
 #define GHOSTMESH_PROFILE_NAME_LEN 20
 
@@ -55,11 +56,10 @@ typedef struct {
     const char* backup_result;     // status/result line
 
     // ── Settings screen (GhostMeshScreenSettings) — live node config ──
-    bool     settings_loaded;      // a /cfg reply has populated the values
-    uint8_t  settings_selected;    // highlighted field (0..4)
-    uint16_t set_prox;             // proximity threshold (cm)
-    uint16_t set_light;            // light-tamper ADC threshold
-    bool     set_led, set_buzz, set_vib; // indicator channel enables
+    // Data-driven: one value per GM_SETTINGS[] entry (slider→number, toggle→0/1, header→unused).
+    bool     settings_loaded;                 // a /cfg reply has populated the values
+    uint8_t  settings_selected;               // highlighted row (never a header)
+    uint16_t set_vals[GM_SETTINGS_MAX];       // parallel to GM_SETTINGS
 
     // ── Menu hub (GhostMeshScreenMenu) ───────────────────────────────
     const char** menu_names;

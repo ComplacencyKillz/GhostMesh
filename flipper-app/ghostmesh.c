@@ -48,7 +48,7 @@ typedef struct {
 
     // RX (written from UART ISR callback — volatile flag, no mutex; see proto_notes.md)
     char rx_sender[8];
-    char rx_text_buf[64];
+    char rx_text_buf[96]; // 96 (not 64): the compact /cfg bitmask line is ~74 chars — don't truncate
     int16_t rx_rssi;
     float rx_snr;
     volatile bool rx_updated;
@@ -104,11 +104,11 @@ typedef struct {
     bool request_backup;      // set from input; the main loop runs the modal passphrase + encrypt
     char backup_result[48];
 
-    // Settings state (live node config via /set + /cfg over the local link)
+    // Settings state (live node config via /set + /cfg over the local link) — data-driven, one
+    // value per GM_SETTINGS[] entry (see views/gm_settings.h).
     bool     settings_loaded; // a /cfg reply has populated the values
-    uint8_t  settings_sel;    // selected field 0..4
-    uint16_t set_prox, set_light;
-    bool     set_led, set_buzz, set_vib;
+    uint8_t  settings_sel;    // selected row (never a header)
+    uint16_t set_vals[GM_SETTINGS_MAX];
 
     // Send feedback
     char sent_display[24];
@@ -178,42 +178,39 @@ static void settings_request(GhostMeshApp* app) {
     proto_mode_send_local(app->proto, cmd);
 }
 
-// Change the selected field by dir (-1/+1 = down/off, up/on) and push it to the local node.
+// Move the selection by dir (-1/+1), skipping header rows and staying in bounds.
+static void settings_move(GhostMeshApp* app, int dir) {
+    int i = (int)app->settings_sel;
+    do {
+        i += dir;
+    } while(i >= 0 && i < (int)GM_SETTING_COUNT && GM_SETTINGS[i].type == GM_HEADER);
+    if(i >= 0 && i < (int)GM_SETTING_COUNT) app->settings_sel = (uint8_t)i;
+}
+
+// First selectable (non-header) row — used when entering the screen.
+static uint8_t settings_first(void) {
+    for(uint8_t i = 0; i < GM_SETTING_COUNT; i++)
+        if(GM_SETTINGS[i].type != GM_HEADER) return i;
+    return 0;
+}
+
+// Change the selected field by dir (-1/+1) and push it to the local node. Table-driven — one branch
+// for sliders, one for toggles, keyed off the GM_SETTINGS descriptor.
 static void settings_edit(GhostMeshApp* app, int dir) {
+    const GmSetting* g = &GM_SETTINGS[app->settings_sel];
+    if(g->type == GM_HEADER) return;
     char id[8];
     gm_local_id(app, id, sizeof(id));
     char cmd[40];
-    switch(app->settings_sel) {
-    case 0: {
-        int v = (int)app->set_prox + dir * 25;
-        if(v < 20) v = 20;
-        if(v > 400) v = 400;
-        app->set_prox = (uint16_t)v;
-        snprintf(cmd, sizeof(cmd), "/set @%s prox %u", id, (unsigned)v);
-        break;
-    }
-    case 1: {
-        int v = (int)app->set_light + dir * 100;
-        if(v < 0) v = 0;
-        if(v > 4095) v = 4095;
-        app->set_light = (uint16_t)v;
-        snprintf(cmd, sizeof(cmd), "/set @%s light %u", id, (unsigned)v);
-        break;
-    }
-    case 2:
-        app->set_led = (dir > 0);
-        snprintf(cmd, sizeof(cmd), "/set @%s led %s", id, app->set_led ? "on" : "off");
-        break;
-    case 3:
-        app->set_buzz = (dir > 0);
-        snprintf(cmd, sizeof(cmd), "/set @%s buzz %s", id, app->set_buzz ? "on" : "off");
-        break;
-    case 4:
-        app->set_vib = (dir > 0);
-        snprintf(cmd, sizeof(cmd), "/set @%s vib %s", id, app->set_vib ? "on" : "off");
-        break;
-    default:
-        return;
+    if(g->type == GM_SLIDER) {
+        int v = (int)app->set_vals[app->settings_sel] + dir * (int)g->step;
+        if(v < (int)g->min) v = (int)g->min;
+        if(v > (int)g->max) v = (int)g->max;
+        app->set_vals[app->settings_sel] = (uint16_t)v;
+        snprintf(cmd, sizeof(cmd), "/set @%s %s %u", id, g->key, (unsigned)v);
+    } else { // GM_TOGGLE
+        app->set_vals[app->settings_sel] = (dir > 0);
+        snprintf(cmd, sizeof(cmd), "/set @%s %s %s", id, g->key, (dir > 0) ? "on" : "off");
     }
     proto_mode_send_local(app->proto, cmd);
 }
@@ -284,7 +281,7 @@ static void on_input(InputKey key, InputType type, void* ctx) {
             app->rx_history_scroll = 0;
             app->control_sel       = 0;
             app->wipe_confirm      = false;
-            app->settings_sel      = 0;
+            app->settings_sel      = settings_first(); // first non-header row
             app->screen            = MENU[app->menu_sel].screen;
             if(app->screen == GhostMeshScreenSettings) {
                 settings_request(app); // pull the node's current config into the screen
@@ -429,10 +426,10 @@ static void on_input(InputKey key, InputType type, void* ctx) {
     case GhostMeshScreenSettings:
         switch(key) {
         case InputKeyUp:
-            if(app->settings_sel > 0) app->settings_sel--;
+            settings_move(app, -1);
             break;
         case InputKeyDown:
-            if(app->settings_sel < 4) app->settings_sel++;
+            settings_move(app, +1);
             break;
         case InputKeyLeft:
             if(app->settings_loaded) settings_edit(app, -1);
@@ -657,11 +654,7 @@ int32_t ghostmesh_app(void* p) {
         state.backup_result         = app->backup_result;
         state.settings_loaded       = app->settings_loaded;
         state.settings_selected     = app->settings_sel;
-        state.set_prox              = app->set_prox;
-        state.set_light             = app->set_light;
-        state.set_led               = app->set_led;
-        state.set_buzz              = app->set_buzz;
-        state.set_vib               = app->set_vib;
+        memcpy(state.set_vals, app->set_vals, sizeof(app->set_vals));
 
         Profile* active      = &app->profiles[app->profile_sel];
         state.messages       = (const char**)active->messages;
@@ -709,14 +702,34 @@ int32_t ghostmesh_app(void* p) {
                 app->node_armed = false;
                 app->node_armed_known = true;
             } else if(strncmp(app->rx_text_buf, "CFG ", 4) == 0) {
-                // Node's /cfg reply → populate the Settings screen. Parse by key so field order
-                // doesn't matter: "CFG prox=150 light=2000 led=1 buzz=1 vib=1".
+                // Node's /cfg reply → populate the Settings screen. Compact bitmask form:
+                // "CFG prox=.. light=.. rep=<hex> out=<hex> in=<hex> gps=.. gpsint=.. telint=..".
+                // Decode the three hex masks once, then fan out over GM_SETTINGS (sliders read their
+                // own numeric token; toggles read a mask bit, or the standalone gps= token).
+                const char* buf = app->rx_text_buf;
                 const char* t;
-                if((t = strstr(app->rx_text_buf, "prox=")))  app->set_prox = (uint16_t)atoi(t + 5);
-                if((t = strstr(app->rx_text_buf, "light="))) app->set_light = (uint16_t)atoi(t + 6);
-                if((t = strstr(app->rx_text_buf, "led=")))   app->set_led = atoi(t + 4) != 0;
-                if((t = strstr(app->rx_text_buf, "buzz=")))  app->set_buzz = atoi(t + 5) != 0;
-                if((t = strstr(app->rx_text_buf, "vib=")))   app->set_vib = atoi(t + 4) != 0;
+                unsigned rep = 0, out = 0, in = 0;
+                if((t = strstr(buf, "rep="))) rep = (unsigned)strtoul(t + 4, NULL, 16);
+                if((t = strstr(buf, "out="))) out = (unsigned)strtoul(t + 4, NULL, 16);
+                if((t = strstr(buf, "in=")))  in = (unsigned)strtoul(t + 3, NULL, 16);
+                for(uint8_t i = 0; i < GM_SETTING_COUNT; i++) {
+                    const GmSetting* g = &GM_SETTINGS[i];
+                    if(g->type == GM_SLIDER) {
+                        char needle[12];
+                        snprintf(needle, sizeof(needle), "%s=", g->key);
+                        if((t = strstr(buf, needle)))
+                            app->set_vals[i] = (uint16_t)atoi(t + strlen(needle));
+                    } else if(g->type == GM_TOGGLE) {
+                        if(g->mask == GM_MASK_REP)
+                            app->set_vals[i] = (rep >> g->bit) & 1u;
+                        else if(g->mask == GM_MASK_OUT)
+                            app->set_vals[i] = (out >> g->bit) & 1u;
+                        else if(g->mask == GM_MASK_IN)
+                            app->set_vals[i] = (in >> g->bit) & 1u;
+                        else if((t = strstr(buf, "gps="))) // standalone gps token
+                            app->set_vals[i] = atoi(t + 4) != 0;
+                    }
+                }
                 app->settings_loaded = true;
             }
             app->rx_updated = false;

@@ -549,7 +549,7 @@ static void on_rx_byte(uint8_t byte, void* ctx) {
                             char sender[8];
                             snprintf(sender, sizeof(sender), "%04lx",
                                      (unsigned long)(from_node & 0xFFFF));
-                            char text_buf[64];
+                            char text_buf[96]; // 96 (not 64): the compact /cfg line is ~74 chars
                             size_t copy = payload_len < sizeof(text_buf) - 1
                                               ? payload_len : sizeof(text_buf) - 1;
                             memcpy(text_buf, payload, copy);
