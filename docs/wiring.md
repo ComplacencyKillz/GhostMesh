@@ -94,16 +94,16 @@ Voltage divider on GPIO5 (ADC1), per the board schematic (`kicad/`):
 
 With the 10kΩ on the 3.3V side, **bright light lowers the ADC reading** — so the custom `LightTamperModule` broadcasts `TAMPER_LIGHT` when the reading drops below a threshold. **Working** — the default threshold (2000) triggers cleanly. Runs on `heltec-firmware/LightTamperModule` (see [developer-guide.md](developer-guide.md)).
 
-### Heltec ↔ HC-SR04 Ultrasonic (Proximity) 🚧
+### Heltec ↔ RCWL-1601 Ultrasonic (Proximity) ✅
 
-| HC-SR04 | Heltec |
-|---------|--------|
-| VCC | **5V** (not 3.3V — see note) |
+| RCWL-1601 | Heltec |
+|-----------|--------|
+| VCC | 3.3V |
 | Trig | GPIO38 |
-| Echo | 1kΩ → GPIO47 (junction), then GPIO47 → 2kΩ → GND |
+| Echo | GPIO47 |
 | GND | GND |
 
-The plain blue HC-SR04 **does not work at 3.3V** (reads 0 cm). It needs **5V**, and its 5V Echo must be divided to 3.3V before GPIO47 (1kΩ/2kΩ). **Working on the bench (USB 5V)** via `heltec-firmware/ProximityModule` → broadcasts `PERSON_DETECTED`. The battery backpack has no 5V, so deployment uses a **3.3V RCWL-1601 / JSN-SR04T** (drop-in, no code change).
+The **RCWL-1601 runs at 3.3V** — Trig and Echo wire **directly** to GPIO38/47 with **no level divider**. **Working on hardware** via `heltec-firmware/ProximityModule` → broadcasts `PERSON_DETECTED` when something comes within the threshold distance (tunable live with `/set … prox <cm>`). The JSN-SR04T is a drop-in 3.3V alternative. (The plain blue **HC-SR04 does not work at 3.3V** — it needs 5V plus a 1kΩ/2kΩ divider on Echo, so it only runs on USB bench power; that's why the deployed backpack uses the RCWL-1601.)
 
 ### Heltec ↔ IR Receiver (Arm/Disarm) ✅
 
@@ -117,24 +117,19 @@ VS1838B / KY-022 on GPIO48 (this module's pins are labelled by wire colour):
 
 Runs on `heltec-firmware/IRModule` → decodes NEC codes and arms/disarms (sets `ghostmesh_armed`, broadcasts `ARMED`/`DISARMED`), alongside the slide switch (last action wins). Works with any NEC remote, or the Flipper as a dedicated remote via `flipper-app/GhostMeshBackpack.ir`. Button codes live in `IRModule.cpp` (`IR_ARM_CODE` / `IR_DISARM_CODE`).
 
----
+### Heltec backpack — outputs & controls ✅
 
-## Planned Wiring
-
-Reserved assignments for components not yet connected. Do not treat these as built.
-
-### Heltec backpack — outputs & controls ⬜
-
-Driven by `heltec-firmware/CommandModule` over the mesh / IR — **no Flipper hardware**. Pins verified
-against the board header photo. Buzzer + vibration use a **PN2222** low-side driver on the bench; the
-EE PCB swaps the motor driver for an **AO3400** MOSFET (identical firmware — a low-side switch is
-`HIGH`=on either way). The arming slide switch is on Heltec GPIO4 (`ArmingModule`).
+Driven by `heltec-firmware/CommandModule` over the mesh / IR — **no Flipper hardware**. **All four are
+wired and working on hardware.** Pins verified against the board header photo. Buzzer + vibration use a
+**PN2222** low-side driver on the bench; the EE PCB swaps the motor driver for an **AO3400** MOSFET
+(identical firmware — a low-side switch is `HIGH`=on either way). The arming slide switch is on Heltec
+GPIO4 (`ArmingModule`).
 
 | Control | Heltec GPIO | Circuit |
 |---------|-------------|---------|
 | Passive buzzer | GPIO39 | GPIO39 → 1kΩ → PN2222 base; collector → buzzer(−); emitter → GND; buzzer(+) → 3V3. **1N4007 across the buzzer, stripe → 3V3** (it's a magnetic coil, ~15Ω). Firmware drives a PWM **tone**, not DC. |
 | Vibration motor | GPIO40 | GPIO40 → 1kΩ → PN2222 base; collector → motor; other motor lead → 3V3; emitter → GND. **1N4007 flyback across the motor, stripe → 3V3, is mandatory.** Plain on/off. |
-| RGB status LED | GPIO26 | SK6812 addressable — DIN ← GPIO26; VDD → 3V3; VSS → GND (planned). |
+| RGB status LED | GPIO26 | SK6812 addressable — DIN ← GPIO26; VDD → 3V3; VSS → GND. Driven via `neopixelWrite`; the onboard **GPIO35** LED mirrors its on/off state as a backup indicator. |
 | Wipe button | GPIO37 | Tact switch: one side → GPIO37, other → GND; firmware uses INPUT_PULLUP (pressed = LOW). Armed + double-press to fire. |
 
 ---
@@ -162,15 +157,19 @@ Numbers and labels match the Flipper case. The external UART is fixed by the STM
 | 17 / 18 | I2C bus 1 — OLED (0x3C), hardwired |
 | 2 | Tilt switch ✅ |
 | 5 | Photoresistor — light tamper (LightTamperModule) ✅ |
-| 38 / 47 | HC-SR04 proximity — trig / echo (ProximityModule) 🚧 |
+| 38 / 47 | RCWL-1601 proximity — trig / echo, 3.3V no divider (ProximityModule) ✅ |
 | 4 | Slide switch — arm/disarm (ArmingModule) ✅ |
 | 48 | IR receiver — arm/disarm (IRModule) ✅ |
+| 39 | Passive buzzer — PN2222 driver, PWM tone (CommandModule) ✅ |
+| 40 | Vibration motor — PN2222 + 1N4007 flyback (CommandModule) ✅ |
+| 26 | RGB status LED — SK6812 `neopixelWrite` (CommandModule) ✅ |
+| 37 | Wipe button — tact switch, INPUT_PULLUP, armed + double-press (CommandModule) ✅ |
 | 8–14 | SX1262 LoRa SPI + IRQ/RST/BUSY |
 | 19 / 20 | Native USB D− / D+ |
 | 1 | Battery ADC |
 | 43 / 44 | UART0 / CP2102 USB console — **avoid** (clamps on battery; fine for USB flashing/debug) |
 | 21 | OLED reset — do not reuse |
-| 35 | Onboard LED — not a usable UART pin |
+| 35 | Onboard white LED — mirrors the `/led` on/off state (CommandModule) ✅ |
 | 36 | Vext — powers OLED + external 3V3 rail (active-LOW) |
 
 ### Electrical rules

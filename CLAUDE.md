@@ -68,7 +68,7 @@ Flipper GND                  ────  Heltec GND
 | Passive buzzer via PN2222 → `/buzz` | GPIO (PWM tone) | GPIO39 | 10 | ✅ `CommandModule` — working on HW |
 | Vibration motor via PN2222 + 1N4007 → `/vibrate` | GPIO | GPIO40 | 10 | ✅ `CommandModule` — working on HW |
 | RGB status LED (SK6812) → `/led` | GPIO (addressable) | GPIO26 | 10 | ✅ `CommandModule` — `neopixelWrite`; colors + green↔red gradient sweep, working on HW |
-| Wipe button (tact switch) → factory reset | GPIO (INPUT_PULLUP) | GPIO37 | 10 | 🚧 `CommandModule` — armed + double-press |
+| Wipe button (tact switch) → factory reset | GPIO (INPUT_PULLUP) | GPIO37 | 10 | ✅ `CommandModule` — wired & working (armed + double-press) |
 
 **On Flipper ProtoBoard (operator controls):**
 
@@ -102,7 +102,7 @@ Bus 2 — GPIO41 SDA / GPIO42 SCL
 - `2`: SW-520D tilt switch (`TiltModule`)
 - `4`: slide switch / arming (`ArmingModule`)
 - `5`: photoresistor ADC (`LightTamperModule`)
-- `38 / 47`: HC-SR04 trig / echo (`ProximityModule`)
+- `38 / 47`: RCWL-1601 trig / echo — 3.3V, no divider (`ProximityModule`)
 - `48`: IR receiver — remote arm/disarm (`IRModule`)
 - `41–42`: I2C bus 2
 - `43–44`: UART0 / CP2102 USB console — do NOT use for the Flipper link (clamps on battery)
@@ -110,7 +110,7 @@ Bus 2 — GPIO41 SDA / GPIO42 SCL
 - `40`: vibration motor via PN2222 driver + 1N4007 flyback (`CommandModule` `/vibrate`)
 - `26`: external RGB status LED — SK6812 data (`CommandModule` `/led`, `neopixelWrite`; working). NOT Vext.
 - `37`: wipe button — tact switch, INPUT_PULLUP (`CommandModule` factory reset)
-- `21`: OLED reset (hardwired — not free; do not use for HC-SR04 trigger)
+- `21`: OLED reset (hardwired — not free; do not use for the proximity trigger)
 - `35`: onboard white LED — `CommandModule` mirrors the `/led` on/off state here (backup indicator alongside the SK6812 on GPIO26)
 - `36`: Vext — powers the OLED + external 3.3V rail (software gated, active LOW). GPIO26 is NOT Vext.
 - Only free non-strapping header pins on the V3 were `26 / 37 / 39 / 40` — now all four used.
@@ -250,7 +250,7 @@ copy the modules into `src/modules/`, register each in `src/modules/Modules.cpp`
 | `ArmingModule` | GPIO4 (SPDT slide switch) | `ARMED` / `DISARMED` | Sets the shared `ghostmesh_armed` flag |
 | `TiltModule` | GPIO2 (SW-520D, ext. pull-down) | `TAMPER` | Replaces the built-in Detection Sensor |
 | `LightTamperModule` | GPIO5 (photoresistor ADC) | `TAMPER_LIGHT` | Fires when light rises above ambient |
-| `ProximityModule` | GPIO38/47 (HC-SR04) | `PERSON_DETECTED` | Fires when distance drops below threshold |
+| `ProximityModule` | GPIO38/47 (RCWL-1601, 3.3V) | `PERSON_DETECTED` | Fires when distance drops below threshold |
 | `IRModule` | GPIO48 (VS1838B, NEC) | `ARMED` / `DISARMED` | Remote arm/disarm; sets `ghostmesh_armed` (alongside the slide switch — last action wins). Flipper remote: `flipper-app/GhostMeshBackpack.ir` |
 
 **Armed gate:** `ArmingModule` reads the slide switch into `volatile bool ghostmesh_armed`
@@ -287,8 +287,9 @@ Use the **`/ghostmesh-website-access`** skill for deploy workflows. Use **`/bran
 
 **FAP: stable v0.8** — Phases 0–5, 7, 8 complete and merged to `main`. (Phase 6 skipped;
 Phase 9 MAX17048 wired but not read.)
-**Heltec custom firmware: Phase 10/11 tamper sensors working** (`heltec-firmware/`) — tilt,
-light, proximity, and the arming gate, all over the private mesh (2026-08-17).
+**Heltec custom firmware: Phase 10/11 working** (`heltec-firmware/`) — tilt, light, proximity,
+the arming gate, IR arm/disarm, and the operator outputs (buzzer, vibration, RGB LED, wipe
+button), all over the private mesh; plus `/put` file upload to the node's flash.
 
 Confirmed working on hardware:
 - TX/RX text over the mesh; CSV logging (`timestamp,node_id,message,lat,lon,rssi,snr`), marquee, RSSI/SNR, RX history (16)
@@ -298,10 +299,12 @@ Confirmed working on hardware:
 - Battery %: Heltec battery level in the title bar (…/RDY/%/PWR)
 - Phase 10: `TAMPER` (tilt), `TAMPER_LIGHT` (photoresistor), `ARMED`/`DISARMED` (slide switch) — custom Heltec modules, all gated by the arm state; alerts arrive on the FAP as text (RX history/status bar)
 - Phase 11: `PERSON_DETECTED` (RCWL-1601 at 3.3V, GPIO38 trig / 47 echo, no divider) — working on HW
+- Phase 10 outputs: buzzer (GPIO39), vibration (GPIO40), RGB LED (GPIO26, mirrored on GPIO35), wipe button (GPIO37), and IR arm/disarm (GPIO48) — all working on HW via `CommandModule`/`IRModule`
+- Web configurator (`ghostmesh.info/config`): USB Web-Serial config (`/set`/`/cfg`), esptool-js firmware flasher, and `/put` chunked file upload to `/ghostmesh/` on the node (stop-and-wait, CRC32-verified) — working on HW
 
-**Not yet done:** Phase 6 (nuke/stealth/keys), Phase 9 (MAX17048 read), IR receiver arm/disarm,
-operator buzzer/vibration + a dedicated FAP tamper-alert UI (alerts currently show as plain
-text), env-telemetry CSV columns, wardriving capture.
+**Not yet done:** Phase 6 (nuke/stealth/keys), Phase 9 (MAX17048 read), a dedicated FAP
+tamper-alert UI (alerts currently show as plain text), env-telemetry CSV columns, wardriving
+capture. (IR arm/disarm and the operator buzzer/vibration/LED/wipe outputs are done — see below.)
 
 **Branch strategy:** `main` = stable releases. `phase-N-description` = active development.
 
@@ -313,7 +316,7 @@ text), env-telemetry CSV columns, wardriving capture.
 | v0.7 | 7 | BME280 environmental telemetry | No |
 | v0.8 | 8 | GPS + wardriving (BN-220) | No |
 | v0.9 | 9 | MAX17048 battery fuel gauge | Yes |
-| v1.0 | 10 | Physical controls: buzzer, vibration, tamper detection | Yes — 🚧 tamper + arming modules done; buzzer/vibration + FAP UI pending |
+| v1.0 | 10 | Physical controls: buzzer, vibration, tamper detection | Yes — ✅ tamper, arming, buzzer, vibration, RGB LED, IR, wipe button all working on HW; dedicated FAP tamper-alert UI still pending |
 | v1.1 | 11 | Dead-drop surveillance (RCWL-1601 proximity) | Yes — ✅ RCWL-1601 at 3.3V, working on HW |
 | v1.2 | 12 | SIGINT, jammer detection, wardriving heatmaps | Yes |
 | v1.3 | 13 | Remote payload execution (BadUSB, NFC, Sub-GHz relay) | Yes |

@@ -20,7 +20,7 @@ Every part in the build, with the maker and part marking to chase down a datashe
 | Fuel gauge | MAX17048 | Analog Devices (Maxim) | LiPo state-of-charge | I2C 0x36 |
 | Tilt switch | SW-520D | generic | Tamper — node moved | GPIO |
 | Light sensor | GL5528 photoresistor (LDR) | generic | Tamper — case opened | ADC |
-| Ultrasonic ranger | HC-SR04 (deploy: RCWL-1601) | generic | Proximity — approach | GPIO (5 V) |
+| Ultrasonic ranger | RCWL-1601 (3.3 V; HC-SR04 needs 5 V) | generic | Proximity — approach | GPIO (3.3 V) |
 | IR receiver | VS1838B | generic | NEC IR remote control | GPIO (38 kHz demod) |
 | RGB indicator | SK6812 | Adafruit-compatible | Status LED (`/led`, working) | 1-wire addressable |
 | Buzzer | passive magnetic buzzer | generic | Audible indicator (tones) | GPIO PWM via driver |
@@ -103,20 +103,20 @@ custom Meshtastic modules.
 | 18 | ❌ I2C bus 1 SCL | OLED display (hardwired) |
 | 19 | ❌ USB D- | ESP32-S3 native USB |
 | 20 | ❌ USB D+ | ESP32-S3 native USB |
-| 21 | ❌ OLED reset | Hardwired OLED reset — NOT free (HC-SR04 trigger uses GPIO38 instead) |
+| 21 | ❌ OLED reset | Hardwired OLED reset — NOT free (proximity trigger uses GPIO38 instead) |
 | 26 | ✅ RGB status LED | External SK6812 data (`/led` via `neopixelWrite`; colors + gradient, working) — NOT Vext (that's GPIO36) |
 | 33 | ✅ Free — confirmed | GPS UART1 TX (Heltec → BN-220 RX) |
 | 34 | ✅ Free — confirmed | GPS UART1 RX (BN-220 TX → Heltec) |
 | 35 | ❌ Onboard LED | White user LED (does NOT work as a UART RX); `CommandModule` mirrors the `/led` on/off state here (backup to the GPIO26 RGB) |
 | 36 | ❌ Vext control | Powers OLED + external 3.3V rail (Meshtastic `VEXT_ENABLE`, active LOW) |
-| 37 | 🚧 Wipe button | Tact switch, INPUT_PULLUP → `CommandModule` factory reset (armed + double-press) |
-| 39 | 🚧 Buzzer | Passive buzzer via PN2222 low-side driver — PWM tone (`CommandModule` `/buzz`) |
-| 40 | 🚧 Vibration | Motor via PN2222 + 1N4007 flyback (`CommandModule` `/vibrate`); EE PCB uses AO3400 |
+| 37 | ✅ Wipe button | Tact switch, INPUT_PULLUP → `CommandModule` factory reset (armed + double-press) |
+| 39 | ✅ Buzzer | Passive buzzer via PN2222 low-side driver — PWM tone (`CommandModule` `/buzz`) |
+| 40 | ✅ Vibration | Motor via PN2222 + 1N4007 flyback (`CommandModule` `/vibrate`); EE PCB uses AO3400 |
 | 41 | ❌ I2C bus 2 SDA | Sensor I2C bus (BME280, MAX17048 via Qwiic hub) |
 | 42 | ❌ I2C bus 2 SCL | Sensor I2C bus |
 | 43 | ⚠️ UART0 TX / CP2102 | USB console (flash/debug). **NOT the Flipper link** — CP2102 clamps it on battery |
 | 44 | ⚠️ UART0 RX / CP2102 | USB console (flash/debug). **NOT the Flipper link** — CP2102 clamps it on battery |
-| 47 | ✅ Free | HC-SR04 Echo |
+| 47 | ✅ Proximity echo | RCWL-1601 Echo (3.3 V, no divider) |
 | 48 | ✅ Free | IR receiver (NEC decode — remote arm/disarm ~10m) |
 
 ---
@@ -133,7 +133,7 @@ custom Meshtastic modules.
 | MAX17048 (LiPo fuel gauge) | I2C via Qwiic hub | 0x36 | Bus 2 (41/42) | 9 |
 | BN-220 GPS module | UART1, 9600 baud | — | GPIO34 (RX), GPIO33 (TX) | 8 |
 | STEMMA QT 5-port passive hub | — | — | GPIO41/42 | 7 |
-| HC-SR04 ultrasonic sensor | Digital GPIO | — | GPIO38 (trig — was 21, which is OLED reset), GPIO47 (echo) | 11 |
+| RCWL-1601 ultrasonic sensor (3.3 V) | Digital GPIO | — | GPIO38 (trig — was 21, which is OLED reset), GPIO47 (echo) | 11 |
 | SW-520D tilt switch | Digital GPIO | — | GPIO2 | 10 |
 | Slide switch — backpack arm/disarm | Digital GPIO | — | GPIO4 | 10 |
 | Photoresistor (light tamper) | ADC | — | GPIO5 | 10 |
@@ -225,7 +225,7 @@ UART1 (GPIO34 RX / GPIO33 TX):
 │    ├── [BN-220 GPS]       position — stock Meshtastic           │
 │    ├── [SW-520D tilt]     tamper → TAMPER over LoRa (armed)     │
 │    ├── [Photoresistor]    case-open → TAMPER_LIGHT (armed)      │
-│    ├── [HC-SR04]          proximity → PERSON_DETECTED (armed)   │
+│    ├── [RCWL-1601]        proximity → PERSON_DETECTED (armed)   │
 │    ├── [IR receiver]      arm / disarm / destruct (line of sight)│
 │    ├── [toggle switch]    flip to arm/disarm                    │
 │    ├── [buzzer/motor/LED] indicators — driven over mesh or IR   │
@@ -255,7 +255,7 @@ UART1 (GPIO34 RX / GPIO33 TX):
 | Private channels / config | ✅ AdminMessage + config | — |
 | Complete-flash destruct | ⚠️ AdminMessage only resets config | ✅ GhostMeshWipe (built) |
 | Mesh command CLI (`/cmd @target`) | ❌ | ✅ CommandModule (built) |
-| HC-SR04 → LoRa alert | ❌ | ✅ ProximityModule (built) |
+| Ultrasonic (RCWL-1601) → LoRa alert | ❌ | ✅ ProximityModule (built) |
 | Tilt switch → LoRa alert | built-in exists but isn't arm-gated | ✅ TiltModule (used) |
 | Slide switch arm/disarm + gate | ❌ | ✅ ArmingModule (built) |
 | Photoresistor → LoRa alert | ❌ | ✅ LightTamperModule (built) |
