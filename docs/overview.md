@@ -25,14 +25,14 @@ This repository is the **framework** — the sensing, signaling, and command bac
 
 Two independent brains, one link you can break on purpose.
 
-```
+~~~
       OPERATOR                                   PLANTED / UNATTENDED
    ┌──────────────┐                          ┌────────────────────────┐
    │ Flipper Zero │  GPIO header (TX/RX/GND) │  Heltec WiFi LoRa 32 V3 │  ))) 915 MHz
    │   the FAP    │ ◀══ backpack shield ════▶│  Meshtastic + GhostMesh │  ))) LoRa mesh
    │  terminal    │      (detachable)        │  sensors · IR · destruct│  ))) to teammates
    └──────────────┘                          └────────────────────────┘
-```
+~~~
 
 - **Flipper Zero** — the operator terminal. Screen, keys, logging, and the IR emitter that reaches a planted node by line of sight. Runs the GhostMesh FAP.
 - **Heltec WiFi LoRa 32 V3** — the field asset. ESP32-S3 + an SX1262 LoRa radio, running stock Meshtastic plus the custom GhostMesh modules. This is what gets planted; it needs no Flipper to keep working.

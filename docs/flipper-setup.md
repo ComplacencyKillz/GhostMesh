@@ -15,12 +15,12 @@ ufbt is the official micro build tool for Flipper Zero external apps. It downloa
 
 ```bash
 python -m pip install --upgrade ufbt
-```
+~~~
 
 Verify:
 ```bash
 ufbt --version
-```
+~~~
 
 ---
 
@@ -29,17 +29,17 @@ ufbt --version
 ```bash
 cd flipper-app
 ufbt
-```
+~~~
 
 On first run, ufbt will download the Flipper SDK (this may take a minute). Subsequent builds are fast.
 
 Successful output looks like:
-```
+~~~
 ...
 LINK    ghostmesh.elf
 ...
 FAP     ghostmesh.fap
-```
+~~~
 
 The built FAP will be in `flipper-app/dist/`.
 
@@ -59,7 +59,7 @@ With the Flipper connected via USB and qFlipper **closed**:
 ```bash
 cd flipper-app
 ufbt launch
-```
+~~~
 
 This builds, deploys, and launches the app on the Flipper automatically.
 
@@ -71,29 +71,29 @@ This builds, deploys, and launches the app on the Flipper automatically.
 ```bash
 cd flipper-app
 ufbt
-```
+~~~
 
 ### Build and deploy
 ```bash
 cd flipper-app
 ufbt launch
-```
+~~~
 
 ### Clean build artifacts
 ```bash
 cd flipper-app
 ufbt clean
-```
+~~~
 
 ### Check SDK version in use
 ```bash
 ufbt status
-```
+~~~
 
 ### Update SDK
 ```bash
 ufbt update
-```
+~~~
 
 ---
 

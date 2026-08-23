@@ -6,7 +6,7 @@ The FAP is the operator terminal. This walks through it screen by screen. (Build
 
 The app opens on the **menu hub** — the home screen. Pick a screen, open it, `BACK` returns to the hub. `BACK` from the hub exits.
 
-```
+~~~
 Menu hub ─[OK]→ Messages ─[OK]→ Profiles ─[OK]→ that profile's messages
    │                                                   (OK sends)
    ├─→ RX History        ├─→ Control (IR)
@@ -14,7 +14,7 @@ Menu hub ─[OK]→ Messages ─[OK]→ Profiles ─[OK]→ that profile's messa
    └─→ Backup            └─→ Settings
 
 BACK always steps back one level.
-```
+~~~
 
 Every screen carries the same **title bar** (name + link/battery status) and a **bottom marquee** that scrolls the last message received — so incoming traffic is visible from anywhere in the app.
 
@@ -29,7 +29,7 @@ Every screen carries the same **title bar** (name + link/battery status) and a *
 
 The hub. Up/Down to choose, OK to open.
 
-```
+~~~
 ┌────────────────────────────┐
 │ GhostMesh             77%  │
 ├────────────────────────────┤
@@ -42,7 +42,7 @@ The hub. Up/Down to choose, OK to open.
 ├────────────────────────────┤
 │ f69c: TAMPER               │ ← last received, scrolling
 └────────────────────────────┘
-```
+~~~
 
 | Button | Action |
 |--------|--------|
@@ -56,7 +56,7 @@ The hub. Up/Down to choose, OK to open.
 
 `Menu → Messages` opens the **Profiles** picker; choose one and OK loads its canned messages.
 
-```
+~~~
 Profiles                         Grid Down
 ┌────────────────────────────┐   ┌────────────────────────────┐
 │ ► Grid Down                │   │ ► CHECKIN OK               │
@@ -66,7 +66,7 @@ Profiles                         Grid Down
 ├────────────────────────────┤   ├────────────────────────────┤
 │ OK:Load  BACK:Menu         │   │ TX:12  OK:Send             │
 └────────────────────────────┘   └────────────────────────────┘
-```
+~~~
 
 | Button | Action |
 |--------|--------|
@@ -82,7 +82,7 @@ The bottom line shows a `Sent: …` banner for ~2 s after you send, otherwise th
 
 `Menu → RX History`. The last 16 received messages, newest first.
 
-```
+~~~
 ┌────────────────────────────┐
 │ RX History            RDY  │
 ├────────────────────────────┤
@@ -92,7 +92,7 @@ The bottom line shows a `Sent: …` banner for ~2 s after you send, otherwise th
 ├────────────────────────────┤
 │ BACK:Menu                  │
 └────────────────────────────┘
-```
+~~~
 
 Each entry shows the sender (last 4 hex of the node ID), RSSI in dBm when available, and the text. Up/Down scrolls; BACK returns to the hub.
 
@@ -102,7 +102,7 @@ Each entry shows the sender (last 4 hex of the node ID), RSSI in dBm when availa
 
 `Menu → Sensors`. Latest environmental telemetry and GPS from the attached node.
 
-```
+~~~
 ┌────────────────────────────┐
 │ Sensors               77%  │
 ├────────────────────────────┤
@@ -111,7 +111,7 @@ Each entry shows the sender (last 4 hex of the node ID), RSSI in dBm when availa
 │ GPS 37.043,-76.326         │
 │ Alt: 27 m                  │
 └────────────────────────────┘
-```
+~~~
 
 Temp/humidity/pressure come from the BME280; the GPS line shows the last fix or `GPS: no fix`. Blank until the first packet of each type arrives.
 
@@ -121,7 +121,7 @@ Temp/humidity/pressure come from the BME280; the GPS line shows the last fix or 
 
 `Menu → Control`. Drives a backpack over **IR** — point the Flipper's emitter at the node. The `Node:` line reflects the last `ARMED`/`DISARMED` the backpack broadcast — but note that arm/disarm broadcasts are gated by the `rep_arm` setting, which is **off by default** (covert), so the line only updates if you've turned `rep_arm` on (Settings screen or `/set`).
 
-```
+~~~
 ┌────────────────────────────┐
 │ Control               77%  │
 ├────────────────────────────┤
@@ -132,7 +132,7 @@ Temp/humidity/pressure come from the BME280; the GPS line shows the last fix or 
 ├────────────────────────────┤
 │ OK:Send IR                 │
 └────────────────────────────┘
-```
+~~~
 
 | Action | Effect |
 |--------|--------|
@@ -147,7 +147,7 @@ The wipe confirm is deliberate: Cancel is preselected, and the toggle ignores he
 
 `Menu → Status`. A one-glance node state overview.
 
-```
+~~~
 ┌────────────────────────────┐
 │ Status                77%  │
 ├────────────────────────────┤
@@ -156,7 +156,7 @@ The wipe confirm is deliberate: Cancel is preselected, and the toggle ignores he
 │ Armed: ARMED               │
 │ GPS:   fix                 │
 └────────────────────────────┘
-```
+~~~
 
 ---
 
@@ -180,7 +180,7 @@ mesh CLI. On open it queries the node and populates from the reply.
 
 A scrolling, sectioned list of ~23 settings:
 
-```
+~~~
 ┌────────────────────────────┐
 │ Settings              77%  │
 ├────────────────────────────┤
@@ -192,7 +192,7 @@ A scrolling, sectioned list of ~23 settings:
 ├────────────────────────────┤
 │ Up/Dn pick  Lt/Rt set      │
 └────────────────────────────┘
-```
+~~~
 
 - **Up/Down** move between rows (section headers are skipped).
 - **Left/Right** change the selected value — a slider steps its number, a toggle flips on/off — and
@@ -211,22 +211,22 @@ intervals). See [command-cli.md](command-cli.md) for every key.
 
 Every received message is appended to a dated CSV on the Flipper SD:
 
-```
+~~~
 SD:/apps_data/ghostmesh/log_YYYYMMDD.csv
-```
+~~~
 
 Columns: `timestamp, node_id, message, lat, lon, rssi, snr`.
 
-```
+~~~
 2026-05-06T14:32:01,f69c,CHECKIN OK,37.0432650,-76.3262981,-85,7.5
 2026-05-06T14:33:44,2f74,MOVING,,,-92,4.2
-```
+~~~
 
 `lat`/`lon` carry the local node's last GPS fix, or blank before a lock. Convert to KML for Google Earth / QGIS:
 
 ```bash
 python tools/log_to_kml.py log_20260506.csv
-```
+~~~
 
 ---
 
@@ -246,7 +246,7 @@ name: Comms Check
 - RADIO CHECK
 - LOUD AND CLEAR
 - WEAK SIGNAL
-```
+~~~
 
 **Rules:** up to 5 custom profiles (8 total with the built-ins), ≤12 messages each, names ≤19 chars, messages ≤22 chars, printable ASCII only. Empty profiles are skipped. See `examples/profiles.yaml` for a commented template.
 

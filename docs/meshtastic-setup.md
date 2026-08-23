@@ -91,9 +91,9 @@ When GhostMesh connects:
 ## Uploading Custom Profiles
 
 Place a `profiles.yaml` file at:
-```
+~~~
 SD:/apps_data/ghostmesh/profiles.yaml
-```
+~~~
 
 Example format:
 ```yaml
@@ -109,7 +109,7 @@ name: Grid Down Custom
 - CHECKIN OK
 - NEED ASSISTANCE
 - MOVING
-```
+~~~
 
 See `examples/profiles.yaml` in the GhostMesh repo for a fully commented template.
 

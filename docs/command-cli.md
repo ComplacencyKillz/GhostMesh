@@ -13,9 +13,9 @@ must *listen* for commands, not only broadcast events.
 
 ## Command format
 
-```
+~~~
 /command @target [args]
-```
+~~~
 
 - **`@target`** = the last 4 hex digits of a node ID (e.g. `@f69c`). **There is no `ALL`/broadcast
   target** — every command must name exactly one node (see *Security model*).
@@ -59,13 +59,13 @@ run YMODEM/XMODEM on: their framing would be parsed as malformed protobuf. A fil
 LittleFS, and CRC32-verified. USB is just the fast, reliable case; the identical protocol works
 (slower) over the mesh. The web configurator's *Payload Upload* is the client.
 
-```
+~~~
 /put @id begin <fid> <nchunks> <bytes> <crc32hex> <name>   → PUT <fid> ready <n>
 /put @id d <fid> <index> <base64>                          → (silent; written to flash)
 /put @id end <fid>                                         → PUT <fid> ok <bytes>
                                                               | need <i,i,…>   (client resends, re-ends)
                                                               | crcfail | sizefail | toobig | nospace | timeout
-```
+~~~
 
 - **Chunk = 132 bytes** (base64 = 176 chars, no padding) — fits under the ~231-byte text cap.
 - **fid** is a client-chosen id echoed in every reply, so overlapping/retried transfers don't collide.
@@ -83,7 +83,7 @@ LittleFS, and CRC32-verified. USB is just the fast, reliable case; the identical
 client's per-chunk ack instead of the client pacing the node. `/ls` is the directory listing that
 tells you what's there to `/get` in the first place.
 
-```
+~~~
 /ls @id                        → LS <name> <bytes>   (one per file)
                                   LS end <count>
 /get @id begin <name>          → GET <fid> begin <nchunks> <bytes> <crc32hex> <name>
@@ -92,7 +92,7 @@ tells you what's there to `/get` in the first place.
 /get @id ack <fid> <index>     → GET <fid> d <index+1> <base64>     (index was the node's last send)
                                 | GET <fid> ok <crc32hex>            (index was the LAST chunk — done)
                                 | GET <fid> d <index> <base64>       (any other ack: re-send current)
-```
+~~~
 
 Replies are routed to whoever asked — phone-only (no airtime) for the local USB/serial client, a
 directed unicast for a remote node — so a small payload can be `/get` over the mesh too, just paced
@@ -202,9 +202,9 @@ These three are orthogonal axes — an armed dead-drop that hides is `SENTINEL` 
 
 `/cfg` returns one compact line with the booleans packed into three hex bitmasks:
 
-```
+~~~
 CFG prox=<u> light=<u> rep=<hex> out=<hex> in=<hex> gps=<u> tel=<u> gpsint=<u> telint=<u> arm=<u>
-```
+~~~
 
 | Mask | bit0 | bit1 | bit2 | bit3 | bit4 | bit5 | bit6 | bit7 | bit8 | bit9 | bit10 | bit11 | bit12 |
 |------|------|------|------|------|------|------|------|------|------|------|-------|-------|-------|
@@ -232,12 +232,12 @@ The same `/set`/`/cfg` backend is reachable three ways:
 The web, FAP, and USB paths address the command to the node's own id, so Meshtastic delivers it
 in-node without transmitting — config commands stay off the air.
 
-```
+~~~
 pip install meshtastic
 python tools/configure_backpack.py --port /dev/ttyUSB0              # show current config
 python tools/configure_backpack.py --port /dev/ttyUSB0 --set prox 150
 python tools/configure_backpack.py --port COM5 --set silent on       # all physical outputs off
-```
+~~~
 
 Every command — including `/help` and `/status` — must name a specific node id. There is **no**
 broadcast target, so no single message can address more than one node.
