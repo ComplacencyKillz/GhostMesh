@@ -26,7 +26,7 @@ views/
 
 GhostMesh uses **ufbt** (Micro Flipper Build Tool). No full Flipper firmware clone needed.
 
-```bash
+<pre><code>
 cd flipper-app
 ufbt          # build
 ufbt launch   # build + deploy + run (Flipper connected via USB, qFlipper closed)
@@ -75,7 +75,7 @@ snapshot, and calls `main_view_update()` each tick.
 
 ### Screens
 
-```c
+</code></pre>
 typedef enum {
     GhostMeshScreenProfile,    // message-set picker (reached via Menu → Messages)
     GhostMeshScreenMenu,       // hub / home

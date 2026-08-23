@@ -36,11 +36,11 @@ The Heltec backpack is designed to operate fully unattended. The Flipper is a li
 
 ### Core Wiring (3 wires)
 
-```
+<pre><code>
 Flipper pin 13 (U_TX / USART1 TX)  ──→  Heltec GPIO7  (Serial module RX)
 Flipper pin 14 (U_RX / USART1 RX)  ←──  Heltec GPIO6  (Serial module TX)
 Flipper GND                  ────  Heltec GND
-```
+</code></pre>
 
 **Baud rate:** 115200, 8N1
 **Protocol:** Meshtastic Serial module in PROTO mode — PROTO binary framing (StreamAPI)
@@ -82,7 +82,7 @@ bench; the EE's PCB uses an **AO3400** MOSFET for the motor (same firmware — a
 
 ### I2C Bus Architecture (Heltec)
 
-```
+<pre><code>
 Bus 1 — GPIO17 SDA / GPIO18 SCL
   └─ OLED display (0x3C) — hardwired, do not connect externals here
 
@@ -90,7 +90,7 @@ Bus 2 — GPIO41 SDA / GPIO42 SCL
   └─ STEMMA QT 5-port passive hub
       ├─ BME280  (0x76)
       └─ MAX17048 (0x36)
-```
+</code></pre>
 
 ### Occupied Heltec GPIOs (do not reuse)
 
@@ -125,9 +125,9 @@ GhostMesh connects to the Meshtastic **Serial module in PROTO mode** on GPIO7 (R
 
 ### Frame Format
 
-```
+<pre><code>
 [0x94] [0xC3] [len_hi] [len_lo] [protobuf payload]
-```
+</code></pre>
 
 The `0x94 0xC3` magic bytes provide RF noise immunity — random LoRa-induced UART noise almost never produces a valid frame header.
 
@@ -155,12 +155,12 @@ See `flipper-app/helpers/proto_notes.md` for the full field reference.
 
 `furi_hal_serial_async_rx_start` fires its callback from the UART interrupt handler, not a thread. The callback chain is:
 
-```
+<pre><code>
 UART ISR
   → uart_internal_rx_cb()    (uart_helper.c)
     → on_rx_byte()           (proto_mode.c — byte-level state machine)
       → on_rx_text()         (ghostmesh.c — called on full decoded packet)
-```
+</code></pre>
 
 **Rules that must never be broken:**
 
@@ -181,7 +181,7 @@ Benign races on multi-byte fields (`rx_text_buf`, `rx_sender`, `rx_rssi`, `rx_sn
 
 ## Flipper FAP Source Layout
 
-```
+<pre><code>
 flipper-app/
 ├── application.fam              — FAP metadata (appid, stack size, category)
 ├── ghostmesh.c                  — App entry, main loop, state machine, ISR callback
@@ -196,7 +196,7 @@ flipper-app/
 └── views/
     ├── main_view.c/.h           — 8-screen menu-hub UI (Profile/Messages/RX history/Sensors/Status/Control/Backup/Settings), marquee, ViewPort draw callback
     └── gm_settings.c/.h         — data-driven descriptor table driving the Settings screen
-```
+</code></pre>
 
 ### Key Design Decisions
 
@@ -223,13 +223,13 @@ flipper-app/
 
 **Tool:** `ufbt` (Micro Flipper Build Tool) — no full firmware clone needed.
 
-```bash
+<pre><code>
 cd flipper-app
 ufbt            # build only → dist/ghostmesh.fap
 ufbt launch     # build + deploy + run (Flipper USB connected, qFlipper closed)
 ufbt clean      # remove build artifacts
 ufbt update     # refresh SDK
-```
+</code></pre>
 
 **Deploy manually:** Copy `dist/ghostmesh.fap` to `SD:/apps/Tools/ghostmesh.fap`.
 
@@ -281,11 +281,11 @@ be handled/staged while DISARMED without spamming the mesh.
 
 **Stack:** Astro 6.2.1, Tailwind CSS 4.2.4, GSAP 3.15.0. Node >= 22.12.0 required.
 
-```bash
+<pre><code>
 cd ghostmesh.info
 npm run build              # outputs to dist/
 bash scripts/deploy.sh     # SFTP mirror to IONOS via lftp
-```
+</code></pre>
 
 Deploy credentials live in `parameters.cicd.yaml` (gitignored). Template at `parameters.template.yaml`.
 

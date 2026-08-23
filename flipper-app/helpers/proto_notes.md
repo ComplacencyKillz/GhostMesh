@@ -8,10 +8,10 @@ GhostMesh uses a hand-coded minimal protobuf encoder/decoder in `proto_mode.c/.h
 
 ## Protocol Path
 
-```
+<pre><code>
 Flipper USART1 TX (pin 13)     →  Heltec GPIO7 (Serial module RX)  →  Meshtastic StreamAPI
 Heltec GPIO6 (Serial module TX) →  Flipper USART1 RX (pin 14)      →  proto_mode decoder
-```
+</code></pre>
 
 GhostMesh talks to the Meshtastic **Serial module in PROTO mode** on free GPIO pins (**RX = 7, TX = 6**, 115200 baud). PROTO mode exposes the same StreamAPI protobuf stream — `ToRadio`/`FromRadio`, `want_config`/`config_complete` — used by the phone app and Python library. It **requires** Meshtastic config: *Module Config → Serial* → enabled, mode **PROTO**, RX **7**, TX **6**, baud **115200**, *override console serial port* **OFF**.
 
@@ -21,12 +21,12 @@ GhostMesh talks to the Meshtastic **Serial module in PROTO mode** on free GPIO p
 
 ## Handshake Flow
 
-```
+<pre><code>
 FAP startup → send ToRadio { want_config_id: 42 }
 Node sends  → ~47 FromRadio config frames
 Node sends  → FromRadio { config_complete_id: 42 }  ← FAP sets connected=true
 FAP ready   → ToRadio { packet: MeshPacket { ... } } can now be sent
-```
+</code></pre>
 
 The Flipper title bar shows `...` during handshake, then `RDY` when connected. It switches to the local node's battery `%` (or `PWR` when the node reports `battery_level == 101`, i.e. on external power) as soon as the battery level is known — see the NodeInfo note under Telemetry.
 
@@ -37,11 +37,11 @@ The `want_config` request is re-sent every ~2 s until `config_complete` arrives 
 ## Confirmed Field Numbers (Meshtastic 2.7.x)
 
 All field numbers confirmed from meshtastic Python library 2.7.8 via:
-```python
+<pre><code>
 mp = mesh_pb2.MeshPacket()
 mp.to = 0xFFFFFFFF
 print(mp.SerializeToString().hex())   # → 15 ff ff ff ff (field 2, fixed32)
-```
+</code></pre>
 
 ### ToRadio
 | Field | Number | Wire |

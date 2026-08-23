@@ -96,7 +96,7 @@ SD:/apps_data/ghostmesh/profiles.yaml
 </code></pre>
 
 Example format:
-```yaml
+<pre><code>
 # GhostMesh custom profiles
 
 name: My Red Team Profile

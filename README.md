@@ -29,7 +29,7 @@ The two software halves work today. The board is being designed; the case, the f
 
 The backpack is a **shield.** It plugs onto the Flipper Zero's GPIO header, taps the three pins it needs — TX, RX, GND — and passes the header through to the Heltec and sensor stack riding on top. One board. It runs from its own battery; the Flipper runs from its own. The header is the only link, and it's a link you can break on purpose.
 
-```
+<pre><code>
    ATTACHED — comms terminal            DETACHED — planted node
   ┌──────────────────────┐            ┌──────────────────────┐
   │  backpack             │  pull off  │  backpack             │  ))) mesh → teammate's Flipper
@@ -37,7 +37,7 @@ The backpack is a **shield.** It plugs onto the Flipper Zero's GPIO header, taps
   │ ══ GPIO header ══     │  ◀───────  │  sensing · on mesh    │   ~~ IR → your Flipper
   │  Flipper Zero         │  snap on   │                       │
   └──────────────────────┘            └──────────────────────┘
-```
+</code></pre>
 
 **Attached — a comms terminal.** The backpack rides on the Flipper, which drives it over the header link: send and receive over the LoRa mesh, read telemetry, work the Control screen. Your handheld is now a long-range, infrastructure-free field radio.
 
@@ -101,19 +101,19 @@ Visit [flasher.meshtastic.org](https://flasher.meshtastic.org), select **Heltec 
 
 ### 2. Connect the backpack (three signals)
 On the backpack PCB these run through the GPIO header automatically. On the bench, jumper them:
-```
+<pre><code>
 Flipper U_TX (pin 13)  →  Heltec GPIO7  (Serial module RX)
 Flipper U_RX (pin 14)  →  Heltec GPIO6  (Serial module TX)
 Flipper GND            →  Heltec GND
-```
+</code></pre>
 Then configure the Meshtastic **Serial module**: PROTO mode, RX 7, TX 6, 115200, override-console OFF. **Not GPIO43/44** — the CP2102 USB bridge clamps those on battery. **Never bridge the power rails** — the backpack and Flipper each run from their own battery. See [`docs/wiring.md`](docs/wiring.md).
 
 ### 3. Build and install the FAP
-```bash
+<pre><code>
 pip install ufbt
 cd flipper-app
 ufbt
-```
+</code></pre>
 Copy `dist/ghostmesh.fap` to `SD:/apps/Tools/` on the Flipper, or `ufbt launch` over USB. See [`docs/flipper-setup.md`](docs/flipper-setup.md).
 
 ### 4. (Optional) Build the backpack firmware
@@ -153,6 +153,6 @@ The custom Heltec modules build on top of stock Meshtastic. See [`heltec-firmwar
 
 MIT — see [LICENSE](LICENSE).
 
-```
+<pre><code>
 // so light your candles
-```
+</code></pre>

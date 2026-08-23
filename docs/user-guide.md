@@ -224,7 +224,7 @@ Columns: `timestamp, node_id, message, lat, lon, rssi, snr`.
 
 `lat`/`lon` carry the local node's last GPS fix, or blank before a lock. Convert to KML for Google Earth / QGIS:
 
-```bash
+<pre><code>
 python tools/log_to_kml.py log_20260506.csv
 <pre><code>
 
@@ -234,7 +234,7 @@ python tools/log_to_kml.py log_20260506.csv
 
 Create `SD:/apps_data/ghostmesh/profiles.yaml`. Start each profile with `name:`, then list messages with `-`:
 
-```yaml
+</code></pre>
 name: My Field Profile
 - CHECKIN OK
 - IN POSITION
