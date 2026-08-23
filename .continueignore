@@ -1,4 +1,59 @@
-.claude/
+# ====================================================================
+# RED TEAM / CYBERSECURITY .CONTINUEIGNORE TEMPLATE
+# ====================================================================
+
+# 1. Scope & Sensitive Client Data
+*scoping*
+*recon*
+*target*
+scoping_notes.md
+target_architecture.png
+client_info.json
+/scratch
+
+# 2. Loot, Dumps & Credentials
+loot/
+creds/
+credentials/
+*.ntds
+*.sam
+*.lsass
+secrets.txt
+passwords.txt
+api_keys.bak
+parameters.ghostmeshinfo.yaml
+
+# 3. Network & Capture Infrastructure
+*.pcap
+*.pcapng
+*.hccapx
+*.log
+wireshark_captures/
+nmap_scans/
+responder_logs/
+
+# 4. Binary Outputs & Exploits
+*.exe
+*.dll
+*.bin
+*.so
+*.elf
+*.msi
+build/
+dist/
+
+# 5. Native OS & IDE Noise
+.git/
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+__pycache__/
+*.pyc
+*/.nvm/
 ghostmesh.info/node_modules/
+
+# 6. Large Documentation & Build Artifacts (Continue.dev indexing)
+.claude/
 kicad/
 tests/bench/
