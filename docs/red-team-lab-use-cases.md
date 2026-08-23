@@ -100,7 +100,7 @@ mesh armed-check: a remote trigger can stage a script, but firing it still needs
 device. See `docs/command-cli.md` ("Running a payload") for the full command reference.
 
 **Design:** slide switch in ARMED position gates execution. Scripts selected by name from the
-SD card, not injected. Fires only on the private channel. Test payloads are benign and reversible.
+SD card, not injected. Fires only on the private channel.
 
 **NFC orchestration over mesh:** Send a mesh packet to command the Flipper to:
 - Emulate a stored NFC badge (`NFC_EMU:filename.nfc`) — Flipper taped to reader,

@@ -1,9 +1,8 @@
-# payloads/ — lab-only sample payloads
+# payloads/ — sample payloads
 
-Sample, **benign** payloads for the Remote Payload Execution use case
+Sample payloads for the Remote Payload Execution use case
 (`docs/red-team-lab-use-cases.md` §5, Phase 13). They exist to prove the delivery *and launch* path
-end-to-end and to give the `/put`/`/get`/`/run` commands something real to move and fire — not to do
-anything to a machine.
+end-to-end and to give the `/put`/`/get`/`/run` commands something real to move and fire.
 
 They are also the easiest way to **test the web configurator's PAYLOAD UPLOAD**: a small text file
 uploads in a second and is CRC-verified on arrival, so you see the whole `/put` round-trip
@@ -13,7 +12,7 @@ uploads in a second and is CRC-verified on arrival, so you see the whole `/put` 
 
 | File | What it is | Notes |
 |------|-----------|-------|
-| `lab_hello.txt` | Flipper BadUSB DuckyScript | Opens Notepad, types a banner, saves/installs nothing. Fully reversible — close without saving. |
+| `lab_hello.txt` | Flipper BadUSB DuckyScript | Opens Notepad, types a banner, saves/installs nothing. |
 
 ## Delivering and running one
 
