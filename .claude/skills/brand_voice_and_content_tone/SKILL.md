@@ -16,7 +16,7 @@ This is not cosplay. This is the frame through which real work is presented.
 
 ## Purpose
 
-Use this skill for all written content across both projects: complacencykillz.me and
+Use this skill for all written content across both projects -- complacencykillz.me and
 ghostmesh.info.
 
 This includes section text, project descriptions, labels, microcopy, tooltips, terminal
@@ -37,13 +37,13 @@ It should feel like a system speaking, not a person introducing themselves.
 
 ## Tone Characteristics
 
-**Primary tone:**
+**Primary tone** —
 - calm
 - confident
 - minimal
 - deliberate
 
-**Secondary layer:**
+**Secondary layer** —
 - quiet tension
 - subtle threat
 - curiosity
