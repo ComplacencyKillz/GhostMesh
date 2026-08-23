@@ -3,6 +3,11 @@
 // Order = on-screen order (headers interleaved). Labels ≤9 chars; the header above gives context
 // (under "-REPLIES-", "buzz" = the /buzz mesh reply; under "-OUTPUTS-", "buzz" = the physical buzzer).
 const GmSetting GM_SETTINGS[] = {
+    {GM_HEADER, "-STANCE-", 0, 0, 0, 0, "", GM_MASK_NONE, 0},
+    {GM_STANCE, "SENTINEL", "arm", 0, 0, 0, "", GM_MASK_NONE, 0},    // Lt/Rt = disarm/arm
+    {GM_STANCE, "BLACKOUT", "silent", 0, 0, 0, "", GM_MASK_NONE, 0}, // Lt/Rt = lit/dark
+    {GM_STANCE, "HIBERNAT", "mode", 0, 0, 0, "", GM_MASK_NONE, 0},   // Lt/Rt = cycle active/deployed/dormant
+
     {GM_HEADER, "-SENSING-", 0, 0, 0, 0, "", GM_MASK_NONE, 0},
     {GM_SLIDER, "prox", "prox", 20, 400, 25, " cm", GM_MASK_NONE, 0},
     {GM_SLIDER, "light", "light", 0, 4095, 100, "", GM_MASK_NONE, 0},
@@ -16,6 +21,10 @@ const GmSetting GM_SETTINGS[] = {
     {GM_TOGGLE, "bc tilt", "bc_tilt", 0, 0, 0, "", GM_MASK_REP, 5},
     {GM_TOGGLE, "bc light", "bc_light", 0, 0, 0, "", GM_MASK_REP, 6},
     {GM_TOGGLE, "bc prox", "bc_prox", 0, 0, 0, "", GM_MASK_REP, 7},
+    {GM_TOGGLE, "r help", "rep_help", 0, 0, 0, "", GM_MASK_REP, 8},
+    {GM_TOGGLE, "r stat", "rep_status", 0, 0, 0, "", GM_MASK_REP, 9},
+    {GM_TOGGLE, "r err", "rep_err", 0, 0, 0, "", GM_MASK_REP, 10},
+    {GM_TOGGLE, "r unkwn", "rep_unknown", 0, 0, 0, "", GM_MASK_REP, 11},
 
     {GM_HEADER, "-OUTPUTS-", 0, 0, 0, 0, "", GM_MASK_NONE, 0},
     {GM_TOGGLE, "led", "led", 0, 0, 0, "", GM_MASK_OUT, 0},
@@ -38,3 +47,6 @@ const GmSetting GM_SETTINGS[] = {
 };
 
 const uint8_t GM_SETTING_COUNT = sizeof(GM_SETTINGS) / sizeof(GM_SETTINGS[0]);
+
+// HIBERNATE mode names — index = stored value. Sent verbatim as `/set @id mode <name>`.
+const char* const GM_STANCE_MODES[3] = {"active", "deployed", "dormant"};

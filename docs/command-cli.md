@@ -86,8 +86,12 @@ reboot (until a wipe, which erases NVS too). `/cfg` reads the current values bac
 | `prox <cm>` | Proximity trip distance (`PERSON_DETECTED`) |
 | `light <counts>` | Light-tamper ADC threshold (`TAMPER_LIGHT`) |
 
-**Mesh replies & broadcasts** — what the node *announces on the channel* (orthogonal to the physical
-outputs below). Turn these off to stop the chatter and let the LED/buzzer/vibration be the feedback.
+**Mesh replies & broadcasts.** Every message the node can emit is individually gateable. Two kinds:
+*broadcasts* (`bc_*`, plus `rep_arm`'s arm/disarm announcements) go to the whole channel; *command
+replies* (all other `rep_*`) are answers to a command and are **routed only to whoever sent it** — a
+command from the web configurator or a wired Flipper is answered off-mesh with zero LoRa airtime; a
+command from a remote node gets a directed unicast, never a broadcast. So a reply only rides the mesh
+when the command came *over* the mesh. Turn any of these off to go quieter still.
 
 | Key `<on\|off>` | Gates | Default |
 |-----|--------|---------|
@@ -95,10 +99,14 @@ outputs below). Turn these off to stop the chatter and let the LED/buzzer/vibrat
 | `rep_buzz` / `rep_vib` / `rep_led` | the `/buzz` / `/vibrate` / `/led`+`/fx` confirmation replies | **off** |
 | `rep_wipe` | the `/wipe` reply **text** only — wipe *safety* (armed + confirm token + erase) is unchanged | **on** |
 | `bc_tilt` / `bc_light` / `bc_prox` | the `TAMPER` / `TAMPER_LIGHT` / `PERSON_DETECTED` broadcasts | **on** |
+| `rep_help` / `rep_status` | the `/help` listing / the `/status` reply | **on** |
+| `rep_err` / `rep_unknown` | `/set` error messages / the unknown-command reply | **on** |
 
 > With `rep_wipe off`, the two-step mesh `/wipe` can't be completed (the token is never shown) — the
-> physical double-press and IR `ARM→WIPE→CONFIRM` paths still work. `/help`, `/status`, `/cfg`, and
-> `/set` echoes are always sent (they're replies to an explicit query).
+> physical double-press and IR `ARM→WIPE→CONFIRM` paths still work. **`/cfg` and the `/set` success
+> echo are deliberately *not* gateable** — they're the control channel the configurator/FAP read to
+> populate their UI and confirm a change; and since they route only to the requester, they never add
+> mesh noise.
 
 **Physical outputs** — does the hardware fire (the covert toggle)?
 
@@ -126,22 +134,42 @@ outputs below). Turn these off to stop the chatter and let the LED/buzzer/vibrat
 | `gpsint <secs>` | GPS update interval (`0` = Meshtastic default) | 0 |
 | `telint <secs>` | environment (BME280) telemetry interval (`0` = default) | 0 |
 
+**Presets (stance)** — one-touch postures, surfaced as the STANCE controls in the web configurator and
+the FAP Settings screen. Each applies a whole composite in **one** command, so a preset never fires a
+burst of self-addressed `/set`s (the router drops all but the first of a self-addressed burst):
+
+| Command | Preset | Effect |
+|-----|--------|--------|
+| `/arm` · `/disarm` | **SENTINEL** | arm / disarm the tamper watch |
+| `silent <on\|off>` | **BLACKOUT** | all six physical outputs off / on |
+| `mode <active\|deployed\|dormant>` | **HIBERNATE** | power & sensing stance (below) |
+
+- `mode active` — GPS on, telemetry normal, all sensors watching (full field use).
+- `mode deployed` — GPS off, telemetry slowed, **tamper sensors stay live** (long-haul dead-drop).
+- `mode dormant` — GPS off, telemetry minimal, **sensors off** (transport/storage, lowest draw).
+
+These three are orthogonal axes — an armed dead-drop that hides is `SENTINEL` + `BLACKOUT` +
+`HIBERNATE:deployed`.
+
 ### `/cfg` reply format
 
 `/cfg` returns one compact line with the booleans packed into three hex bitmasks:
 
 ```
-CFG prox=<u> light=<u> rep=<hex> out=<hex> in=<hex> gps=<u> gpsint=<u> telint=<u>
+CFG prox=<u> light=<u> rep=<hex> out=<hex> in=<hex> gps=<u> gpsint=<u> telint=<u> arm=<u>
 ```
 
-| Mask | bit0 | bit1 | bit2 | bit3 | bit4 | bit5 | bit6 | bit7 |
-|------|------|------|------|------|------|------|------|------|
-| `rep` | arm | buzz | vib | led | wipe | tilt-bc | light-bc | prox-bc |
-| `out` | led | buzz | vib | screen | hbled | gpsled | — | — |
-| `in`  | tilt | light | prox | ir | — | — | — | — |
+| Mask | bit0 | bit1 | bit2 | bit3 | bit4 | bit5 | bit6 | bit7 | bit8 | bit9 | bit10 | bit11 |
+|------|------|------|------|------|------|------|------|------|------|------|-------|-------|
+| `rep` | arm | buzz | vib | led | wipe | tilt-bc | light-bc | prox-bc | help | status | err | unknown |
+| `out` | led | buzz | vib | screen | hbled | gpsled | — | — | | | | |
+| `in`  | tilt | light | prox | ir | — | — | — | — | | | | |
 
-Example: `/cfg @f69c` → `CFG prox=200 light=2000 rep=f0 out=3f in=f gps=1 gpsint=0 telint=0`
-(here `rep=f0` = wipe+all tamper broadcasts on, routine command replies off — the default).
+`arm=` is the live arm state (`1`/`0`) — it drives the SENTINEL preset's displayed posture.
+
+Example: `/cfg @f69c` → `CFG prox=200 light=2000 rep=ff0 out=3f in=f gps=1 gpsint=0 telint=0 arm=0`
+(here `rep=ff0` = wipe + all tamper broadcasts + all query replies on, routine command confirmations
+off — the default).
 
 ### Three ways to configure a node
 

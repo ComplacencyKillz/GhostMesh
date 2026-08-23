@@ -257,11 +257,15 @@ Meshtastic firmware checkout at the pinned tag and build. See `heltec-firmware/R
 | `ProximityModule` | GPIO38/47 (RCWL-1601, 3.3V) | `PERSON_DETECTED` | Fires when distance drops below threshold |
 | `IRModule` | GPIO48 (VS1838B, NEC) | `ARMED` / `DISARMED` | Remote arm/disarm; sets `ghostmesh_armed` (alongside the slide switch — last action wins). Flipper remote: `flipper-app/GhostMeshBackpack.ir` |
 | `CommandModule` | GPIO39/40/26/35/37 outputs | replies (gated) | The *receiving* module: parses `/cmd @target` text — outputs (buzzer/vibration/LED), arm/disarm, wipe, live config (`/set`/`/cfg`), `/put` file upload. `CommandModule_payload.cpp` holds `/put`. |
-| `GhostMeshConfig` | — | — | NVS-backed config (~23 settings) every module reads; `/set`/`/cfg` + `ghostmesh_apply_native_config()` (GPS/telemetry). Not a mesh module. |
+| `GhostMeshConfig` | — | — | NVS-backed config (~27 settings) every module reads; `/set`/`/cfg` + `ghostmesh_apply_native_config()` (GPS/telemetry). Not a mesh module. |
 | `GhostMeshWipe` | — | — | The complete-flash destruct, shared by `CommandModule` + `IRModule`. Not a mesh module. |
 
 > Note: only the top five broadcast plain-text events. `CommandModule`'s replies are individually
-> gated by config (`rep_*`/`bc_*`, most off by default), so a node is quiet unless configured to talk.
+> gated by config (`rep_*`/`bc_*`) **and routed to the requester, never broadcast** — a command from
+> the web configurator or a wired Flipper is answered off-mesh (`sendToPhone`, zero LoRa airtime); a
+> remote node gets a directed unicast. So a reply only rides the mesh when the command came over the
+> mesh. (`/cfg` + the `/set` success echo are the always-on control channel; everything else has a
+> `rep_*` toggle. Presets: `/arm`//disarm` = SENTINEL, `silent` = BLACKOUT, `mode` = HIBERNATE.)
 
 **Armed gate:** `ArmingModule` reads the slide switch into `volatile bool ghostmesh_armed`
 (`GhostMeshArming.h`). The three tamper modules only broadcast when armed — so the backpack can

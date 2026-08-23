@@ -208,6 +208,22 @@ static void settings_edit(GhostMeshApp* app, int dir) {
         if(v > (int)g->max) v = (int)g->max;
         app->set_vals[app->settings_sel] = (uint16_t)v;
         snprintf(cmd, sizeof(cmd), "/set @%s %s %u", id, g->key, (unsigned)v);
+    } else if(g->type == GM_STANCE) {
+        // Compound presets — Lt/Rt (dir -1/+1) drives them; state is optimistic here and reconciled
+        // on the next /cfg. "arm" and "silent" are 2-state; "mode" cycles active/deployed/dormant.
+        if(strcmp(g->key, "mode") == 0) {
+            int v = (int)app->set_vals[app->settings_sel] + dir;
+            if(v < 0) v = 0;
+            if(v > 2) v = 2;
+            app->set_vals[app->settings_sel] = (uint16_t)v;
+            snprintf(cmd, sizeof(cmd), "/set @%s mode %s", id, GM_STANCE_MODES[v]);
+        } else if(strcmp(g->key, "silent") == 0) {
+            app->set_vals[app->settings_sel] = (dir > 0);
+            snprintf(cmd, sizeof(cmd), "/set @%s silent %s", id, (dir > 0) ? "on" : "off");
+        } else { // "arm" → bare /arm or /disarm command (not a /set key)
+            app->set_vals[app->settings_sel] = (dir > 0);
+            snprintf(cmd, sizeof(cmd), "%s @%s", (dir > 0) ? "/arm" : "/disarm", id);
+        }
     } else { // GM_TOGGLE
         app->set_vals[app->settings_sel] = (dir > 0);
         snprintf(cmd, sizeof(cmd), "/set @%s %s %s", id, g->key, (dir > 0) ? "on" : "off");
@@ -709,10 +725,12 @@ int32_t ghostmesh_app(void* p) {
                 // own numeric token; toggles read a mask bit, or the standalone gps= token).
                 const char* buf = app->rx_text_buf;
                 const char* t;
-                unsigned rep = 0, out = 0, in = 0;
+                unsigned rep = 0, out = 0, in = 0, gps = 0, arm = 0;
                 if((t = strstr(buf, "rep="))) rep = (unsigned)strtoul(t + 4, NULL, 16);
                 if((t = strstr(buf, "out="))) out = (unsigned)strtoul(t + 4, NULL, 16);
                 if((t = strstr(buf, "in=")))  in = (unsigned)strtoul(t + 3, NULL, 16);
+                if((t = strstr(buf, "gps="))) gps = (unsigned)atoi(t + 4);
+                if((t = strstr(buf, "arm="))) arm = (unsigned)atoi(t + 4);
                 for(uint8_t i = 0; i < GM_SETTING_COUNT; i++) {
                     const GmSetting* g = &GM_SETTINGS[i];
                     if(g->type == GM_SLIDER) {
@@ -727,8 +745,21 @@ int32_t ghostmesh_app(void* p) {
                             app->set_vals[i] = (out >> g->bit) & 1u;
                         else if(g->mask == GM_MASK_IN)
                             app->set_vals[i] = (in >> g->bit) & 1u;
-                        else if((t = strstr(buf, "gps="))) // standalone gps token
-                            app->set_vals[i] = atoi(t + 4) != 0;
+                        else // standalone gps token
+                            app->set_vals[i] = gps ? 1u : 0u;
+                    } else if(g->type == GM_STANCE) {
+                        // Reconcile the preset state from the same config the granular rows use.
+                        if(strcmp(g->key, "arm") == 0) {
+                            app->set_vals[i] = arm ? 1u : 0u;
+                        } else if(strcmp(g->key, "silent") == 0) {
+                            app->set_vals[i] = (out == 0) ? 1u : 0u; // every output off ⇒ dark
+                        } else { // "mode": infer 0 active / 1 deployed / 2 dormant from gps + inputs
+                            bool in_all = (in & 0x0fu) == 0x0fu, in_none = (in & 0x0fu) == 0u;
+                            if(gps && in_all) app->set_vals[i] = 0;
+                            else if(!gps && in_all) app->set_vals[i] = 1;
+                            else if(!gps && in_none) app->set_vals[i] = 2;
+                            // else: a custom mix — leave the last value
+                        }
                     }
                 }
                 app->settings_loaded = true;

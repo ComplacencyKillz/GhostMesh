@@ -10,13 +10,16 @@
 // the settings list is a table edit, not a change across three hardcoded switch/parse sites.
 //
 // Bit layout MUST match the firmware's doCfg() (heltec-firmware/CommandModule.cpp):
-//   rep bits: 0 arm,1 buzz,2 vib,3 led,4 wipe,5 tilt-bc,6 light-bc,7 prox-bc
+//   rep bits: 0 arm,1 buzz,2 vib,3 led,4 wipe,5 tilt-bc,6 light-bc,7 prox-bc,8 help,9 status,10 err,11 unknown
 //   out bits: 0 led,1 buzz,2 vib,3 screen,4 hbled,5 gpsled ; in bits: 0 tilt,1 light,2 prox,3 ir
 
 typedef enum {
     GM_HEADER, // a non-selectable section divider
     GM_SLIDER, // numeric: value stored directly, edited by +/- step
     GM_TOGGLE, // on/off: value 0/1
+    GM_STANCE, // one-touch preset (compound command). Behaviour keyed by `key`: "arm" → /arm//disarm
+               // (state from the cfg arm= token); "silent" → /set silent (state = all outputs off);
+               // "mode" → 3-state /set mode active|deployed|dormant (state inferred from gps + inputs).
 } GmSettingType;
 
 typedef enum {
@@ -38,3 +41,7 @@ typedef struct {
 
 extern const GmSetting GM_SETTINGS[];
 extern const uint8_t   GM_SETTING_COUNT;
+
+// HIBERNATE mode names, index = stored value 0/1/2. Shared by the /set send (ghostmesh.c) and the
+// row draw (main_view.c) so the label and the command stay in lockstep.
+extern const char* const GM_STANCE_MODES[3];

@@ -290,6 +290,15 @@ static void draw_settings_screen(Canvas* canvas, const MainViewState* s) {
             snprintf(row, sizeof(row), "%s", g->label);
         } else if(g->type == GM_SLIDER) {
             snprintf(row, sizeof(row), "%-8s %u%s", g->label, (unsigned)s->set_vals[idx], g->unit);
+        } else if(g->type == GM_STANCE) {
+            const char* v;
+            if(strcmp(g->key, "arm") == 0)
+                v = s->set_vals[idx] ? "ARMED" : "safe";
+            else if(strcmp(g->key, "silent") == 0)
+                v = s->set_vals[idx] ? "DARK" : "lit";
+            else // "mode"
+                v = GM_STANCE_MODES[s->set_vals[idx] < 3 ? s->set_vals[idx] : 0];
+            snprintf(row, sizeof(row), "%-8s %s", g->label, v);
         } else { // GM_TOGGLE
             snprintf(row, sizeof(row), "%-8s %s", g->label, s->set_vals[idx] ? "on" : "off");
         }

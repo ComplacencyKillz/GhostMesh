@@ -477,12 +477,16 @@ import SubLayout from '../layouts/SubLayout.astro';
     // ── STANCE presets: each is a single command; re-query after so the granular toggles snap. ──
     // SENTINEL toggles arm/disarm (bare commands, not /set). BLACKOUT toggles the silent master.
     $('gm-sentinel').addEventListener('click', async () => {
-      const armed = $('gm-sentinel').dataset.on === '1';
-      await sendPlain(armed ? '/disarm' : '/arm'); setTimeout(requestCfg, 350);
+      const nextArmed = $('gm-sentinel').dataset.on !== '1';       // flip from the CURRENT state
+      setPreset('gm-sentinel', nextArmed ? 1 : 0, 'ARMED', 'DISARMED'); // optimistic: toggle now
+      await sendPlain(nextArmed ? '/arm' : '/disarm');
+      setTimeout(requestCfg, 350);                                 // reconcile with the node's real state
     });
     $('gm-blackout').addEventListener('click', async () => {
-      const dark = $('gm-blackout').dataset.on === '1';
-      await setKey('silent', dark ? 'off' : 'on'); setTimeout(requestCfg, 350);
+      const nextDark = $('gm-blackout').dataset.on !== '1';
+      setPreset('gm-blackout', nextDark ? 1 : 0, 'DARK', 'LIT');   // optimistic
+      await setKey('silent', nextDark ? 'on' : 'off');
+      setTimeout(requestCfg, 350);
     });
     // HIBERNATE: pick a mode; the firmware applies the whole composite in one command.
     for (const btn of document.querySelectorAll('#gm-hibernate button')) {

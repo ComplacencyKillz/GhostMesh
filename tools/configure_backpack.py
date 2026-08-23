@@ -15,8 +15,10 @@ Keys (see docs/command-cli.md for the full table):
   numerics   prox <cm> · light <counts> · gpsint <s> · telint <s>
   outputs    led|buzz|vib|screen|hbled|gpsled <on|off>   (silent <on|off> = all six at once)
   replies    rep_arm|rep_buzz|rep_vib|rep_led|rep_wipe <on|off>   bc_tilt|bc_light|bc_prox <on|off>
+             rep_help|rep_status|rep_err|rep_unknown <on|off>   (/cfg + /set echo are never gated)
   inputs     in_tilt|in_light|in_prox|in_ir <on|off>     (sensors <on|off> = all four)
   native     gps <on|off>          notify <on|off> = led+buzz+vib only
+  stance     mode <active|deployed|dormant>   (HIBERNATE composite; SENTINEL is /arm//disarm, not /set)
 
 Requires GhostMesh firmware that processes self-directed commands (2026-08 or later).
 """
@@ -26,7 +28,8 @@ import sys
 import time
 
 # /cfg bitmask layout — must match the firmware's doCfg() (heltec-firmware/CommandModule.cpp).
-_REP = ["arm", "buzz", "vib", "led", "wipe", "bc_tilt", "bc_light", "bc_prox"]
+_REP = ["arm", "buzz", "vib", "led", "wipe", "bc_tilt", "bc_light", "bc_prox",
+        "help", "status", "err", "unknown"]
 _OUT = ["led", "buzz", "vib", "screen", "hbled", "gpsled"]
 _IN = ["tilt", "light", "prox", "ir"]
 
@@ -46,11 +49,14 @@ def decode_cfg(line):
 
     prox, light = num("prox"), num("light")
     gps, gi, ti = num("gps"), num("gpsint"), num("telint")
+    arm = num("arm")
     out = [f"  sensing : prox={prox}cm light={light}"]
     out.append(f"  replies : {flags(num('rep', 16), _REP)}")
     out.append(f"  outputs : {flags(num('out', 16), _OUT)}")
     out.append(f"  inputs  : {flags(num('in', 16), _IN)}")
     out.append(f"  gps     : gps={'on' if gps else 'off'} gpsint={gi}s telint={ti}s")
+    if arm is not None:
+        out.append(f"  armed   : {'yes' if arm else 'no'}")
     return "\n".join(out)
 
 
