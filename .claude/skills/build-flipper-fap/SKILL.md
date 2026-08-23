@@ -28,7 +28,7 @@ Windows USB — see the <code>hardware-flashing-setup</code> memory). This is th
 1. **Build** (fast — seconds to ~1 min):
    ```bash
    cd /home/servermonk/repos/ghostmesh/flipper-app && /home/servermonk/.pio-venv/bin/ufbt
-   ```
+<pre><code>
    Success ends with <code>INSTALL … dist/ghostmesh.fap</code> and an <code>APPCHK</code> line reporting <code>Target: 7, API: 87.1</code>.
 
 2. **Deliver + verify integrity**:
@@ -36,7 +36,7 @@ Windows USB — see the <code>hardware-flashing-setup</code> memory). This is th
    SRC=/home/servermonk/repos/ghostmesh/flipper-app/dist/ghostmesh.fap
    DST=/media/sf_my-vm-share/repos/ghostmesh/ghostmesh.fap
    cp "$SRC" "$DST" && sha256sum "$SRC" "$DST"   # the two hashes must match
-   ```
+</code></pre>
 
 3. **Tell the user how to install** (they do it on Windows): copy <code>ghostmesh.fap</code> to the Flipper's
    <code>SD:/apps/Tools/</code> via qFlipper or an SD reader — then **Apps → Tools → GhostMesh**. (With the

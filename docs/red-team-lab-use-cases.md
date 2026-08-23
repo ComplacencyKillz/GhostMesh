@@ -1,3 +1,5 @@
+---
+---
 # Red-Team Lab Use Cases
 
 ## 1. Out-of-Band Team Coordination

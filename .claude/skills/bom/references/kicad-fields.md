@@ -1,3 +1,5 @@
+---
+---
 # KiCad Symbol Properties Reference
 
 ## Standard Fields
@@ -42,12 +44,12 @@ When writing new fields, use the canonical names for consistency. When a project
 
 Custom fields in <code>.kicad_sch</code> files:
 
-```
+<pre><code>
 (property "MPN" "GRM155R71C104KA88D"
     (at 0 0 0)
     (effects (font (size 1.27 1.27)) (hide yes))
 )
-```
+</code></pre>
 
 ## Adding/Editing Properties in KiCad
 

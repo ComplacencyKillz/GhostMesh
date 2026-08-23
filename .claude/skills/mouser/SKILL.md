@@ -30,14 +30,14 @@ Mouser uses **simple API key authentication** — no OAuth, no tokens, no callba
 ### Setting Credentials
 
 Set the environment variable before running the scripts:
-```bash
+<pre><code>
 export MOUSER_SEARCH_API_KEY=your-search-api-key-uuid
-```
+</code></pre>
 
 If credentials are stored in a central secrets file (e.g., <code>~/.config/secrets.env</code>), load them first:
-```bash
+<pre><code>
 export $(grep -v '^#' ~/.config/secrets.env | grep -v '^$' | xargs)
-```
+</code></pre>
 
 ## Mouser Search API Reference
 
@@ -46,10 +46,10 @@ All search endpoints use the Search API key as a query parameter: <code>?apiKey=
 ### V1 Endpoints
 
 #### Keyword Search
-```
+<pre><code>
 POST /api/v1/search/keyword?apiKey=<key>
-```
-```json
+</code></pre>
+<pre><code>
 {
   "SearchByKeywordRequest": {
     "keyword": "100nF 0402 ceramic capacitor",
@@ -58,23 +58,23 @@ POST /api/v1/search/keyword?apiKey=<key>
     "searchOptions": "InStock"
   }
 }
-```
+</code></pre>
 - <code>searchOptions</code>: <code>"None"</code> | <code>"Rohs"</code> | <code>"InStock"</code> | <code>"RohsAndInStock"</code>
 - <code>records</code>: max 50 per request
 - <code>startingRecord</code>: offset for pagination
 
 #### Part Number Search
-```
+<pre><code>
 POST /api/v1/search/partnumber?apiKey=<key>
-```
-```json
+</code></pre>
+<pre><code>
 {
   "SearchByPartRequest": {
     "mouserPartNumber": "GRM155R71C104KA88D|RC0402FR-0710KL",
     "partSearchOptions": "Exact"
   }
 }
-```
+</code></pre>
 - Up to **10 part numbers**, pipe-separated (<code>|</code>)
 - Works with both Mouser part numbers AND manufacturer part numbers (MPNs)
 - <code>partSearchOptions</code>: <code>"Exact"</code> | <code>"BeginsWith"</code> | <code>"Contains"</code>
@@ -84,10 +84,10 @@ POST /api/v1/search/partnumber?apiKey=<key>
 V2 adds manufacturer filtering and pagination by page number.
 
 #### Keyword + Manufacturer Search
-```
+<pre><code>
 POST /api/v2/search/keywordandmanufacturer?apiKey=<key>
-```
-```json
+</code></pre>
+<pre><code>
 {
   "SearchByKeywordMfrNameRequest": {
     "keyword": "LMR51450",
@@ -97,18 +97,18 @@ POST /api/v2/search/keywordandmanufacturer?apiKey=<key>
     "searchOptions": "InStock"
   }
 }
-```
+</code></pre>
 Note: the wrapper object name is <code>SearchByKeywordMfrNameRequest</code> (not <code>SearchByKeywordMfrRequest</code> — the V1 name is deprecated).
 
 #### Part Number + Manufacturer Search
-```
+<pre><code>
 POST /api/v2/search/partnumberandmanufacturer?apiKey=<key>
-```
+</code></pre>
 
 #### Manufacturer List
-```
+<pre><code>
 GET /api/v2/search/manufacturerlist?apiKey=<key>
-```
+</code></pre>
 Returns the full list of manufacturer names for use in filtered searches.
 
 ### V1 Deprecated Endpoints
@@ -122,7 +122,7 @@ These still work but V2 equivalents are preferred:
 
 All search endpoints return the same response format:
 
-```json
+<pre><code>
 {
   "Errors": [],
   "SearchResults": {
@@ -130,7 +130,7 @@ All search endpoints return the same response format:
     "Parts": [...]
   }
 }
-```
+</code></pre>
 
 ### Key Part Fields
 
@@ -186,7 +186,7 @@ Note: Mouser's product pages return 403 for most automated requests, so strategy
 
 Use <code>sync_datasheets_mouser.py</code> to maintain a <code>datasheets/</code> directory alongside a KiCad project. Same workflow and <code>manifest.json</code> format as the DigiKey skill.
 
-```bash
+<pre><code>
 # Sync datasheets for a KiCad project
 python3 <skill-path>/scripts/sync_datasheets_mouser.py <file.kicad_sch>
 
@@ -204,7 +204,7 @@ python3 <skill-path>/scripts/sync_datasheets_mouser.py <file.kicad_sch> --parall
 
 # Batch mode — sync from a plain MPN list (no KiCad project required)
 python3 <skill-path>/scripts/sync_datasheets_mouser.py --mpn-list mpns.txt --output ./datasheets
-```
+</code></pre>
 
 **MPN-list batch mode** (KH-312) — when you have a list of MPNs but no
 KiCad project to point at (harness datasheet seeding, bulk part-library
@@ -222,7 +222,7 @@ you have a higher-tier key or want to slow things down further.
 
 Use <code>fetch_datasheet_mouser.py</code> for one-off downloads.
 
-```bash
+<pre><code>
 # Search by MPN (uses Mouser API)
 python3 <skill-path>/scripts/fetch_datasheet_mouser.py --search "TPS61023DRLR" -o datasheet.pdf
 
@@ -231,7 +231,7 @@ python3 <skill-path>/scripts/fetch_datasheet_mouser.py "https://example.com/data
 
 # JSON output
 python3 <skill-path>/scripts/fetch_datasheet_mouser.py --search "ADP1706" --json
-```
+</code></pre>
 
 ### Download Strategy
 

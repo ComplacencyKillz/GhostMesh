@@ -1,3 +1,5 @@
+---
+---
 # Gerber and Drill File Parsing
 
 This reference covers parsing Gerber (RS-274X) and Excellon drill files for analysis, verification, and cross-referencing with KiCad source files.
@@ -21,7 +23,7 @@ Gerber files are plain text. Each file represents one layer. The format uses sin
 
 ### Basic Structure
 
-```gerber
+<pre><code>
 G04 Layer: F.Cu*                    ; Comment
 G04 KiCad-generated file*
 %FSLAX46Y46*%                       ; Format specification
@@ -40,13 +42,13 @@ X150000000Y100000000D02*            ; Move to (150, 100)mm, pen up
 X160000000Y100000000D01*            ; Draw to (160, 100)mm, pen down
 
 M02*                                ; End of file
-```
+</code></pre>
 
 ### Format Specification (%FS)
 
-```
+<pre><code>
 %FSLAX46Y46*%
-```
+</code></pre>
 - <code>L</code> = Leading zeros omitted (most common), <code>T</code> = Trailing zeros omitted
 - <code>A</code> = Absolute coordinates (most common), <code>I</code> = Incremental
 - <code>X46</code> = X has 4 integer digits, 6 decimal digits
@@ -55,10 +57,10 @@ M02*                                ; End of file
 
 ### Units
 
-```
+<pre><code>
 %MOMM*%    ; Millimeters (KiCad default)
 %MOIN*%    ; Inches
-```
+</code></pre>
 
 ### Coordinate Conversion
 
@@ -77,13 +79,13 @@ Apertures define the shape of the "pen" used for drawing and flashing. Defined i
 
 ### Standard Apertures
 
-```gerber
+<pre><code>
 %ADD10C,0.250000*%                  ; Circle: diameter 0.25mm
 %ADD11C,0.200000X0.100000*%         ; Circle with hole: 0.2mm dia, 0.1mm hole
 %ADD12R,1.000000X0.600000*%         ; Rectangle: 1.0mm x 0.6mm
 %ADD13O,1.200000X0.800000*%         ; Obround (oval): 1.2mm x 0.8mm
 %ADD14P,1.000000X6X0.0*%            ; Polygon: 1.0mm dia, 6 vertices, 0 deg rotation
-```
+</code></pre>
 
 | Code | Shape | Parameters |
 |------|-------|-----------|
@@ -96,7 +98,7 @@ Apertures define the shape of the "pen" used for drawing and flashing. Defined i
 
 Complex pad shapes use macros defined with <code>%AM</code>:
 
-```gerber
+<pre><code>
 %AMROUNDRECT*
 0 Rectangle with rounded corners*
 21,1,$1,$2,0,0,0*
@@ -107,7 +109,7 @@ Complex pad shapes use macros defined with <code>%AM</code>:
 1,1,$5,$12,$13*
 %
 %ADD15ROUNDRECT,0.250000X-0.262500X-0.450000X0.262500X...*%
-```
+</code></pre>
 
 Aperture macros are complex — for analysis, focus on the overall bounding box rather than trying to parse the macro primitives.
 
@@ -132,37 +134,37 @@ Aperture macros are complex — for analysis, focus on the overall bounding box 
 
 ### Command Format
 
-```gerber
+<pre><code>
 D11*                                ; Select aperture 11
 X150000000Y100000000D03*            ; Flash aperture 11 at (150, 100)
 X150000000Y100000000D02*            ; Move to (150, 100) — no draw
 X160000000Y100000000D01*            ; Draw line from current pos to (160, 100)
 X160000000Y110000000D01*            ; Continue drawing to (160, 110)
-```
+</code></pre>
 
 ### Interpolation Modes
 
-```gerber
+<pre><code>
 G01*            ; Linear interpolation (straight lines) — default
 G02*            ; Clockwise circular interpolation (arcs)
 G03*            ; Counter-clockwise circular interpolation (arcs)
 G74*            ; Single quadrant arc mode
 G75*            ; Multi-quadrant arc mode (most common)
-```
+</code></pre>
 
 ### Arc Commands
 
-```gerber
+<pre><code>
 G75*                                 ; Multi-quadrant mode
 G02*                                 ; Clockwise arc
 X160000000Y100000000I5000000J0D01*   ; Draw arc to (160,100) with center offset (I=5, J=0)
-```
+</code></pre>
 - <code>I</code> and <code>J</code> are the offset from the current position to the arc center
 - Arc radius = sqrt(I^2 + J^2)
 
 ### Region Fill (Copper Pour Outlines)
 
-```gerber
+<pre><code>
 G36*                                ; Start region (polygon fill)
 X100000000Y80000000D02*             ; Move to start point
 X180000000Y80000000D01*             ; Draw boundary
@@ -170,7 +172,7 @@ X180000000Y140000000D01*
 X100000000Y140000000D01*
 X100000000Y80000000D01*             ; Close polygon
 G37*                                ; End region
-```
+</code></pre>
 
 Region fills (G36/G37) represent filled copper areas — zones, pads with custom shapes, etc.
 
@@ -220,24 +222,24 @@ With Protel extensions enabled:
 KiCad writes X2 attributes that identify the layer, but the **format differs by version**:
 
 **KiCad 6+ (X2 directives):**
-```gerber
+<pre><code>
 %TF.GenerationSoftware,KiCad,Pcbnew,9.0.0*%
 %TF.CreationDate,2025-01-15T10:30:00-06:00*%
 %TF.ProjectId,myproject,<uuid>,rev1*%
 %TF.SameCoordinates,Original*%
 %TF.FileFunction,Copper,L1,Top*%     ; <-- Layer identification
 %TF.FilePolarity,Positive*%
-```
+</code></pre>
 
 **KiCad 5 (X2 in G04 comments):**
-```gerber
+<pre><code>
 G04 #@! TF.GenerationSoftware,KiCad,Pcbnew,5.1.5-52549c5~84~ubuntu18.04.1*
 G04 #@! TF.CreationDate,2020-03-09T10:29:23-07:00*
 G04 #@! TF.ProjectId,myproject,6d797072-6f6a-4563-9400-000000000000,rev?*
 G04 #@! TF.SameCoordinates,Original*
 G04 #@! TF.FileFunction,Copper,L1,Top*
 G04 #@! TF.FilePolarity,Positive*
-```
+</code></pre>
 
 KiCad 5 embeds X2 attributes as structured comments (<code>G04 #@!</code>) rather than native <code>%TF.*%</code> directives. The attribute names and values are identical — only the container syntax differs. When parsing, check for both patterns:
 - <code>%TF.FileFunction,(.*)\\*%</code> (KiCad 6+)
@@ -277,17 +279,17 @@ This is a critical distinction: with KiCad 5 gerbers, you cannot map copper feat
 
 ### File Attributes (%TF)
 
-```gerber
+<pre><code>
 %TF.GenerationSoftware,KiCad,Pcbnew,9.0.0*%
 %TF.CreationDate,2025-01-15T10:30:00-06:00*%
 %TF.ProjectId,project_name,<uuid>,rev1*%
 %TF.FileFunction,Copper,L1,Top*%
 %TF.FilePolarity,Positive*%
-```
+</code></pre>
 
 ### Aperture Attributes (%TA) — KiCad 6+ Only
 
-```gerber
+<pre><code>
 %TA.AperFunction,SMDPad,CuDef*%     ; This aperture is an SMD pad
 %ADD10C,0.200000*%                    ; Aperture definition follows
 %TD*%                                 ; Delete attribute (reset for next aperture)
@@ -296,7 +298,7 @@ This is a critical distinction: with KiCad 5 gerbers, you cannot map copper feat
 %TA.AperFunction,ViaPad*%             ; This aperture is a via pad
 %TA.AperFunction,ComponentPad*%       ; This aperture is a component pad
 %TA.AperFunction,NonConductor*%       ; Non-copper feature
-```
+</code></pre>
 
 Without aperture attributes (KiCad 5), you can still classify apertures heuristically:
 - Small circular apertures used with D01 (draw) commands → traces (diameter = trace width)
@@ -305,11 +307,11 @@ Without aperture attributes (KiCad 5), you can still classify apertures heuristi
 
 ### Object Attributes (%TO) — KiCad 6+ Only
 
-```gerber
+<pre><code>
 %TO.C,R1*%                           ; This object belongs to component R1
 %TO.N,GND*%                          ; This object is on net GND
 %TO.P,R1,1*%                         ; This is pin 1 of R1
-```
+</code></pre>
 
 These are extremely useful for analysis — they let you map gerber features back to schematic components and nets without needing the KiCad source files. When these attributes are absent (KiCad 5), component/net analysis requires parsing the <code>.kicad_pcb</code> source file instead.
 
@@ -321,7 +323,7 @@ Drill files define hole positions and sizes. KiCad exports Excellon format.
 
 ### Basic Structure
 
-```excellon
+<pre><code>
 M48                                  ; Header start
 ; DRILL file {project.kicad_pcb} date 2025-01-15
 ; FORMAT={-:-:metric}
@@ -350,7 +352,7 @@ T3                                   ; Select tool 3 (1.0mm)
 X110000Y110000
 
 M30                                  ; End of file
-```
+</code></pre>
 
 ### Coordinate Format
 
@@ -373,10 +375,10 @@ Two distinct formats depending on KiCad version:
 
 ### Tool Definitions
 
-```
+<pre><code>
 T1C0.300     ; Tool 1, Circle 0.3mm diameter
 T2C0.800     ; Tool 2, Circle 0.8mm diameter
-```
+</code></pre>
 
 ### Drill File Types
 
@@ -386,23 +388,23 @@ KiCad can export:
 - **Merged**: both PTH and NPTH in one file (JLCPCB preference)
 
 Check the <code>TF.FileFunction</code> attribute:
-```
+<pre><code>
 ; #@! TF.FileFunction,Plated,1,2,PTH       ; Plated, from layer 1 to 2 (2-layer board)
 ; #@! TF.FileFunction,Plated,1,4,PTH       ; Plated, from layer 1 to 4 (4-layer board)
 ; #@! TF.FileFunction,NonPlated,1,2,NPTH   ; Non-plated
 ; #@! TF.FileFunction,MixedPlating,1,2     ; Merged PTH+NPTH
-```
+</code></pre>
 
 The layer span (e.g., <code>1,4</code>) indicates the board layer count — <code>Plated,1,4,PTH</code> means through-holes spanning all 4 layers.
 
 ### Drill Tool Attributes — KiCad 6+ Only
 
-```
+<pre><code>
 ; #@! TA.AperFunction,Plated,PTH,ViaDrill         ; Via
 ; #@! TA.AperFunction,Plated,PTH,ComponentDrill    ; Through-hole component
 ; #@! TA.AperFunction,NonPlated,NPTH,BoardEdge     ; Board cutout
 ; #@! TA.AperFunction,Plated,Buried,ViaDrill       ; Buried via
-```
+</code></pre>
 
 KiCad 5 drill files have no tool attributes. Without them, you cannot distinguish via drills from component drills by the drill file alone. Heuristics:
 - Smallest drill diameter → likely via drill (typical: 0.3-0.4mm)
@@ -413,18 +415,18 @@ KiCad 5 drill files have no tool attributes. Without them, you cannot distinguis
 
 Oval or non-round holes use routing commands:
 
-```
+<pre><code>
 T2C1.000
 G85X120000Y90000X125000Y90000       ; Route (slot) from (120,90) to (125,90)
-```
+</code></pre>
 
 Or with M15/M16:
-```
+<pre><code>
 M15                                  ; Router mode on
 G01X120000Y90000                     ; Start of slot
 X125000Y90000                        ; End of slot
 M16                                  ; Router mode off
-```
+</code></pre>
 
 ---
 
@@ -432,7 +434,7 @@ M16                                  ; Router mode off
 
 KiCad 6+ exports a JSON job file alongside gerbers with board-level metadata. KiCad 5 does not generate this file — board dimensions and stackup must be extracted from the gerber/drill files directly or from the <code>.kicad_pcb</code> source.
 
-```json
+<pre><code>
 {
   "GeneralSpecs": {
     "Size": {"X": 203.05, "Y": 153.05},
@@ -451,7 +453,7 @@ KiCad 6+ exports a JSON job file alongside gerbers with board-level metadata. Ki
     {"Type": "Copper", "Thickness": 0.035, "Name": "B.Cu"}
   ]
 }
-```
+</code></pre>
 
 The job file is the most reliable source for board dimensions, stackup, design rules, and copper weight (0.035mm = 1oz). Parse this first before extracting from individual gerbers.
 
@@ -479,12 +481,12 @@ Check that all required files are present and consistent:
 
 KiCad 6+ gerbers contain X2 object attributes that map every copper feature back to schematic. KiCad 5 gerbers lack these entirely — skip this section for KiCad 5 and rely on the <code>.kicad_pcb</code> source file for component/net mapping.
 
-```gerber
+<pre><code>
 %TO.P,U2,1,FB*%      ; Pin: component U2, pin 1, name "FB"
 %TO.N,Net-(U2-FB)*%   ; Net: this feature is on net "Net-(U2-FB)"
 X76687500Y-150250000D03*  ; Flash pad at this position
 %TD*%                  ; Clear attributes for next feature
-```
+</code></pre>
 
 To build a complete component→pin→net map from gerber alone:
 1. Track <code>%TO.P,ref,pin,name*%</code> — set current component, pin number, pin name
@@ -635,7 +637,7 @@ Gerber and Excellon files are line-oriented text formats — simpler to parse th
 
 **Line-by-line state machine:** Gerber is a sequential command format. Parse line by line, maintaining state:
 
-```python
+<pre><code>
 current_aperture = None
 current_x, current_y = 0, 0
 current_attrs = {}  # TO.P, TO.N, TO.C attributes
@@ -680,7 +682,7 @@ for line in gerber_lines:
         if m.group(2): current_y = int(m.group(2))
         op = int(m.group(3))
         # D01=draw, D02=move, D03=flash
-```
+</code></pre>
 
 **Coordinate format:** KiCad gerbers use <code>%FSLAX46Y46*%</code> — 4 digits integer, 6 digits decimal, in mm. So <code>X76687500</code> = 76.687500 mm. Divide by 1,000,000 to get mm.
 
@@ -688,7 +690,7 @@ for line in gerber_lines:
 
 Excellon drill files have a header section (tool definitions) and a body (drill hits):
 
-```python
+<pre><code>
 tools = {}       # T-code → diameter
 current_tool = None
 drill_hits = []  # (x, y, tool, diameter)
@@ -716,7 +718,7 @@ for line in drill_lines:
         elif x > 1000:
             x, y = x / 1000, y / 1000  # METRIC integer microns
         drill_hits.append((x, y, current_tool, tools.get(current_tool, 0)))
-```
+</code></pre>
 
 **METRIC vs INCH:** KiCad 5 uses <code>INCH</code> with decimal coordinates (e.g., <code>X5.4075</code>). KiCad 6+ uses <code>METRIC</code> with integer micron coordinates (e.g., <code>X156100</code> = 156.100 mm). Check for <code>METRIC</code> or <code>INCH</code> in the header. If coordinates have decimal points, they're inches; if integer-only, divide by 1000 for mm.
 

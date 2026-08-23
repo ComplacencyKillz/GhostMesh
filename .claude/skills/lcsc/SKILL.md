@@ -41,9 +41,9 @@ The jlcsearch community API is the recommended way to search LCSC. **No authenti
 
 ### General Search
 
-```
+<pre><code>
 GET /api/search?q=<query>&limit=20&full=true
-```
+</code></pre>
 
 Parameters:
 - <code>q</code> — search query (matches MPN, LCSC code, or description keywords)
@@ -53,18 +53,18 @@ Parameters:
 
 ### Category-Specific Search
 
-```
+<pre><code>
 GET /resistors/list.json?search=10k+0402
 GET /capacitors/list.json?search=100nF+0402
 GET /microcontrollers/list.json?search=STM32
 GET /voltage_regulators/list.json?search=3.3V
-```
+</code></pre>
 
 ### Response Format
 
 Results are returned as <code>{"components": [...]}</code>. With <code>full=true</code>, each component has:
 
-```json
+<pre><code>
 {
   "lcsc": 14663,
   "mfr": "GRM155R71C104KA88D",
@@ -101,7 +101,7 @@ Results are returned as <code>{"components": [...]}</code>. With <code>full=true
     "prices": [{"min_qty": 100, "max_qty": 499, "currency": "USD", "price": 0.0048}, ...]
   }
 }
-```
+</code></pre>
 
 Key fields:
 - <code>lcsc</code> — numeric LCSC ID (without "C" prefix)
@@ -129,7 +129,7 @@ LCSC's CDN serves datasheet PDFs directly — no bot protection, no special head
 
 Use <code>sync_datasheets_lcsc.py</code> to maintain a <code>datasheets/</code> directory alongside a KiCad project. Same workflow and <code>manifest.json</code> format as the DigiKey and Mouser skills. **No API key required.**
 
-```bash
+<pre><code>
 # Sync datasheets for a KiCad project
 python3 <skill-path>/scripts/sync_datasheets_lcsc.py <file.kicad_sch>
 
@@ -147,7 +147,7 @@ python3 <skill-path>/scripts/sync_datasheets_lcsc.py <file.kicad_sch> --parallel
 
 # Batch mode — sync from a plain MPN list (no KiCad project required)
 python3 <skill-path>/scripts/sync_datasheets_lcsc.py --mpn-list mpns.txt --output ./datasheets
-```
+</code></pre>
 
 **MPN-list batch mode** (KH-312) — when you have a list of MPNs but no
 KiCad project to point at. One MPN per line; blank lines and <code>#</code>
@@ -170,7 +170,7 @@ The script:
 
 Use <code>fetch_datasheet_lcsc.py</code> for one-off downloads.
 
-```bash
+<pre><code>
 # Search by MPN
 python3 <skill-path>/scripts/fetch_datasheet_lcsc.py --search "GRM155R71C104KA88D" -o datasheet.pdf
 
@@ -182,7 +182,7 @@ python3 <skill-path>/scripts/fetch_datasheet_lcsc.py "https://wmsc.lcsc.com/..."
 
 # JSON output
 python3 <skill-path>/scripts/fetch_datasheet_lcsc.py --search "C14663" --json
-```
+</code></pre>
 
 The script:
 - **OS-agnostic** — uses <code>requests</code> → <code>urllib</code> → <code>playwright</code> fallback chain (no wget/curl)
@@ -201,9 +201,9 @@ The script:
 
 If the jlcsearch API is unavailable, search LCSC by fetching the website directly:
 
-```
+<pre><code>
 https://www.lcsc.com/search?q=<query>
-```
+</code></pre>
 
 ## Cross-Referencing & Missing Equivalents
 

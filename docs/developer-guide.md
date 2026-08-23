@@ -1,3 +1,5 @@
+---
+---
 # GhostMesh Developer Guide
 
 ## Architecture Overview

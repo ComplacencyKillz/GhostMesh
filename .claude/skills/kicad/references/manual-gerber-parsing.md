@@ -1,3 +1,5 @@
+---
+---
 # Manual Gerber & Drill Parsing (Script Fallback)
 
 When <code>analyze_gerbers.py</code> fails (unsupported format, newer KiCad version, non-KiCad gerbers), fall back to direct file parsing. Gerber and Excellon are simpler line-oriented text formats compared to KiCad S-expressions, but correct coordinate handling and X2 attribute state tracking require care.
@@ -36,7 +38,7 @@ Gerber files are line-oriented text. Each file represents one PCB layer. Parse l
 
 These appear in the file header and are required for coordinate conversion.
 
-```python
+<pre><code>
 import re
 
 with open(gerber_path) as f:
@@ -51,7 +53,7 @@ if fs_match:
 
 # Units: %MOMM*% or %MOIN*%
 units_mm = '%MOMM*%' in content  # True for mm, False for inch
-```
+</code></pre>
 
 **Coordinate conversion:** Raw integer coordinates divide by <code>10^decimals</code> to get the value in the declared unit. With <code>%FSLAX46Y46*%</code> and <code>%MOMM*%</code>:
 - <code>X150000000</code> = 150000000 / 10^6 = 150.0 mm
@@ -63,7 +65,7 @@ With <code>%MOIN*%</code>, divide by 10^decimals to get inches, then multiply by
 
 Apertures define the "pen" shape for drawing and flashing. They appear in the header as <code>%AD</code> commands.
 
-```python
+<pre><code>
 apertures = {}
 for line in lines:
     s = line.strip()
@@ -73,7 +75,7 @@ for line in lines:
         shape = m.group(2)       # C (circle), R (rect), O (obround), RoundRect (macro)
         params = m.group(3)      # e.g., "0.200000" or "1.000000X0.600000"
         apertures[d_code] = {'shape': shape, 'params': params}
-```
+</code></pre>
 
 **Aperture shapes and dimensions:**
 
@@ -90,7 +92,7 @@ For trace width analysis, focus on <code>C</code> (circle) apertures used with D
 
 Parse draw/flash/move operations maintaining current position and aperture state.
 
-```python
+<pre><code>
 current_aperture = None
 current_x, current_y = 0, 0
 flash_count = 0
@@ -135,7 +137,7 @@ for line in lines:
         x_max = max(x_max, current_x)
         y_min = min(y_min, current_y)
         y_max = max(y_max, current_y)
-```
+</code></pre>
 
 **Key operation codes:**
 
@@ -158,11 +160,11 @@ for line in lines:
 
 Arc commands use I/J offsets from the current position to the arc center:
 
-```
+<pre><code>
 G75*                         ; Multi-quadrant mode
 G02*                         ; Clockwise
 X160000000Y100000000I5000000J0D01*  ; Arc to (160,100) with center offset (5,0)
-```
+</code></pre>
 
 - <code>I</code> and <code>J</code> are offsets (not absolute coords) — arc center = (current_x + I, current_y + J)
 - Arc radius = sqrt(I^2 + J^2)
@@ -180,7 +182,7 @@ X2 attributes are the most valuable data in modern gerber files. They come in th
 
 File attributes identify the layer and provide metadata. **KiCad 5 and 6+ both emit them**, but in different syntax:
 
-```python
+<pre><code>
 x2_attrs = {}
 
 # Modern format (KiCad 6+): %TF.Key,Value*%
@@ -192,7 +194,7 @@ for m in re.finditer(r'G04 #@! TF\.(\w+),([^*]*)\*', content):
     key = m.group(1)
     if key not in x2_attrs:  # Don't override modern format
         x2_attrs[key] = m.group(2)
-```
+</code></pre>
 
 **Critical TF attributes:**
 
@@ -208,7 +210,7 @@ for m in re.finditer(r'G04 #@! TF\.(\w+),([^*]*)\*', content):
 
 Aperture attributes classify aperture function. They appear **before** the <code>%AD</code> definition they apply to:
 
-```python
+<pre><code>
 pending_aper_function = None
 aperture_functions = {}  # D-code -> function string
 
@@ -230,7 +232,7 @@ for line in lines:
     # TD clears pending
     if s == '%TD*%':
         pending_aper_function = None
-```
+</code></pre>
 
 **TA.AperFunction values and meaning:**
 
@@ -251,7 +253,7 @@ Object attributes map copper features to schematic components and nets. This is 
 
 **TO attributes are stateful:** once set, they apply to all subsequent D01/D02/D03 commands until cleared by <code>%TD*%</code> or overwritten by a new <code>%TO*%</code>.
 
-```python
+<pre><code>
 current_component = None
 current_net = None
 components = {}       # ref -> {pads, nets}
@@ -296,7 +298,7 @@ for line in lines:
     # On flash (D03), count pad for current component
     if 'D03' in s and current_component and current_component in components:
         components[current_component]['pads'] += 1
-```
+</code></pre>
 
 **Important state management rules:**
 - <code>%TO.C,R1*%</code> sets component context — all subsequent features belong to R1
@@ -312,7 +314,7 @@ for line in lines:
 
 Components that appear only on B.Cu (back copper) TO.C attributes but not F.Cu are back-side components. Those appearing on F.Cu are front-side. Through-hole components appear on both layers (front pad + back pad).
 
-```python
+<pre><code>
 front_components = set()
 back_components = set()
 
@@ -325,7 +327,7 @@ for gerber in parsed_gerbers:
         back_components.update(to_components)
 
 back_only = back_components - front_components  # True back-side SMD
-```
+</code></pre>
 
 ---
 
@@ -335,7 +337,7 @@ Drill files have a header (tool definitions) and body (drill hits). The coordina
 
 ### Step 1: Detect Units
 
-```python
+<pre><code>
 units_mm = True  # default assumption
 
 for line in lines:
@@ -344,13 +346,13 @@ for line in lines:
         units_mm = True
     elif 'INCH' in s:
         units_mm = False
-```
+</code></pre>
 
 ### Step 2: Parse Tool Definitions
 
 Tools are defined in the header section (before <code>%</code> end-of-header marker):
 
-```python
+<pre><code>
 tools = {}
 pending_aper_function = None
 
@@ -376,11 +378,11 @@ for line in lines:
             'hits': [],
         }
         pending_aper_function = None
-```
+</code></pre>
 
 ### Step 3: Parse Drill Hits
 
-```python
+<pre><code>
 current_tool = None
 
 for line in lines:
@@ -401,7 +403,7 @@ for line in lines:
         elif x > 1000:  # METRIC integer microns (no decimal point)
             x, y = x / 1000, y / 1000
         tools[current_tool]['hits'].append((x, y))
-```
+</code></pre>
 
 ### KiCad 5 vs 6+ Coordinate Differences
 
@@ -444,7 +446,7 @@ for line in lines:
 
 Parse <code>TF.FileFunction</code> from file attributes (works for both KiCad 5 and 6+):
 
-```python
+<pre><code>
 file_function = x2_attrs.get('FileFunction', '').lower()
 
 if 'copper' in file_function:
@@ -459,7 +461,7 @@ if 'copper' in file_function:
             abs_pos = int(m.group(1))
             inner_idx = abs_pos - 1  # L2→In1, L3→In2
             layer = f'In{inner_idx}.Cu'
-```
+</code></pre>
 
 **Inner layer naming pitfall:** X2 FileFunction uses absolute copper position (<code>L2</code> = second copper layer from top), but KiCad names inner layers starting from <code>In1.Cu</code>. For a 4-layer board: L1=F.Cu, **L2=In1.Cu**, **L3=In2.Cu**, L4=B.Cu. Subtract 1 from the absolute position to get the KiCad inner layer index.
 
@@ -467,7 +469,7 @@ if 'copper' in file_function:
 
 When X2 attributes are missing or unparseable:
 
-```python
+<pre><code>
 name = filename.lower()
 
 # Check inner layers first (avoid false positive on "in" substring)
@@ -485,7 +487,7 @@ patterns = {
     'b_silkscreen': 'B.SilkS', 'b_silks': 'B.SilkS',
     'edge_cuts': 'Edge.Cuts',
 }
-```
+</code></pre>
 
 **KiCad version from filenames:** <code>_SilkS</code> suffix = KiCad 5, <code>_Silkscreen</code> suffix = KiCad 6+.
 
@@ -512,7 +514,7 @@ Some fabs prefer Protel-style extensions:
 
 **KiCad 6+ only.** JSON format with board metadata. Parse before individual gerbers — it's the most reliable source for board dimensions, layer count, and design rules.
 
-```python
+<pre><code>
 import json
 
 with open(gbrjob_path) as f:
@@ -541,7 +543,7 @@ for layer in job.get('MaterialStackup', []):
     layer_type = layer.get('Type', '')      # "Copper" or "Dielectric"
     thickness = layer.get('Thickness', 0)   # mm (0.035 = 1oz copper)
     material = layer.get('Material', '')    # "FR4", etc.
-```
+</code></pre>
 
 **When .gbrjob is absent (KiCad 5):**
 - Board dimensions: compute from Edge.Cuts gerber coordinate bounding box

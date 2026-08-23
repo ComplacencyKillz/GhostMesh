@@ -1,14 +1,16 @@
+---
+---
 # EMC Analysis Methodology
 
 How the <code>analyze_emc.py</code> script works — data sources, check categories, scoring model, and limitations.
 
 ## Architecture
 
-```
+<pre><code>
 analyze_schematic.py ──→ schematic.json ──┐
                                           ├──→ analyze_emc.py ──→ emc.json
 analyze_pcb.py ────────→ pcb.json ────────┘
-```
+</code></pre>
 
 The EMC analyzer is a **consumer** of the kicad skill's analysis output. It does not parse KiCad files directly. It cross-references schematic data (component types, switching frequencies, protection devices, bus topology) against PCB data (trace routing, zone coverage, component placement, via stitching, stackup) to identify EMC risks.
 
@@ -88,9 +90,9 @@ Calculates connector aperture slot resonance frequencies and flags coincidences 
 
 ## Risk Scoring
 
-```
+<pre><code>
 score = 100 - (CRITICAL × 15) - (HIGH × 8) - (MEDIUM × 3) - (LOW × 1)
-```
+</code></pre>
 
 Clamped to [0, 100]. Interpretation:
 

@@ -2,6 +2,7 @@
 #include "GhostMeshArming.h"
 #include "GhostMeshConfig.h"
 #include "GhostMeshWipe.h"
+#include "BadUSBModule.h"
 #include "MeshService.h"
 #include "configuration.h"
 #include <Arduino.h>
@@ -22,6 +23,7 @@ IRModule *irModule;
 #define GM_IR_DISARM  0x02u
 #define GM_IR_WIPE    0x03u
 #define GM_IR_CONFIRM 0x04u
+#define GM_IR_RUN     0x05u
 
 // After WIPE, CONFIRM must arrive within this window or the destruct sequence resets.
 #define IR_WIPE_WINDOW_MS 10000u
@@ -153,6 +155,16 @@ void IRModule::handleCommand(uint8_t cmd)
         } else {
             LOG_INFO("IR: CONFIRM ignored (no pending wipe / timed out / disarmed)");
             wipeStep = 0;
+        }
+        break;
+    case GM_IR_RUN:
+        // Fire whatever payload /key last staged (the latest /key @id <name> sets the shared state).
+        // Armed-gated — same as the mesh path. The name is nullptr here (uses lastStagedName).
+        if (badUSBModule) {
+            if (badUSBModule->trigger(lastKeyName))
+                LOG_INFO("IR: RUN '%s' triggered", lastKeyName);
+            else
+                LOG_INFO("IR: RUN denied (armed=%d, name='%s')", ghostmesh_armed, lastKeyName);
         }
         break;
     default:

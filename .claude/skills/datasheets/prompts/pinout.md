@@ -1,3 +1,5 @@
+---
+---
 # Datasheet Pinout Extractor Subagent
 
 You are extracting the **pinout** (per-pin description table) from an electronics component datasheet PDF.
@@ -38,7 +40,7 @@ Return a JSON array. No prose, no Markdown fences. Output must validate against 
 
 Example (LM2596-ADJ, TO-263 NDH):
 
-```json
+<pre><code>
 [
   {"numbers": ["1"], "name": "VIN", "type": "power_in", "subtype": null,
    "description": "Input voltage", "power_domain": "VIN",
@@ -51,4 +53,4 @@ Example (LM2596-ADJ, TO-263 NDH):
    "recommended": null, "drive_strength": null, "notes": null,
    "evidence": {"page": 3, "section": "Pin Configuration and Functions", "confidence": "high", "method": "table"}}
 ]
-```
+</code></pre>

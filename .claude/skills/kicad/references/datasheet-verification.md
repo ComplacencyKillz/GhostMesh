@@ -1,3 +1,5 @@
+---
+---
 # Datasheet Verification Reference
 
 Automated cross-check of schematic connections against structured datasheet extractions. Catches pin voltage violations, missing required external components, and insufficient decoupling -- issues that manual review often misses because they require reading the datasheet for every IC.
@@ -37,9 +39,9 @@ The verification pipeline has four stages. All must complete before verification
 
 Use <code>sync_datasheets_digikey.py</code> (or <code>fetch_datasheet_digikey.py</code> for individual parts) to download PDF datasheets for all ICs in the design. The script uses <code>analyze_schematic.py</code> to extract MPNs automatically.
 
-```bash
+<pre><code>
 python3 <skill-path>/scripts/sync_datasheets_digikey.py <project_dir>
-```
+</code></pre>
 
 PDFs are saved to <code>datasheets/</code> in the project directory.
 
@@ -53,13 +55,13 @@ This step is interactive — it requires the agent to read PDF pages and produce
 
 Extraction JSON files are stored in <code>datasheets/extracted/</code> with filenames derived from the MPN (non-alphanumeric characters replaced with underscores). An optional <code>manifest.json</code> (legacy name <code>index.json</code>) provides case-insensitive MPN-to-file mapping.
 
-```
+<pre><code>
 datasheets/extracted/
   TPS61023DRLR.json
   STM32F405RGT6.json
   USBLC6_2SC6.json
   manifest.json       # optional (legacy name: index.json)
-```
+</code></pre>
 
 ### Stage 4: Verification
 
@@ -89,9 +91,9 @@ GND pins are skipped. Pins without a <code>voltage_abs_max</code> in the extract
 
 **Example finding:**
 
-```
+<pre><code>
 U3 pin 4 (VIN) on +12V (12.0V) exceeds absolute maximum (6.0V) by 6.00V
-```
+</code></pre>
 
 This is always CRITICAL -- exceeding absolute maximum ratings causes permanent device damage.
 
@@ -111,9 +113,9 @@ If no <code>voltage_abs_max</code> is available, the margin is treated as 0% (HI
 
 **Example finding:**
 
-```
+<pre><code>
 U1 pin 2 (VDD) on +5V (5.0V) exceeds recommended operating maximum (4.5V)
-```
+</code></pre>
 
 ### Missing required external components
 
@@ -138,9 +140,9 @@ If the <code>required_external</code> text cannot be parsed into any known compo
 
 **Example finding:**
 
-```
+<pre><code>
 U2 pin 8 (BYPASS): datasheet requires "100nF bypass cap to GND" but none found on net BYPASS_U2
-```
+</code></pre>
 
 ### Decoupling insufficient
 
@@ -178,9 +180,9 @@ The count multiplier is parsed from <code>xN</code> or <code>x N</code> suffixes
 
 **Example finding:**
 
-```
+<pre><code>
 U4 (LM2596): datasheet recommends "22uF ceramic x2" but found 1/2 matching caps on power pins
-```
+</code></pre>
 
 ---
 
@@ -228,7 +230,7 @@ Array of finding objects. Each finding has:
 
 **Example output:**
 
-```json
+<pre><code>
 {
   "findings": [
     {
@@ -252,7 +254,7 @@ Array of finding objects. Each finding has:
     "by_severity": {"CRITICAL": 1}
   }
 }
-```
+</code></pre>
 
 ---
 

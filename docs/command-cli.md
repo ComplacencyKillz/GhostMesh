@@ -1,3 +1,5 @@
+---
+---
 # GhostMesh Mesh Command CLI
 
 A text-based command interface carried over the Meshtastic mesh. Any operator can query and

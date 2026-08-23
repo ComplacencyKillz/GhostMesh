@@ -1,3 +1,5 @@
+---
+---
 ![Logo](https://github.com/I-Am-Jakoby/hak5-submissions/blob/main/Assets/logo-170-px.png?raw=true)
 
 <img src="https://media.giphy.com/media/VgCDAzcKvsR6OM0uWg/giphy.gif" width="50"> 
@@ -47,9 +49,9 @@ When your target returns and moves their mouse, the video will start playing ful
 * Walk away
 * You can run the example snippet below and it will open up a video covering one of my other payloads
 * You can of course replace the URL with your own video
-```
+<pre><code>
 powershell -w h Add-Type -AssemblyName *m.W*s.F*s;$w=[Windows.Forms.Cursor];$p=$w::Position.X;while(1){if($w::Position.X-ne$p){break}else{Sleep 3}};saps https://youtu.be/sOLIdqpzrW4;sleep 3;$o=New-Object -ComObject WScript.Shell;$o.SendKeys('f')
-```
+</code></pre>
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 ## Contributing

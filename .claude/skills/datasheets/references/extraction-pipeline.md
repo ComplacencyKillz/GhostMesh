@@ -1,3 +1,5 @@
+---
+---
 # Extraction Pipeline — Full Procedure
 
 Full extraction-pipeline procedure. The SKILL.md main flow points here; scripts do the orchestration — this is depth-on-demand, not a required read.

@@ -1,3 +1,5 @@
+---
+---
 # Datasheet Op-Amp Extractor Subagent
 
 You are extracting the **op-amp category extension** (topology, channels, supply range, AC/DC parameters, output swing, package, thermal characteristics) from an electronics component datasheet PDF.
@@ -76,7 +78,7 @@ Return only the JSON object. No prose, no fences. Output must validate against <
 
 Example (LM358 — Fairchild/ON Semi BJT general-purpose dual single-supply, SOIC-8/PDIP-8; values from datasheet at VCC=5V, TA=25°C):
 
-```json
+<pre><code>
 {
   "opamp_topology": "general_purpose",
   "channels": 2,
@@ -161,4 +163,4 @@ Example (LM358 — Fairchild/ON Semi BJT general-purpose dual single-supply, SOI
     "evidence": {"page": 8, "section": "Package Dimensions", "confidence": "medium", "method": "table"}
   }
 }
-```
+</code></pre>

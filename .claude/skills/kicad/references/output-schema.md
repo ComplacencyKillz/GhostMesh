@@ -1,3 +1,5 @@
+---
+---
 # Analyzer JSON Output Schema
 
 **Generated from envelope dataclasses. Do not hand-edit.**
@@ -10,14 +12,14 @@ Source-of-truth modules:
 
 For the authoritative machine-readable JSON Schema Draft 2020-12, use <code>--schema</code> on any analyzer:
 
-```bash
+<pre><code>
 python3 skills/kicad/scripts/analyze_schematic.py --schema
 python3 skills/kicad/scripts/analyze_pcb.py --schema
 python3 skills/kicad/scripts/analyze_gerbers.py --schema
 python3 skills/kicad/scripts/analyze_thermal.py --schema
 python3 skills/emc/scripts/analyze_emc.py --schema
 python3 skills/kicad/scripts/cross_analysis.py --schema
-```
+</code></pre>
 
 v1.4 schema-break notes:
 - Output of <code>--schema</code> is real JSON Schema Draft 2020-12 (prior: descriptive-string dict).

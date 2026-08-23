@@ -1,3 +1,5 @@
+---
+---
 # Datasheet Diode Extractor Subagent
 
 You are extracting the **diode category extension** (forward/reverse ratings, recovery, capacitance, package, thermal limits) from an electronics component datasheet PDF.
@@ -45,7 +47,7 @@ Return only the JSON object. No prose, no fences. Output must validate against <
 
 Example (MBRS540T3G — ON Semiconductor Schottky power rectifier, SMC package):
 
-```json
+<pre><code>
 {
   "diode_type": "schottky",
   "vf": [{"min": null, "typ": null, "max": 0.50, "unit": "V",
@@ -86,4 +88,4 @@ Example (MBRS540T3G — ON Semiconductor Schottky power rectifier, SMC package):
   "ir": [{"min": null, "typ": null, "max": 3e-4, "unit": "A", "condition": "Rated DC voltage, TC=25°C", "notes": null,
           "evidence": {"page": 2, "section": "Electrical Characteristics", "confidence": "high", "method": "table"}}]
 }
-```
+</code></pre>

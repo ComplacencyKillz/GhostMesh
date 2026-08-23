@@ -1,3 +1,5 @@
+---
+---
 # Design Intent Interpretation Guide
 
 When presenting schematic or PCB analysis results, check the <code>design_intent</code>

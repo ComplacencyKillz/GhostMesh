@@ -1,3 +1,5 @@
+---
+---
 # Quality Scoring Reference
 
 The scorer (<code>datasheet_score.py</code>) evaluates a completed extraction against a five-dimension completeness rubric and returns a total score from 0.0 to 10.0. The score determines whether the extraction is good enough to cache and use for design review.
@@ -145,15 +147,15 @@ An extraction at 5.9 from a part with a minimal datasheet (no application circui
 
 ## Calling the Scorer
 
-```python
+<pre><code>
 from datasheet_score import score_extraction
 
 result = score_extraction(extraction, expected_pin_count=6)
-```
+</code></pre>
 
 Returns:
 
-```python
+<pre><code>
 {
     "total": 8.2,
     "pin_coverage": 9.0,
@@ -164,7 +166,7 @@ Returns:
     "issues": ["Pin 3 (BOOT): name only, no specs", ...],
     "sufficient": True   # True if total >= 6.0
 }
-```
+</code></pre>
 
 The <code>issues</code> list is the union of per-dimension issue strings (capped per dimension). Use it to guide retry attempts — if the issues show "No application circuit information", re-read the application section pages.
 
@@ -174,7 +176,7 @@ The <code>issues</code> list is the union of per-dimension issue strings (capped
 
 When an extraction is cached via <code>cache_extraction()</code>, the <code>manifest.json</code> records a summary:
 
-```json
+<pre><code>
 {
   "file": "TPS61023DRLR_a1b2c3.json",
   "mpn": "TPS61023DRLR",
@@ -186,7 +188,7 @@ When an extraction is cached via <code>cache_extraction()</code>, the <code>mani
   "extraction_version": 1,
   "pin_count": 6
 }
-```
+</code></pre>
 
 The <code>extraction_score</code> in the index is the <code>total</code> from <code>score_extraction()</code>, stored in <code>extraction_metadata.extraction_score</code> inside the full JSON. An entry with <code>extraction_score < 6.0</code> may still be present if <code>retry_count >= MAX_RETRIES</code> (retries exhausted).
 

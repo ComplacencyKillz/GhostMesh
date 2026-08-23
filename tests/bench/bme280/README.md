@@ -1,3 +1,5 @@
+---
+---
 # BME280 Bench Test (Phase 7)
 
 Standalone diagnostic to confirm the BME280 + STEMMA QT wiring is good **before**
@@ -19,12 +21,12 @@ Power from the always-on **3V3** pin so you don't have to drive GPIO26 in firmwa
 | SDA    | <code>GPIO41</code>         | hub SDA          | SDA |
 | SCL    | <code>GPIO42</code>         | hub SCL          | SCL |
 
-```
+<pre><code>
 Heltec 3V3 ─┐
 Heltec GND ─┤  via Qwiic pigtail  ──► STEMMA QT hub port 1
 Heltec G41 ─┤  (4 jumpers → Qwiic)      └─ port 2 ──► BME280 (Qwiic)
 Heltec G42 ─┘
-```
+</code></pre>
 
 Notes:
 - The Heltec V3 has **no onboard Qwiic connector** — you need a **Qwiic/STEMMA QT
@@ -38,10 +40,10 @@ Notes:
 
 VS Code: PlatformIO sidebar → **Upload**, then **Monitor**. Or CLI from this folder:
 
-```bash
+<pre><code>
 pio run -t upload          # build + flash
 pio device monitor -b 115200   # watch output
-```
+</code></pre>
 
 ## Pass criteria
 

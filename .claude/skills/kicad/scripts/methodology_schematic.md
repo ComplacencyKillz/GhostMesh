@@ -1,3 +1,5 @@
+---
+---
 # Schematic Analyzer — Methodology
 
 This document describes the analysis methodology used by <code>analyze_schematic.py</code> and its supporting modules. It covers the parsing pipeline, net-building algorithm, component classification heuristics, signal path detection, and design analysis checks in enough detail to understand what the analyzer does, why, and where it makes trade-offs.
@@ -14,7 +16,7 @@ This means the analyzer:
 
 ## Architecture Overview
 
-```
+<pre><code>
 .kicad_sch file(s)
        |
        v
@@ -31,7 +33,7 @@ kicad_utils.py  kicad_types.py  signal_detectors.py
        |
        v
   Structured JSON output
-```
+</code></pre>
 
 ### Module Responsibilities
 
@@ -49,23 +51,23 @@ kicad_utils.py  kicad_types.py  signal_detectors.py
 
 KiCad stores schematics in a Lisp-like S-expression format:
 
-```lisp
+<pre><code>
 (kicad_sch (version 20231120) (generator "eeschema")
   (symbol (lib_id "Device:R") (at 100 50 0)
     (property "Reference" "R1" ...)
     (property "Value" "10k" ...)
     (pin "1" (at 0 -1.27) ...)
     (pin "2" (at 0 1.27) ...)))
-```
+</code></pre>
 
 The parser (<code>sexp_parser.py</code>) converts this to nested Python lists:
 
-```python
+<pre><code>
 ["kicad_sch", ["version", "20231120"], ["generator", "eeschema"],
   ["symbol", ["lib_id", "Device:R"], ["at", "100", "50", "0"],
     ["property", "Reference", "R1", ...],
     ["property", "Value", "10k", ...], ...]]
-```
+</code></pre>
 
 **Key design decision**: All values are strings. The parser performs no type coercion, no schema validation, and no KiCad version-specific handling. This makes it robust across KiCad 5–10 format changes. Callers convert to <code>float</code>/<code>int</code> as needed.
 
@@ -90,12 +92,12 @@ The analyzer uses breadth-first traversal starting from the root sheet:
 
 When a sub-sheet is instantiated multiple times, each symbol in it has per-instance reference assignments:
 
-```lisp
+<pre><code>
 (instances
   (project "proj"
     (path "/root_uuid/instance1_uuid" (reference "Q1") (unit 1))
     (path "/root_uuid/instance2_uuid" (reference "Q3") (unit 1))))
-```
+</code></pre>
 
 The analyzer matches the current instance path to extract the correct reference designator. Some KiCad projects (especially migrated ones) store these mappings only in the root schematic's centralized <code>(symbol_instances)</code> section rather than inline — both locations are checked as fallback.
 
@@ -109,7 +111,7 @@ Every extracted element (component, wire, label, junction) is tagged with a <cod
 
 Each <code>(symbol ...)</code> block in the parse tree becomes a component dict:
 
-```python
+<pre><code>
 {
     "reference": "R1",
     "value": "10k",
@@ -122,7 +124,7 @@ Each <code>(symbol ...)</code> block in the parse tree becomes a component dict:
     "dnp": False,                  # Do Not Populate flag
     "_sheet": 0                    # sheet index for net isolation
 }
-```
+</code></pre>
 
 ### Pin Position Computation
 
@@ -160,18 +162,18 @@ The net-building algorithm is the core of the analyzer. It determines which pins
 
 Every electrical point in the schematic is assigned a coordinate key:
 
-```python
+<pre><code>
 key = (sheet_index, round(x / EPSILON) * EPSILON, round(y / EPSILON) * EPSILON)
-```
+</code></pre>
 
 where <code>EPSILON = 0.01 mm</code>. The sheet index prevents cross-sheet merges; the rounding absorbs floating-point noise in coordinates.
 
 A standard union-find (disjoint set) data structure with path compression groups connected points into equivalence classes:
 
-```
+<pre><code>
 find(p):  path compression to root
 union(a, b):  merge two sets
-```
+</code></pre>
 
 ### Connection Sources (in processing order)
 
@@ -210,7 +212,7 @@ When multiple disconnected wire groups share the same name (e.g., two separate <
 
 ### Output
 
-```python
+<pre><code>
 nets = {
     "net_name": {
         "name": "net_name",
@@ -221,7 +223,7 @@ nets = {
         "point_count": 7   # total coordinate points in this net (wires + junctions + labels + pins)
     }
 }
-```
+</code></pre>
 
 ---
 
@@ -282,13 +284,13 @@ The classifier applies rules in priority order — first match wins:
 
 The full set of possible type values:
 
-```
+<pre><code>
 resistor, resistor_network, capacitor, inductor, diode, led, transistor,
 ic, connector, switch, crystal, oscillator, fuse, relay, optocoupler,
 ferrite_bead, test_point, mounting_hole, jumper, net_tie, transformer,
 thermistor, varistor, buzzer, motor, antenna, power_symbol, power_flag,
 flag, other
-```
+</code></pre>
 
 ---
 
@@ -321,10 +323,10 @@ Before parsing, the function:
 
 ### SI Prefix Map
 
-```
+<pre><code>
 p = 1e-12    n = 1e-9     u/µ = 1e-6    m = 1e-3
 k/K = 1e3    M = 1e6      G = 1e9
-```
+</code></pre>
 
 ### Unparseable Values
 
@@ -366,7 +368,7 @@ A net is considered a power net if **either** method matches.
 
 <code>AnalysisContext</code> (in <code>kicad_types.py</code>) is a dataclass that holds shared state built once and passed to all analysis functions:
 
-```python
+<pre><code>
 @dataclass
 class AnalysisContext:
     components: list[dict]          # All components across all sheets
@@ -377,7 +379,7 @@ class AnalysisContext:
     parsed_values: dict[str, float] # {reference: numeric_value} — built in __post_init__
     known_power_rails: set[str]     # Power rail names — built in __post_init__
     generator_version: str          # KiCad generator version string
-```
+</code></pre>
 
 The three auto-built fields (<code>comp_lookup</code>, <code>parsed_values</code>, <code>known_power_rails</code>) replace what was previously ~10 duplicate rebuild operations scattered across analysis functions.
 
@@ -391,7 +393,7 @@ The <code>analyze_signal_paths()</code> function orchestrates 21 detector functi
 
 Detectors run in a specific order because some consume results from earlier detectors:
 
-```
+<pre><code>
 1. voltage_dividers          ← standalone
 2. rc_filters                ← excludes resistors in voltage dividers
 3. lc_filters                ← standalone
@@ -413,7 +415,7 @@ Detectors run in a specific order because some consume results from earlier dete
 19. rf_chains                ← standalone
 20. bms_systems              ← standalone
 21. design_observations      ← reads all prior results
-```
+</code></pre>
 
 ### Shared Helpers
 
@@ -836,7 +838,7 @@ Estimates inrush current at power-on:
 
 Components are grouped by <code>(value, footprint, lib_id)</code> tuple. Each BOM entry contains:
 
-```python
+<pre><code>
 {
     "value": "10k",
     "footprint": "Resistor_SMD:R_0402_1005Metric",
@@ -847,7 +849,7 @@ Components are grouped by <code>(value, footprint, lib_id)</code> tuple. Each BO
     "mpn": "RC0402FR-0710KL",    # if present in properties
     "dnp": False
 }
-```
+</code></pre>
 
 Power symbols (<code>#PWR</code>, <code>#FLG</code>) and DNP components are excluded from the BOM count but DNP components are listed separately.
 

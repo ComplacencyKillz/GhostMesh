@@ -109,11 +109,11 @@ returning <code>None</code> that "should" have a value — stop and run <code>--
 writing a second extraction attempt. It prints the exact field names and
 types for every top-level key:
 
-```bash
+<pre><code>
 python3 <skill-path>/scripts/analyze_schematic.py --schema
 python3 <skill-path>/scripts/analyze_pcb.py --schema
 python3 <skill-path>/scripts/analyze_gerbers.py --schema
-```
+</code></pre>
 
 **JSON field cheat sheet** — the most common mistakes when reading analyzer
 output by hand:
@@ -138,11 +138,11 @@ This prevents format-string bugs and wrong field names. Use f-strings or <code>j
 In all commands below, <code><skill-path></code> refers to this skill's base directory (shown at the top of this file when loaded).
 
 ### Schematic Analyzer
-```bash
+<pre><code>
 python3 <skill-path>/scripts/analyze_schematic.py <file.kicad_sch> --analysis-dir analysis/
 python3 <skill-path>/scripts/analyze_schematic.py <file.kicad_sch> --analysis-dir analysis/ --compact
 python3 <skill-path>/scripts/analyze_schematic.py <file.kicad_sch> --output analysis.json  # one-off, no cache
-```
+</code></pre>
 Outputs structured JSON (~60-220KB depending on board complexity) with:
 - **Components & BOM**: inventory with reference, value, footprint, lib_id, type classification, MPN, datasheet; deduplicated BOM with quantities
 - **Nets**: full connectivity map with pin-to-net mapping, wire counts, no-connects
@@ -184,11 +184,11 @@ For detailed parsing instructions, data recovery workflows, and a priority matri
 See <code>references/schematic-analysis.md</code> Step 2 for the full verification checklist. If the script fails or returns unexpected results, see <code>references/manual-schematic-parsing.md</code> for the complete fallback methodology.
 
 ### PCB Layout Analyzer
-```bash
+<pre><code>
 python3 <skill-path>/scripts/analyze_pcb.py <file.kicad_pcb> --analysis-dir analysis/
 python3 <skill-path>/scripts/analyze_pcb.py <file.kicad_pcb> --analysis-dir analysis/ --proximity  # add crosstalk analysis
 python3 <skill-path>/scripts/analyze_pcb.py <file.kicad_pcb> --output pcb.json  # one-off, no cache
-```
+</code></pre>
 Outputs structured JSON (~50-300KB depending on board complexity) with:
 - **Core**: footprint inventory (pads, courtyards, net assignments, extended attrs, schematic cross-reference), track/via statistics, zone summaries, board outline/dimensions, routing completeness
 - **Zones & copper presence**: zone outline vs filled polygon bounding boxes, fill ratio, cross-layer copper presence at every pad (which components have zone copper on the opposite layer and which don't), same-layer foreign zone detection
@@ -227,7 +227,7 @@ Point <code>--schematic</code> and <code>--pcb</code> at the current run's JSON 
 <code>--analysis-dir analysis/</code> so the result lands inside the same run folder
 and the manifest tracks it:
 
-```
+<pre><code>
 # Recommended: integrate into the current run
 python3 <skill-path>/scripts/cross_analysis.py \
     --schematic analysis/<run_id>/schematic.json \
@@ -237,7 +237,7 @@ python3 <skill-path>/scripts/cross_analysis.py \
 # One-off (bypasses the cache)
 python3 <skill-path>/scripts/cross_analysis.py \
     --schematic schematic.json --pcb pcb.json --output cross_analysis.json
-```
+</code></pre>
 
 Checks: CC-001 connector current capacity, EG-001 ESD protection gaps, DA-001 decoupling adequacy, XV-001..003 schematic/PCB sync. PCB JSON optional.
 
@@ -248,13 +248,13 @@ Mechanical cross-verify (PCB vs schematic geometry): <code>python3 <skill-path>/
 When <code>--full</code> is used with the PCB analyzer, the output includes a <code>connectivity_graph</code> section with per-net copper connectivity analysis via union-find over pads, tracks, vias, and zone fills. This enables deterministic plane split detection and return path validation in cross_analysis.py. **The top-level keys of <code>connectivity_graph</code> are net names themselves** — e.g., <code>cg['GND']</code>, <code>cg['Net-(D2-K)']</code>, <code>cg['+3V3']</code> — *not* a <code>per_net</code> wrapper. Each net entry shows island count, component-to-island mapping (<code>{component:pad: island_id}</code>), gap locations, and disconnected pad pairs.
 
 ### Gerber & Drill Analyzer
-```bash
+<pre><code>
 # Recommended: integrate into the current run
 python3 <skill-path>/scripts/analyze_gerbers.py <gerber_directory/> --analysis-dir analysis/
 
 # One-off
 python3 <skill-path>/scripts/analyze_gerbers.py <gerber_directory/> --output gerber.json
-```
+</code></pre>
 Outputs: layer identification (X2 attributes), component/net/pin mapping (KiCad 6+ TO attributes), aperture function classification, trace width distribution, board dimensions, drill classification (via/component/mounting), layer completeness, alignment verification, pad type summary (SMD/THT ratio). Add <code>--full</code> for complete pin-to-net connectivity dump. ~10KB JSON.
 
 The gerber analyzer produces a <code>findings</code> list with rich format findings: GR-001 missing layers, GR-002 alignment issues, GR-003 drill problems, GR-004 paste aperture mismatches, GR-005 open board outlines.
@@ -277,7 +277,7 @@ committing to git, but don't delete them between analysis steps.
 
 All analyzers produce a uniform output envelope:
 
-```json
+<pre><code>
 {
     "analyzer_type": "schematic|pcb|emc|cross_analysis|thermal|gerber|lifecycle|spice",
     "schema_version": "1.4.0",
@@ -296,7 +296,7 @@ All analyzers produce a uniform output envelope:
         "provenance_coverage_pct": 96.5
     }
 }
-```
+</code></pre>
 
 The <code>findings</code> list is the single authoritative source for all findings. Use <code>finding_schema.get_findings()</code> or <code>finding_schema.group_findings()</code> to filter by detector, rule prefix, or category. Detector names are available as constants in <code>finding_schema.Det</code>. Severities are <code>error</code>, <code>warning</code>, or <code>info</code>; confidence is <code>deterministic</code>, <code>heuristic</code>, or <code>datasheet-backed</code>.
 
@@ -312,7 +312,7 @@ All analyzers support <code>--stage</code> and <code>--audience</code> flags:
 **Stages:** <code>schematic</code>, <code>layout</code>, <code>pre_fab</code>, <code>bring_up</code>
 **Audiences:** <code>designer</code> (default), <code>reviewer</code>, <code>manager</code>
 
-```bash
+<pre><code>
 # Show only layout-relevant findings for a reviewer
 python3 <skill-path>/scripts/analyze_pcb.py board.kicad_pcb --stage layout --audience reviewer --text
 
@@ -321,7 +321,7 @@ python3 <skill-path>/scripts/analyze_schematic.py design.kicad_sch --audience ma
 
 # Pre-fab checklist for cross-domain analysis
 python3 <skill-path>/scripts/cross_analysis.py -s sch.json -p pcb.json --stage pre_fab --text
-```
+</code></pre>
 
 JSON output always includes all findings. <code>--stage</code> adds <code>stages</code> and <code>in_active_stage</code> fields to each finding plus a <code>stage_filter</code> summary. <code>audience_summary</code> is always computed with designer/reviewer/manager views. <code>--text</code> output respects both flags.
 
@@ -343,7 +343,7 @@ See also the <code>bom</code> skill's cleanup section for datasheets, order CSVs
 
 The <code>analysis</code> section in <code>.kicad-happy.json</code> controls the shared analysis output directory:
 
-```json
+<pre><code>
 {
   "analysis": {
     "output_dir": "analysis",
@@ -353,7 +353,7 @@ The <code>analysis</code> section in <code>.kicad-happy.json</code> controls the
     "diff_threshold": "major"
   }
 }
-```
+</code></pre>
 
 | Field | Default | Description |
 |-------|---------|-------------|
@@ -368,13 +368,13 @@ All fields are optional. Missing fields use defaults.
 ### Output JSON Schema Quick Reference
 
 **Schematic analyzer top-level keys:**
-```
+<pre><code>
 analyzer_type, schema_version, summary, findings, trust_summary,
 file, kicad_version, file_version, title_block, statistics,
 bom, components, nets, subcircuits, ic_pin_analysis, transistor_pin_analysis,
 design_analysis, connectivity_issues, hierarchy_context, hierarchy_warning,
 net_classifications, rail_voltages
-```
+</code></pre>
 Optional (present when non-empty): <code>pdn_impedance</code>, <code>sleep_current_audit</code>, <code>power_budget</code>, <code>power_sequencing</code>, <code>bom_optimization</code>, <code>test_coverage</code>, <code>assembly_complexity</code>, <code>usb_compliance</code>, <code>inrush_analysis</code>, <code>sheets</code> (multi-sheet only), <code>missing_info</code>, <code>bom_lock</code>, <code>project_settings</code>
 
 Key nested structures:
@@ -386,12 +386,12 @@ Key nested structures:
 - **Detected subcircuits live in <code>findings[]</code>** — power regulators, voltage dividers, RC/LC filters, feedback networks, opamp/transistor/bridge/crystal circuits, current sense, decoupling, protection, buzzer/speaker, Ethernet/HDMI/memory interfaces, RF chains/matching, BMS, key matrices, isolation barriers, addressable LED chains, and design observations all emit as findings with matching <code>Det.*</code> detectors. Use <code>get_findings(data, Det.POWER_REGULATORS)</code> etc. to fetch them. The pre-v1.3 <code>signal_analysis</code> wrapper and its top-level detection lists are gone.
 
 **PCB analyzer top-level keys:**
-```
+<pre><code>
 analyzer_type, schema_version, summary, findings, trust_summary,
 file, kicad_version, file_version, statistics, layers, setup,
 nets, net_name_to_id, board_outline, component_groups, footprints,
 tracks, vias, zones, keepout_zones, connectivity, net_lengths
-```
+</code></pre>
 Optional: <code>power_net_routing</code>, <code>decoupling_placement</code>, <code>ground_domains</code>, <code>layer_transitions</code>, <code>silkscreen</code>, <code>board_metadata</code>, <code>dimensions</code>, <code>groups</code>, <code>net_classes</code>, <code>dfm_summary</code>, <code>placement_density</code>, <code>copper_presence_summary</code>, <code>board_thickness_mm</code>, <code>trace_proximity</code> (with <code>--proximity</code>). Sections previously at top level (<code>thermal_analysis</code>, <code>thermal_pad_vias</code>, <code>tombstoning_risk</code>, <code>placement_analysis</code>, <code>current_capacity</code>, <code>copper_presence</code>, <code>dfm</code>) are now in <code>findings[]</code>. With <code>--full</code>, the output also includes a <code>connectivity_graph</code> section (see "Connectivity Graph" above).
 
 Key nested structures:
@@ -401,11 +401,11 @@ Key nested structures:
 - <code>statistics</code>: <code>{footprint_count, copper_layers_used, smd_count, tht_count, zone_count, via_count, routing_complete, ...}</code>
 
 **Gerber analyzer top-level keys:**
-```
+<pre><code>
 analyzer_type, schema_version, summary, findings, trust_summary,
 directory, generator, layer_count, statistics, completeness, alignment,
 drill_classification, pad_summary, board_dimensions, gerbers, drills
-```
+</code></pre>
 
 **Workflow:** When analyzing a KiCad project, scan the project directory for all available file types and run **every applicable analyzer** — not just the one the user mentioned. A complete analysis uses all the data available. Use <code>--analysis-dir analysis/</code> on all analyzers to share a single run folder tracked by the manifest. For one-off runs without cache tracking, use <code>--output file.json</code> instead.
 
@@ -450,12 +450,12 @@ Datasheets are what separate a consistency check from a correctness check. Witho
 
 **Automated sync (preferred):** Run datasheet sync scripts early in the workflow. They download datasheets for all components with MPNs into a shared <code>datasheets/</code> directory with an <code>manifest.json</code> manifest. Run the preferred source first; if some parts fail, try others — they share the same directory and skip already-downloaded files.
 
-```bash
+<pre><code>
 python3 <digikey-skill-path>/scripts/sync_datasheets_digikey.py <file.kicad_sch>
 python3 <lcsc-skill-path>/scripts/sync_datasheets_lcsc.py <file.kicad_sch>
 python3 <element14-skill-path>/scripts/sync_datasheets_element14.py <file.kicad_sch>
 python3 <mouser-skill-path>/scripts/sync_datasheets_mouser.py <file.kicad_sch>
-```
+</code></pre>
 
 DigiKey is best (direct PDF URLs). element14 is reliable (no bot protection). LCSC works for LCSC-only parts. Mouser is a last resort (often blocks downloads).
 
@@ -473,9 +473,9 @@ DigiKey is best (direct PDF URLs). element14 is reliable (no bot protection). LC
 
 **Structured datasheet extraction (for large designs or repeated reviews):** Pre-extract datasheet specs into cached JSON for faster, more consistent pin verification. This is especially valuable for designs with 10+ ICs where re-reading PDFs from scratch each time is slow.
 
-```bash
+<pre><code>
 python3 <skill-path>/scripts/datasheet_page_selector.py <pdf_path> --mpn <mpn> --category <category>
-```
+</code></pre>
 
 After reading the selected pages and producing an extraction JSON, score and cache it using <code>datasheet_score</code> and <code>datasheet_extract_cache</code> modules. Extractions are stored in <code>datasheets/extracted/<MPN>.json</code> and reused across reviews. The **<code>datasheets</code> skill** owns the full extraction pipeline (schema, page selection, scoring rubric, consumer API) — see <code>skills/datasheets/SKILL.md</code> and its reference guides.
 
@@ -513,7 +513,7 @@ The PCB analyzer's <code>sch_path</code>, <code>sch_sheetname</code>, and <code>
 
 Compare two analysis JSON outputs to see what changed between design revisions (e.g., base branch vs PR, v1 vs v2). Use when the user says things like "compare designs", "what changed", "diff my schematic", "show changes from main", or "diff base vs head". Full reference: <code>references/diff-analysis.md</code>.
 
-```bash
+<pre><code>
 # Compare two schematic analysis outputs (JSON to stdout)
 python3 <skill-path>/scripts/diff_analysis.py base.json head.json
 
@@ -525,7 +525,7 @@ python3 <skill-path>/scripts/diff_analysis.py base.json head.json --output diff.
 
 # Ignore small percentage changes (e.g., rounding noise)
 python3 <skill-path>/scripts/diff_analysis.py base.json head.json --threshold 5.0 --text
-```
+</code></pre>
 
 Auto-detects analyzer type (schematic, PCB, EMC, SPICE). Reports:
 - **Components**: new, removed, value/footprint/MPN changes
@@ -542,7 +542,7 @@ Also used programmatically by <code>analysis_cache.should_create_new_run()</code
 
 Estimates junction temperatures of power-dissipating components by combining schematic power data with PCB thermal infrastructure (copper pour, thermal vias, package type). Use when the user says "check thermals", "thermal analysis", "will this overheat", "junction temperature", "power dissipation", or "thermal design".
 
-```bash
+<pre><code>
 # Recommended: integrate into the current run
 python3 <skill-path>/scripts/analyze_thermal.py \
     -s analysis/<run_id>/schematic.json \
@@ -554,7 +554,7 @@ python3 <skill-path>/scripts/analyze_thermal.py -s schematic.json -p pcb.json --
 
 # Custom ambient temperature (default: 25°C), one-off output file
 python3 <skill-path>/scripts/analyze_thermal.py -s schematic.json -p pcb.json --ambient 40 -o thermal.json
-```
+</code></pre>
 
 Models each power component (LDO, switching regulator, shunt resistor) as a point heat source. Computes Tj = T_ambient + P_diss × Rθ_JA_effective, where Rθ_JA comes from a package lookup table (SOT-223: 60°C/W, QFN-5x5: 25°C/W, etc.) and is corrected for PCB thermal vias and copper pour. Rules:
 
@@ -574,7 +574,7 @@ Thermal findings and assessments include the rich format envelope (detector, rul
 
 Instantly see the impact of component value changes on circuit behavior without re-running the full analyzer. Use when the user says "what if I change", "what happens if", "try a different value", "swap R5 to 4.7k", "parameter sweep", "what value gives me X", or wants to explore design trade-offs. Full reference: [<code>references/what-if.md</code>](references/what-if.md).
 
-```bash
+<pre><code>
 # Single value change
 python3 <skill-path>/scripts/what_if.py analysis.json R5=4.7k --text
 
@@ -597,7 +597,7 @@ python3 <skill-path>/scripts/what_if.py analysis.json R5=4.7k --spice --text
 
 # Export patched JSON for further analysis (EMC, thermal, diff)
 python3 <skill-path>/scripts/what_if.py analysis.json R5=4.7k --output patched.json
-```
+</code></pre>
 
 Patches component values in the analyzer JSON, recalculates derived fields (filter cutoff, divider ratio, opamp gain, crystal load, current sense range, regulator Vout), and shows before/after comparison with percentage deltas. Supports single changes, multi-point sweeps (comma or log-range), tolerance corner analysis, inverse fix suggestions with E-series snapping, EMC impact preview, PCB parasitic awareness (auto-discovered or via <code>--pcb</code>), and SPICE re-verification.
 
@@ -605,7 +605,7 @@ Patches component values in the analyzer JSON, recalculates derived fields (filt
 
 Summarises findings across all analyzers in a run. Use when the user wants a top-N list, a severity-filtered view, or a machine-readable roll-up without reading individual JSON files. Reads the current run from <code>analysis/manifest.json</code>.
 
-```bash
+<pre><code>
 # Top findings from the current run (default: top 20)
 python3 <skill-path>/scripts/summarize_findings.py analysis/
 
@@ -617,7 +617,7 @@ python3 <skill-path>/scripts/summarize_findings.py analysis/ --json
 
 # Summarise a specific run by ID
 python3 <skill-path>/scripts/summarize_findings.py analysis/ --run <run_id>
-```
+</code></pre>
 
 Flags: <code>--top N</code> (default 20), <code>--severity</code> (filter to <code>critical</code>/<code>high</code>/<code>warning</code>/<code>info</code>), <code>--run</code> (explicit run ID instead of latest), <code>--json</code> (machine-readable output).
 
@@ -625,7 +625,7 @@ Flags: <code>--top N</code> (default 20), <code>--severity</code> (filter to <co
 
 Queries distributor APIs to check component lifecycle status (active, NRND, EOL, obsolete) and operating temperature range coverage. Use when the user says "check for obsolete parts", "lifecycle audit", "are any parts end of life", "temperature audit", "will this work at industrial temp range", or during production readiness reviews.
 
-```bash
+<pre><code>
 # Basic lifecycle check
 python3 <skill-path>/scripts/lifecycle_audit.py analysis.json
 
@@ -641,7 +641,7 @@ python3 <skill-path>/scripts/lifecycle_audit.py analysis.json --suggest-alternat
 
 # Save results
 python3 <skill-path>/scripts/lifecycle_audit.py analysis.json --output lifecycle.json
-```
+</code></pre>
 
 Reads the analyzer JSON BOM section, extracts unique MPNs, queries distributors (LCSC no-auth, DigiKey, element14, Mouser) for lifecycle status and operating temperature. Temperature presets: <code>commercial</code> (0/70°C), <code>industrial</code> (-40/85°C), <code>extended</code> (-40/105°C), <code>automotive</code> (-40/125°C), <code>military</code> (-55/125°C). Also checks datasheet extraction cache for temperature data before making API calls.
 
@@ -698,10 +698,10 @@ Then check interacting pairs: shared rails (sequencing, combined load), bus part
 
 Validate before reporting:
 
-```bash
+<pre><code>
 python3 skills/kicad/review/scripts/deep_review_gate.py \
     analysis/deep_review.json --analysis-dir analysis/
-```
+</code></pre>
 
 The gate verifies citations, stamps finding_ids, and moves failures
 to <code>quarantined[]</code> with reasons. Fix or accept quarantined entries;
@@ -711,12 +711,12 @@ Re-review: if <code>analysis/deep_review.json</code> already exists from a prior
 review, copy it aside first and open the new pass with a diff —
 report fixed / still-open / new in the Previous Review Delta section:
 
-```bash
+<pre><code>
 cp analysis/deep_review.json analysis/deep_review.prev.json
 # ... run the pass, then the gate ...
 python3 skills/kicad/scripts/diff_analysis.py \
     analysis/deep_review.prev.json analysis/deep_review.json --text
-```
+</code></pre>
 
 Big BOM: chunk by subsystem, or fan out per IC-group with subagents. See <code>references/deep-review.md</code> for comparison heuristics per part class, pair-check patterns, and helper-script conventions. <code>analysis/design_context.json</code> (if present) steers priorities — e.g. automotive tightens derating attention. Optional; never block on it.
 

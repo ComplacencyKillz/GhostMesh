@@ -1,3 +1,5 @@
+---
+---
 # Deep Schematic Analysis
 
 Methodology for validating KiCad schematics against datasheets, common design patterns, and electrical engineering best practices. This goes far beyond ERC — it catches design errors that only a human reviewer (or a thorough AI analysis) would find.
@@ -95,9 +97,9 @@ The analyzer's <code>findings[]</code> array automatically identifies most subci
 
 **Automated sync (preferred):** If the <code>digikey</code> skill is installed, run <code>sync_datasheets.py</code> on the schematic. This should have been done in the workflow's Step 3 (see SKILL.md). If not done yet, run it now:
 
-```bash
+<pre><code>
 python3 <digikey-skill-path>/scripts/sync_datasheets.py <file.kicad_sch>
-```
+</code></pre>
 
 **Check for existing datasheets:** Before downloading, look for:
 - <code><project>/datasheets/</code> with <code>manifest.json</code> (legacy name <code>index.json</code>) from a previous sync
@@ -366,7 +368,7 @@ These are reference patterns for common subcircuits. Compare the schematic again
 
 ### LDO Voltage Regulator (Fixed Output)
 
-```
+<pre><code>
 VIN ──┬── [Cin 1-10uF] ──┬── GND
       │                    │
       └── VIN [REG] VOUT ─┬── [Cout 1-22uF] ──┬── GND
@@ -375,7 +377,7 @@ VIN ──┬── [Cin 1-10uF] ──┬── GND
               EN ── VIN or GPIO                  │
               PG ── pull-up to VOUT (optional)   │
                                                  └── VOUT rail
-```
+</code></pre>
 
 **Expected values:**
 - Cin: 1uF minimum ceramic (often 4.7-10uF), voltage rating > VIN
@@ -385,7 +387,7 @@ VIN ──┬── [Cin 1-10uF] ──┬── GND
 
 ### Buck Converter
 
-```
+<pre><code>
 VIN ──┬── [Cin 10-22uF] ──┬── GND
       │                     │
       └── VIN [CTRL] SW ───┬── [L 1-47uH] ──┬── VOUT
@@ -394,7 +396,7 @@ VIN ──┬── [Cin 10-22uF] ──┬── GND
               FB ── divider ┘                  │
               EN                               └── VOUT rail
               COMP ── RC network (if external)
-```
+</code></pre>
 
 **Expected values:**
 - L: per datasheet, saturation current > peak load current * 1.3
@@ -405,11 +407,11 @@ VIN ──┬── [Cin 10-22uF] ──┬── GND
 
 ### Crystal Oscillator
 
-```
+<pre><code>
 MCU_XIN ──┬── [Y1 crystal] ──┬── MCU_XOUT
            │                    │
            [CL1] ── GND        [CL2] ── GND
-```
+</code></pre>
 
 **Expected values:**
 - Load cap formula: <code>CL1 = CL2 = 2 * (CL - Cstray)</code> where:
@@ -426,7 +428,7 @@ MCU_XIN ──┬── [Y1 crystal] ──┬── MCU_XOUT
 
 ### USB Type-C (Device/UFP)
 
-```
+<pre><code>
 VBUS ──┬── [ESD/TVS] ──┬── 5V rail
         │                │
         [Cin 10uF]       [100nF]
@@ -440,7 +442,7 @@ D+ ──── [series R 22-27 ohm] ──── MCU_DP
 D- ──── [series R 22-27 ohm] ──── MCU_DN
 
 Shield/Shell ──── GND (via 1M + 4.7nF to GND, or direct)
-```
+</code></pre>
 
 **Key checks:**
 - CC1 and CC2 each have 5.1k pull-down to GND (mandatory for device mode)
@@ -450,11 +452,11 @@ Shield/Shell ──── GND (via 1M + 4.7nF to GND, or direct)
 
 ### I2C Bus
 
-```
+<pre><code>
 VCC ──┬── [Rp1 2.2-10k] ──── SDA bus
       │
       └── [Rp2 2.2-10k] ──── SCL bus
-```
+</code></pre>
 
 **Expected values:**
 - Pull-up resistor: <code>Rp_min = (VCC - VOL) / IOL</code> and <code>Rp_max = tr / (0.8473 * Cb)</code>
@@ -471,11 +473,11 @@ VCC ──┬── [Rp1 2.2-10k] ──── SDA bus
 
 ### LED Indicator
 
-```
+<pre><code>
 GPIO ──── [R] ──── [LED] ──── GND    (active high, sourcing)
     or
 VCC ──── [R] ──── [LED] ──── GPIO    (active low, sinking)
-```
+</code></pre>
 
 **Expected values:**
 - <code>R = (VSUPPLY - VLED - VOL_or_VOH) / ILED</code>
@@ -495,13 +497,13 @@ When the supply comes from a switching regulator with tolerance, you must check 
 
 ### Reset Circuit
 
-```
+<pre><code>
 VCC ──── [R 10k] ──┬──── MCU_RESET
                      │
                     [C 100nF] ──── GND    (optional, delays reset release)
                      │
                     [Switch] ──── GND      (optional manual reset)
-```
+</code></pre>
 
 **Key checks:**
 - Pull-up resistor present (10k typical, check MCU datasheet)
@@ -511,13 +513,13 @@ VCC ──── [R 10k] ──┬──── MCU_RESET
 
 ### Voltage Divider for ADC
 
-```
+<pre><code>
 VIN ──── [R_TOP] ──┬── ADC_INPUT
                      │
                     [R_BOT] ──── GND
                      │
                     [C_FILTER 100nF] ──── GND    (optional anti-alias)
-```
+</code></pre>
 
 **Expected values:**
 - <code>V_ADC = VIN * R_BOT / (R_TOP + R_BOT)</code>
@@ -539,19 +541,19 @@ MCU ADCs have a sample-and-hold capacitor (typically a few pF) that must charge 
 
 ### Power Input with Reverse Polarity Protection
 
-```
+<pre><code>
 VIN ──── [F1 fuse or PTC] ──┬── [D1 Schottky] ──── VCC_PROTECTED
                               │
                               [C_BULK 10-100uF]
                               │
                               GND
-```
+</code></pre>
 or (lower loss, P-FET method):
-```
+<pre><code>
 VIN ──── [F1] ──── S [Q1 P-FET] D ──── VCC_PROTECTED
                         │
                         G ── GND (via R, optional TVS across G-S)
-```
+</code></pre>
 
 **Key checks:**
 - Fuse/PTC rating matches maximum expected current with margin
@@ -567,9 +569,9 @@ For every computed value in the schematic, verify the math. Show your work so th
 
 ### Resistor Divider (General)
 
-```
+<pre><code>
 VOUT = VIN * R_BOTTOM / (R_TOP + R_BOTTOM)
-```
+</code></pre>
 Or equivalently: <code>R_TOP / R_BOTTOM = (VIN / VOUT) - 1</code>
 
 ### Regulator Feedback Divider
@@ -586,10 +588,10 @@ Different ICs use different formulas. Common patterns:
 
 Regulator output voltage has combined tolerance from VREF accuracy and feedback resistor tolerance. Always compute the full range:
 
-```
+<pre><code>
 Vout_max = VREF_max × (1 + R_upper×(1+tol) / (R_lower×(1-tol)))
 Vout_min = VREF_min × (1 + R_upper×(1-tol) / (R_lower×(1+tol)))
-```
+</code></pre>
 
 Where <code>tol</code> is the resistor tolerance (0.01 for 1%). This matters because:
 - Downstream components (LEDs, ICs) must tolerate the full Vout range
@@ -605,36 +607,36 @@ Use Vout_max when checking downstream current limits. Use Vout_min when checking
 
 ### Current Limiting Resistor
 
-```
+<pre><code>
 R = (V_SOURCE - V_LOAD) / I_TARGET
 P_RESISTOR = (V_SOURCE - V_LOAD) * I_TARGET = I_TARGET^2 * R
-```
+</code></pre>
 
 ### RC Filter Cutoff
 
-```
+<pre><code>
 f_cutoff = 1 / (2 * pi * R * C)
-```
+</code></pre>
 - Low-pass: R in series, C to ground
 - High-pass: C in series, R to ground
 
 ### Crystal Load Capacitors
 
-```
+<pre><code>
 CL_each = 2 * (CL_crystal - C_stray)
-```
+</code></pre>
 Where C_stray includes PCB trace capacitance (~1-2pF) and MCU pin capacitance (~1-3pF from MCU datasheet).
 
 ### Pull-up Resistor for Open-Drain
 
-```
+<pre><code>
 R_min = (VCC - VOL_max) / IOL_max
 R_max = VCC / (I_leakage * N_devices)     (rough guide)
-```
+</code></pre>
 For timing-critical buses (I2C), rise time constraint:
-```
+<pre><code>
 R_max = t_rise / (0.8473 * C_bus)
-```
+</code></pre>
 
 ### MOSFET Gate Drive
 
@@ -645,11 +647,11 @@ Verify VGS at the actual drive voltage exceeds VGS(th) with margin:
 
 ### Voltage Divider Power Dissipation
 
-```
+<pre><code>
 P_total = VIN^2 / (R_TOP + R_BOTTOM)
 P_R_TOP = P_total * R_TOP / (R_TOP + R_BOTTOM)
 P_R_BOTTOM = P_total * R_BOTTOM / (R_TOP + R_BOTTOM)
-```
+</code></pre>
 
 ---
 
@@ -747,9 +749,9 @@ Enumerate all current draws during deep sleep / low-power mode:
 - LED indicator leakage (if any)
 
 Sum all contributions and compute battery life:
-```
+<pre><code>
 Life (hours) = Battery_capacity_mAh / Total_sleep_current_mA
-```
+</code></pre>
 For AA alkaline: ~2500-3000 mAh usable (derate from nominal depending on drain rate and cutoff voltage).
 
 Flag any single contributor that is >10% of the total sleep budget — it may be worth optimizing (e.g., higher-value divider resistors, FET-gated sensing circuits, lower-Iq regulator).
@@ -791,10 +793,10 @@ For any computed value that depends on multiple components, substitute worst-cas
 
 The regulator feedback divider tolerance stacking formula is covered in [Tolerance Stacking for Regulator Output](#tolerance-stacking-for-regulator-output). Apply the same approach to any voltage divider — ADC scaling, level detection thresholds, comparator references:
 
-```
+<pre><code>
 V_max = VIN_max × R_bot×(1+tol) / (R_top×(1-tol) + R_bot×(1+tol))
 V_min = VIN_min × R_bot×(1-tol) / (R_top×(1+tol) + R_bot×(1-tol))
-```
+</code></pre>
 
 **When to worry:** Compare the tolerance-stacked output range against downstream absolute maximum ratings. If Vout_max approaches an abs max, the design needs tighter-tolerance components or a wider safety margin.
 
@@ -802,10 +804,10 @@ V_min = VIN_min × R_bot×(1-tol) / (R_top×(1+tol) + R_bot×(1-tol))
 
 Both R and C have manufacturing tolerances. The cutoff frequency range is:
 
-```
+<pre><code>
 f_max = 1 / (2π × R_min × C_min) = 1 / (2π × R×(1-tol_R) × C×(1-tol_C))
 f_min = 1 / (2π × R_max × C_max) = 1 / (2π × R×(1+tol_R) × C×(1+tol_C))
-```
+</code></pre>
 
 Example: 10k (5%) + 100nF (10%) low-pass filter:
 - f_nom = 1/(2π × 10k × 100n) = 159 Hz
@@ -818,10 +820,10 @@ For anti-alias filters before ADCs, ensure f_min is still above the Nyquist freq
 
 Crystal frequency accuracy depends on correct load capacitance. With cap tolerance:
 
-```
+<pre><code>
 CL_actual_max = CL_cap×(1+tol)/2 + C_stray
 CL_actual_min = CL_cap×(1-tol)/2 + C_stray
-```
+</code></pre>
 
 A 10% tolerance on 18pF caps (16.2-19.8pF) with 3pF stray yields CL_actual = 11.1-12.9pF vs target 12pF. Frequency error is roughly ±(CL_delta/CL) × crystal trim sensitivity (typically 5-20 ppm/pF). For most applications this is acceptable; for precision timing (GPS, RF), use C0G/NP0 caps with 1-2% tolerance.
 
@@ -917,14 +919,14 @@ Clock integrity is critical for reliable digital operation. Marginal clock circu
 
 A clock trace must be treated as a transmission line (requiring impedance control and termination) when trace length exceeds λ/10:
 
-```
+<pre><code>
 λ = c / (f × √εr)
-```
+</code></pre>
 
 For FR4 (εr ≈ 4.5):
-```
+<pre><code>
 λ ≈ 141mm / f_GHz
-```
+</code></pre>
 
 | Clock Frequency | λ (FR4) | λ/10 (trace threshold) |
 |----------------|---------|----------------------|
@@ -1025,15 +1027,15 @@ For battery-powered designs, estimate operational lifetime to validate the desig
 3. **Estimate duty cycle**: What fraction of time is the device active vs sleeping? This is application-dependent — ask the user if not documented. Example: sensor that wakes every 60s, takes 2s to measure and transmit → duty = 2/60 = 3.3%.
 
 4. **Compute weighted average current**:
-   ```
+<pre><code>
    I_avg = I_active × duty + I_sleep × (1 - duty)
-   ```
+</code></pre>
 
 5. **Compute battery life**:
-   ```
+<pre><code>
    Life_hours = Capacity_mAh / I_avg_mA
    Life_days = Life_hours / 24
-   ```
+</code></pre>
 
 ### Battery Capacity Derating
 
@@ -1115,7 +1117,7 @@ Identify components that pose sourcing risks — sole-source parts, obsolete com
 
 Structure the analysis report as follows:
 
-```markdown
+<pre><code>
 # Schematic Analysis Report: [Project Name]
 
 ## Summary
@@ -1160,6 +1162,6 @@ Structure the analysis report as follows:
 
 ## BOM Observations
 [consolidation opportunities, sourcing risks, cost notes]
-```
+</code></pre>
 
 Adapt the depth and detail to the complexity of the design. A simple LED blinker doesn't need a 10-page report. A battery-powered IoT sensor with multiple regulators, wireless, and analog sensing does.

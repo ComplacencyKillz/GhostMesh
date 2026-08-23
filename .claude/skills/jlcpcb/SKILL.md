@@ -171,7 +171,7 @@ For boards exported from Altium (or other tools) whose BOM/CPL formats
 don't match JLCPCB's expected columns, the <code>bom</code> skill ships
 <code>translate_bom_pnp.py</code> to convert them. Two subcommands:
 
-```bash
+<pre><code>
 # BOM: KiCad/Altium CSV → JLCPCB BOM CSV (Comment, Designator, Footprint,
 #                                         LCSC Part #, MPN, Manufacturer,
 #                                         Quantity, Notes)
@@ -182,7 +182,7 @@ python3 skills/bom/scripts/translate_bom_pnp.py bom input_bom.csv -o jlc_bom.csv
 #                                              and TopLayer/BottomLayer
 #                                              normalization
 python3 skills/bom/scripts/translate_bom_pnp.py pnp input_cpl.csv -o jlc_cpl.csv
-```
+</code></pre>
 
 #### The 3-step PCBA upload workflow (avoids rejection)
 
@@ -195,13 +195,13 @@ translator's <code>--bom</code> filter mode solves this:
    establishes the authoritative designator set:
    ```bash
    python3 skills/bom/scripts/translate_bom_pnp.py bom input_bom.csv -o jlc_bom.csv
-   ```
+<pre><code>
 
 2. **Translate the CPL with <code>--bom</code> filter** — intersects CPL designators
    with BOM designators, dropping orphans:
    ```bash
    python3 skills/bom/scripts/translate_bom_pnp.py pnp input_cpl.csv -o jlc_cpl.csv --bom jlc_bom.csv
-   ```
+</code></pre>
    The returned <code>filtered_orphans</code> count plus <code>filtered_orphan_samples</code>
    list lets the operator confirm which CPL rows were dropped — sanity-
    check this list before uploading. Common orphans (mounting holes,

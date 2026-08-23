@@ -1,3 +1,5 @@
+---
+---
 # GhostMesh OPSEC
 
 How GhostMesh keeps traffic private, what it leaks, how a node denies itself on capture, and how you get it back.

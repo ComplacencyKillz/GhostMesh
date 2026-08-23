@@ -1,3 +1,5 @@
+---
+---
 # Manual Schematic Parsing (Script Fallback)
 
 When <code>analyze_schematic.py</code> fails (unsupported format, newer KiCad version, corrupted file), fall back to direct file parsing. This is more expensive (reading raw S-expressions) but always works as long as the file is valid KiCad.
@@ -32,7 +34,7 @@ Always try the script first — it handles coordinate transforms, multi-unit sym
 
 S-expression format. Key sections in order:
 
-```
+<pre><code>
 (kicad_sch (version N) (generator ...) (uuid ...)
   (lib_symbols ...)        ; Library symbol definitions (pin data, shapes)
   (junction ...)           ; Wire junction points
@@ -44,20 +46,20 @@ S-expression format. Key sections in order:
   (symbol ...)             ; Placed component instances
   (sheet ...)              ; Sub-sheet references (hierarchical designs)
 )
-```
+</code></pre>
 
 ### Legacy <code>.sch</code> (KiCad 4/5)
 
 Line-based format. Key block types:
 
-```
+<pre><code>
 EESchema Schematic File Version N
 $Comp / $EndComp          ; Component blocks
 Wire Wire Line / x1 y1 x2 y2  ; Wire segments
 Text Label / Text GLabel   ; Labels
 NoConn ~ x y              ; No-connect markers
 $Sheet / $EndSheet         ; Sub-sheet references
-```
+</code></pre>
 
 ---
 
@@ -67,7 +69,7 @@ $Sheet / $EndSheet         ; Sub-sheet references
 
 Each placed component is a <code>(symbol ...)</code> block after the <code>(lib_symbols)</code> section:
 
-```lisp
+<pre><code>
 (symbol (lib_id "Device:R") (at 152.4 176.53 90) (unit 1)
   (property "Reference" "R13" ...)
   (property "Value" "10k" ...)
@@ -76,7 +78,7 @@ Each placed component is a <code>(symbol ...)</code> block after the <code>(lib_
   (pin "1" (uuid ...))
   (pin "2" (uuid ...))
 )
-```
+</code></pre>
 
 **Extract for each component:**
 - <code>lib_id</code> — library:symbol name
@@ -98,7 +100,7 @@ The <code>lib_symbols</code> section contains sub-symbols named <code>SymName_U_
 
 Components are in <code>$Comp</code>/<code>$EndComp</code> blocks:
 
-```
+<pre><code>
 $Comp
 L library:SymbolName Reference
 U unit_number convert_num timestamp
@@ -110,7 +112,7 @@ F 3 "datasheet" ...   ; Datasheet
 F 4 "custom" ...      ; Custom field (MPN, Manufacturer, etc.)
     1    x y
 $EndComp
-```
+</code></pre>
 
 **Custom fields (F4+):** May contain MPN (<code>manf#</code>, <code>MPN</code>, <code>MFG Part</code>), Manufacturer (<code>Manufacturer</code>, <code>MFG</code>), distributor part numbers (<code>DigiKey</code>, <code>Mouser</code>, <code>LCSC</code>), or DNP flag.
 

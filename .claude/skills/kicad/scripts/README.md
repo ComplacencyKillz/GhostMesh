@@ -1,3 +1,5 @@
+---
+---
 # KiCad Analysis Scripts — Developer Reference
 
 This directory contains the core analysis scripts, shared utilities, the S-expression parser, and the rich-finding/trust-summary infrastructure. Each analyzer outputs a structured JSON envelope for the AI agent to consume during design reviews.
@@ -61,7 +63,7 @@ Parses <code>.kicad_pcb</code> files (KiCad 5 <code>module</code> and KiCad 6+ <
 
 ### Pipeline
 
-```
+<pre><code>
 .kicad_pcb file
     |
     v
@@ -97,7 +99,7 @@ compute_statistics()        -- Summary counts
     |
     v
 JSON output (~50-300KB depending on board complexity)
-```
+</code></pre>
 
 ### Key Design Decisions
 
@@ -115,13 +117,13 @@ JSON output (~50-300KB depending on board complexity)
 
 ### Usage
 
-```bash
+<pre><code>
 python3 analyze_pcb.py board.kicad_pcb                    # JSON to stdout
 python3 analyze_pcb.py board.kicad_pcb --output out.json  # JSON to file
 python3 analyze_pcb.py board.kicad_pcb --compact          # Minified JSON
 python3 analyze_pcb.py board.kicad_pcb --full              # Include individual tracks/vias
 python3 analyze_pcb.py board.kicad_pcb --proximity        # Add crosstalk proximity analysis
-```
+</code></pre>
 
 ---
 
@@ -131,7 +133,7 @@ Parses a directory of Gerber RS-274X files and Excellon drill files. Does NOT re
 
 ### Pipeline
 
-```
+<pre><code>
 gerber directory
     |
     v
@@ -146,7 +148,7 @@ check_alignment()       -- Compare coordinate extents across copper/edge layers
     |
     v
 JSON output
-```
+</code></pre>
 
 ### Layer Identification
 
@@ -169,11 +171,11 @@ Compares bounding box extents across copper and edge layers. Only checks F.Cu, B
 
 ### Usage
 
-```bash
+<pre><code>
 python3 analyze_gerbers.py ./gerbers/                    # JSON to stdout
 python3 analyze_gerbers.py ./gerbers/ --output out.json  # JSON to file
 python3 analyze_gerbers.py ./gerbers/ --compact          # Minified JSON
-```
+</code></pre>
 
 ---
 
@@ -183,7 +185,7 @@ The largest and most complex script. The rest of this document focuses on its ar
 
 ### Pipeline
 
-```
+<pre><code>
 .kicad_sch file(s)
     |
     v
@@ -210,7 +212,7 @@ Output harmonization           -- All detections → flat findings[] with rich e
     |
     v
 JSON output                    -- {analyzer_type, summary, findings[], components, nets, ...}
-```
+</code></pre>
 
 ### Key Data Structures
 
@@ -251,7 +253,7 @@ Not supported (binary and XML formats). Returns 0 components gracefully.
 4. Each instance gets its own <code>_sheet</code> index
 
 **KiCad storage format**: Each symbol in a sub-sheet has:
-```
+<pre><code>
 (instances
   (project "project_name"
     (path "/root_uuid/sheet_instance_uuid"
@@ -260,7 +262,7 @@ Not supported (binary and XML formats). Returns 0 components gracefully.
     (path "/root_uuid/other_instance_uuid"
       (reference "Q6")
       (unit 1))))
-```
+</code></pre>
 
 The sheet's UUID comes from the parent's <code>(sheet ... (uuid "xxx"))</code> block.
 

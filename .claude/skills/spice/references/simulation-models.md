@@ -1,3 +1,5 @@
+---
+---
 # Simulation Models Reference
 
 Documentation of the SPICE models used across all phases — ideal models, per-part behavioral models, and PCB parasitic extraction. Covers accuracy envelopes, when to trust or qualify results, and the model resolution cascade.
@@ -58,9 +60,9 @@ For the subcircuits this skill simulates, these parasitics are rarely significan
 
 LC filter testbenches add a small series resistance to the inductor to prevent infinite Q (which makes the resonance unmeasurable in practice). The ESR is calculated as:
 
-```
+<pre><code>
 R_esr = 2 * pi * f_resonant * L / Q_assumed
-```
+</code></pre>
 
 Where Q_assumed = 100. This gives realistic peak gain (~40 dB) and measurable bandwidth. The resonant frequency is not affected by ESR — only the Q factor and peak gain.
 
@@ -81,7 +83,7 @@ If the simulated Q factor matters (e.g., for a filter selectivity assessment), n
 
 ### Circuit
 
-```
+<pre><code>
 .subckt IDEAL_OPAMP inp inn out vcc vee
 Rin inp inn 1e12          * 1 TΩ input impedance
 E1  int 0   inp inn 1e6   * Voltage-controlled source, Aol=1,000,000
@@ -91,7 +93,7 @@ Dhigh out vcc DLIMIT       * Rail clamp (positive)
 Dlow  vee out DLIMIT       * Rail clamp (negative)
 .model DLIMIT D(N=1)
 .ends
-```
+</code></pre>
 
 ### Key Parameters
 
@@ -175,13 +177,13 @@ These models are suitable for DC bias point and basic switching analysis. They a
 
 The Butterworth-Van Dyke (BVD) model represents a quartz crystal as a series RLC (motional branch) in parallel with a shunt capacitance C0:
 
-```
+<pre><code>
          Lm       Cm       Rm
 xtal1 ---[===]---||---[===]--- xtal2
   |                               |
   +----------||-------------------+
              C0
-```
+</code></pre>
 
 ### Model Parameters by Frequency Range
 
@@ -198,9 +200,9 @@ xtal1 ---[===]---||---[===]--- xtal2
 
 The testbench validates that the **load capacitor values produce a reasonable effective CL**:
 
-```
+<pre><code>
 CL_effective = (C1 * C2) / (C1 + C2) + C_stray
-```
+</code></pre>
 
 Where C_stray ≈ 3 pF (typical PCB stray capacitance). The analyzer calculates this and the simulation confirms the cap values. The primary check is:
 - Are both load caps present?
@@ -220,11 +222,11 @@ Where C_stray ≈ 3 pF (typical PCB stray capacitance). The analyzer calculates 
 
 The LDO subcircuit models a linear regulator's DC behavior:
 
-```
+<pre><code>
 .subckt IDEAL_LDO vin vout gnd fb
 * Error amplifier compares FB pin to internal Vref
 * PMOS pass element with dropout ~0.2V
-```
+</code></pre>
 
 This model is **not currently used in Phase 1 testbenches** — regulator simulation requires control loop modeling for stability analysis, which is Phase 2. The model is included in the codebase for future use.
 
@@ -279,17 +281,17 @@ LTspice and Xyce use <code>.meas</code>/<code>.measure</code> statements directl
 ### Key ngspice Gotchas
 
 **<code>meas</code> cannot reference other <code>meas</code> variables.** This fails:
-```spice
+<pre><code>
 meas ac gain_dc find vdb(out) at=10
 meas ac bw_3db when vdb(out)=gain_dc-3  * ERROR: gain_dc is not a number here
-```
+</code></pre>
 
 The workaround is to use <code>let</code> after <code>meas</code>:
-```spice
+<pre><code>
 meas ac gain_1k find vdb(out) at=1k
 let target = gain_1k - 3
 meas ac bw_3db when vdb(out)=target fall=1
-```
+</code></pre>
 
 **<code>find ... at=X</code> requires X to be in the swept range.** If the AC sweep starts at 1 Hz and you ask <code>find ... at=0.1</code>, the measurement fails silently and the variable is empty.
 
@@ -351,9 +353,9 @@ When a recognized MPN is detected (e.g., LM358, TL072, MCP6002), the skill gener
 
 The gain measurement frequency adapts to each circuit's expected bandwidth:
 
-```
+<pre><code>
 f_measure = GBW / (100 × |gain|)
-```
+</code></pre>
 
 Clamped to [1, 1000] Hz. This ensures the measurement is in the passband even for high-gain circuits with low-GBW parts, preventing false failures from measuring above the bandwidth.
 
@@ -369,31 +371,31 @@ Phase 3 adds the ability to inject PCB layout parasitics into SPICE testbenches 
 
 ### Extraction Pipeline
 
-```
+<pre><code>
 analyze_pcb.py --full → pcb.json (with trace_segments and via_details)
 extract_parasitics.py → parasitics.json (per-net R, L, C values)
 simulate_subcircuits.py --parasitics parasitics.json → annotated simulation
-```
+</code></pre>
 
 ### Parasitic Formulas
 
 **Trace resistance (IPC-2221A):**
-```
+<pre><code>
 R = ρ_Cu × L / (W × T)
 ρ_Cu = 1.68×10⁻⁸ Ω·m (copper at 20°C)
-```
+</code></pre>
 For 1oz copper (T=0.035mm), 0.254mm wide, 25.4mm long: R = 48 mΩ
 
 **Via resistance:**
-```
+<pre><code>
 R_via = ρ_Cu × H / (π × ((D/2)² - ((D-2T_plating)/2)²))
 T_plating ≈ 25 µm typical
-```
+</code></pre>
 
 **Via inductance:**
-```
+<pre><code>
 L_via ≈ (µ₀ × H / 2π) × ln(2H/D)
-```
+</code></pre>
 Typical 0.3mm drill through 1.6mm board: ~0.7 nH
 
 ### Injection Thresholds

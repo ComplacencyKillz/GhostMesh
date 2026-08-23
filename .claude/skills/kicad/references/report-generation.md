@@ -1,3 +1,5 @@
+---
+---
 # Design Review Report Generation
 
 Guide for producing comprehensive design review reports from analyzer output + raw file cross-referencing. These reports help EE designers validate their designs before committing to fabrication.
@@ -55,14 +57,14 @@ If any applicable analysis was not run, include a short section in the report th
 
 Recommended format:
 
-```markdown
+<pre><code>
 ## Not Performed / Review Limits
 
 - Thermal analysis not performed — reason.
 - Lifecycle audit not performed — reason.
 - Gerber analysis not performed — no fabrication outputs present.
 - Datasheet extraction not available — pin-level checks are datasheet-manual or inference-only.
-```
+</code></pre>
 
 ## False-Positive Triage
 
@@ -90,7 +92,7 @@ If a finding was reviewed and judged benign, keep it in a "False Positives / Rev
 
 Use this template. Include sections that are relevant to the design — skip sections that genuinely don't apply (a battery-powered sensor board doesn't need an isolation barrier section). For sections where the analyzer returned empty data, briefly assess whether that's expected ("no mains input, creepage N/A") or a gap worth noting ("no ESD protection detected on external USB connector").
 
-```markdown
+<pre><code>
 # [Project Name] Design Review
 
 **Project:** [name] ([KiCad version], [single sheet | N hierarchical sheets], [N-layer PCB | no PCB])
@@ -462,7 +464,7 @@ This verification must happen at the PCB pad level, not just the schematic pin l
 2. Connector J3 pinout could not be verified — no datasheet found for this custom connector
 3. Analog ground (AGND) to digital ground (DGND) connection point not analyzed — single-point connection must be verified visually
 4. U5 (custom library symbol from <code>mylib:XYZ123</code>) — pin mapping not verified against datasheet due to missing MPN
-```
+</code></pre>
 
 ## Analyzer Output Field Reference
 

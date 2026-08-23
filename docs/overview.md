@@ -1,3 +1,5 @@
+---
+---
 # GhostMesh — System Overview
 
 > Utilizing hacked equipment and illegal technology, transmitted so that you might at least prepare.

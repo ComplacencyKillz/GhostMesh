@@ -1,3 +1,5 @@
+---
+---
 # Datasheet Cache Layout (v1.4)
 
 Reference doc describing the on-disk convention for datasheet extractions.
@@ -7,7 +9,7 @@ check.
 
 ## Directory Structure
 
-```
+<pre><code>
 <project>/
   datasheets/
     manifest.json                       # Tier 1 PDF SHA dedup (Track 2.1 schema).
@@ -21,7 +23,7 @@ check.
       RC0603FR-0750KL.variant.json
       _families/                        # Reserved for v1.5 Tier 2 dedup (spec §14).
         yageo-rc0603.family.json        # Canonical family extraction (v1.5).
-```
+</code></pre>
 
 ## File Naming
 
@@ -88,13 +90,13 @@ locks the invariant that this edge case does not break <code>lookup()</code>.
 
 **v1.5 layout preview:**
 
-```
+<pre><code>
 extracted/
   _families/
     yageo-rc0603.family.json        # Canonical family extraction.
   RC0603FR-071KL.variant.json       # Per-MPN variant overrides.
   RC0603FR-0750KL.variant.json
-```
+</code></pre>
 
 A v1.5 <code>lookup()</code> call for <code>RC0603FR-071KL</code> will:
 1. Read <code>RC0603FR-071KL.variant.json</code>.

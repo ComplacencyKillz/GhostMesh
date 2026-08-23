@@ -23,7 +23,7 @@ BOM data lives in **KiCad schematic symbol properties** as the single source of 
 
 Use <code><skill-path></code> to reference the BOM skill directory.
 
-```bash
+<pre><code>
 # Analyze schematic (JSON output, recursive sub-sheets)
 python3 <skill-path>/scripts/bom_manager.py analyze path/to/schematic.kicad_sch --json --recursive
 
@@ -48,7 +48,7 @@ python3 <skill-path>/scripts/sync_datasheet_urls.py path/to/schematic.kicad_sch 
 # for the 3-step PCBA upload workflow)
 python3 <skill-path>/scripts/translate_bom_pnp.py bom input_bom.csv -o jlc_bom.csv
 python3 <skill-path>/scripts/translate_bom_pnp.py pnp input_cpl.csv -o jlc_cpl.csv --bom jlc_bom.csv
-```
+</code></pre>
 
 ## Workflow
 
@@ -60,9 +60,9 @@ Skip steps that don't apply. Common shortcuts:
 
 ### Step 1: Understand the Project
 
-```bash
+<pre><code>
 python3 <skill-path>/scripts/bom_manager.py analyze path/to/schematic.kicad_sch --json --recursive
-```
+</code></pre>
 
 The output tells you the project's field naming convention, which distributors are populated, what's missing, and the preferred distributor. Also look for an existing BOM tracking CSV in the project directory or <code>bom/</code> folder.
 
@@ -72,11 +72,11 @@ The script covers common patterns, but some projects use internal key systems or
 
 **Do this immediately.** Datasheets are essential context for validation and part selection. Run the preferred distributor's sync first; if some fail, try others — they share the same <code>datasheets/</code> directory and skip already-downloaded parts.
 
-```bash
+<pre><code>
 python3 <digikey-skill-path>/scripts/sync_datasheets_digikey.py path/to/schematic.kicad_sch --recursive
 python3 <lcsc-skill-path>/scripts/sync_datasheets_lcsc.py path/to/schematic.kicad_sch --recursive
 python3 <element14-skill-path>/scripts/sync_datasheets_element14.py path/to/schematic.kicad_sch --recursive
-```
+</code></pre>
 
 DigiKey is best (direct PDF URLs). element14 is reliable (no bot protection). LCSC works for LCSC-only parts. Mouser is a last resort (often blocks downloads).
 
@@ -86,9 +86,9 @@ DigiKey is best (direct PDF URLs). element14 is reliable (no bot protection). LC
 
 Re-sync after writing new MPNs (Step 5) — the scripts are idempotent. Then backfill Datasheet URLs into the schematic:
 
-```bash
+<pre><code>
 python3 <skill-path>/scripts/sync_datasheet_urls.py path/to/schematic.kicad_sch --recursive
-```
+</code></pre>
 
 This reads <code>datasheets/manifest.json</code> (legacy name <code>index.json</code> still supported) and writes discovered datasheet URLs into empty schematic <code>Datasheet</code> properties. Opportunistic — only fills blanks. If a schematic already has a different URL, it warns about the mismatch without overwriting (use <code>--overwrite</code> to replace). Run with <code>--dry-run</code> first to preview.
 
@@ -122,10 +122,10 @@ If ambiguous, ask the user. A wrong part is worse than a missing part.
 
 If unsaved KiCad work exists, ask them to save first (Ctrl+S), then run the script, then reopen.
 
-```bash
+<pre><code>
 echo '{"R1": {"MPN": "RC0805FR-0710KL", "Manufacturer": "Yageo", "DigiKey": "311-10.0KCRCT-ND"}}' \
   | python3 <skill-path>/scripts/edit_properties.py path/to/schematic.kicad_sch
-```
+</code></pre>
 
 **Backups:** By default, no <code>.bak</code> file is created (git tracks changes). Pass <code>--backup</code> if the schematic is not in a git repo or has uncommitted changes the user wants to preserve.
 
@@ -135,9 +135,9 @@ echo '{"R1": {"MPN": "RC0805FR-0710KL", "Manufacturer": "Yageo", "DigiKey": "311
 
 ### Step 6: Update the BOM Tracking CSV
 
-```bash
+<pre><code>
 python3 <skill-path>/scripts/bom_manager.py export path/to/schematic.kicad_sch -o bom/bom.csv --recursive
-```
+</code></pre>
 
 CSV columns are dynamic — only distributors the project uses get columns. Base columns: Reference, Qty, Value, Footprint, MPN, Manufacturer. Each active distributor gets a PN column + stock column. Tail columns: Chosen_Distributor, Datasheet, Validated, DNP, Notes.
 
@@ -181,13 +181,13 @@ For large BOMs (50+ parts), focus on power components, critical signal paths, an
 
 **Pre-flight:** verify no gaps, CSV is current, Chosen_Distributor is set (or use <code>--distributor</code> flag), stock is fresh.
 
-```bash
+<pre><code>
 # Using Chosen_Distributor column, 5 boards + 2 spares
 python3 <skill-path>/scripts/bom_manager.py order bom/bom.csv -o bom/orders/ --boards 5 --spares 2
 
 # Or quick single-distributor order
 python3 <skill-path>/scripts/bom_manager.py order bom/bom.csv --distributor digikey
-```
+</code></pre>
 
 <code>--boards</code> multiplies all quantities. <code>--spares</code> adds a flat extra per line after multiplication. <code>--distributor</code> bypasses Chosen_Distributor — generates an order for all parts with that distributor's PN.
 
@@ -214,7 +214,7 @@ The <code>BOM Comments</code> symbol property (canonical name) captures per-comp
 - Component has conditional population (different value for different product variants/SKUs)
 
 **Example values:**
-```
+<pre><code>
 "Proto only — DNP in production"
 "Shares ribbon cable with power board — don't double-order"
 "Must be Murata GRM series, no substitution (validated for EMI)"
@@ -222,7 +222,7 @@ The <code>BOM Comments</code> symbol property (canonical name) captures per-comp
 "Order 10% extra — fragile QFN rework difficult"
 "Use 10K for rev A, 4.7K for rev B"
 "Mating connector: Molex 39-01-2040 on cable side"
-```
+</code></pre>
 
 ### Where Else to Look for BOM Quirks
 
@@ -290,14 +290,14 @@ When the schematic changes between revisions, compare the old and new BOM to ide
 
 Generates an HTML page showing component locations on the PCB — essential for hand-assembly.
 
-```bash
+<pre><code>
 pip install InteractiveHtmlBom
 generate_interactive_bom board.kicad_pcb \
   --dest-dir bom/ --name-format "%f_ibom_%r" \
   --extra-fields "MPN,Manufacturer,DigiKey,Mouser,LCSC" \
   --group-fields "Value,Footprint,MPN" \
   --checkboxes "Sourced,Placed" --dnp-field "DNP" --no-browser
-```
+</code></pre>
 
 ## Reference Files
 
@@ -341,7 +341,7 @@ The <code>kicad</code> skill also creates analyzer JSON and design review markdo
 
 ### Cleanup commands
 
-```bash
+<pre><code>
 # Remove downloaded datasheets (re-downloadable)
 rm -rf datasheets/
 
@@ -352,16 +352,16 @@ rm -rf bom/orders/
 rm -f *.bak
 
 # Remove KiCad analyzer/report files (filenames vary — check project instructions file)
-```
+</code></pre>
 
 ### Suggested .gitignore additions
 
-```gitignore
+<pre><code>
 # BOM skill working files
 datasheets/
 bom/orders/
 *.bak
-```
+</code></pre>
 
 Keep <code>bom/bom.csv</code> tracked — it contains user-curated data (Chosen_Distributor, Validated, Notes) that can't be regenerated from the schematic alone.
 

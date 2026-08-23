@@ -1,3 +1,5 @@
+---
+---
 # Flipper Zero Setup and Build Guide
 
 ## Prerequisites

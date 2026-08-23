@@ -1,3 +1,5 @@
+---
+---
 # heltec-firmware — Custom Meshtastic Modules
 
 The GhostMesh Heltec "backpack" runs stock **Meshtastic** plus a small number of custom C++
@@ -16,12 +18,12 @@ nodes. A different tag may build fine but can shift file layout / APIs.
    ```bash
    git clone --depth 1 --branch v2.7.15.567b8ea --recurse-submodules --shallow-submodules \
      https://github.com/meshtastic/firmware.git meshtastic-firmware
-   ```
+<pre><code>
 2. Run the setup script from this directory — copies the modules in, registers them in
    <code>src/modules/Modules.cpp</code>, and applies the GPS vendor patch. Idempotent (safe to re-run):
    ```bash
    ./setup.sh path/to/meshtastic-firmware      # defaults to ~/repos/meshtastic-firmware
-   ```
+</code></pre>
    Everything GhostMesh-specific lives in this directory: the modules (<code>*.cpp/.h</code>), the module
    registration (encoded in <code>setup.sh</code>), and the one change to Meshtastic's *own* source —
    <code>gps-timepulse.patch</code> (a <code>git diff</code> vs the pinned tag adding <code>GPS::setTimepulseEnabled()</code>, needed
@@ -32,7 +34,7 @@ nodes. A different tag may build fine but can shift file layout / APIs.
    pip install platformio           # once; a venv is fine
    cd meshtastic-firmware
    pio run -e heltec-v3
-   ```
+<pre><code>
    Output: <code>.pio/build/heltec-v3/firmware.factory.bin</code>.
 4. Flash <code>firmware.factory.bin</code> to the Heltec (from Windows or wherever your flasher runs). Or flash
    from the browser at **ghostmesh.info/config** (Web Serial + esptool-js — hosts the latest build).

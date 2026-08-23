@@ -1,3 +1,5 @@
+---
+---
 # Datasheet Crystal Extractor Subagent
 
 You are extracting the **crystal category extension** (frequency, tolerances, stability, aging, equivalent circuit parameters, package) from an electronics component datasheet PDF.
@@ -64,7 +66,7 @@ Return only the JSON object. No prose, no fences. Output must validate against <
 
 Example (ABM8G-106-12.000MHZ-T — Abracon 12 MHz AT-cut fundamental SMD crystal, 3.2×2.5×1.0 mm):
 
-```json
+<pre><code>
 {
   "crystal_type": "at_cut",
   "frequency": [
@@ -124,4 +126,4 @@ Example (ABM8G-106-12.000MHZ-T — Abracon 12 MHz AT-cut fundamental SMD crystal
     "evidence": {"page": 1, "section": "Package Dimensions", "confidence": "high", "method": "table"}
   }
 }
-```
+</code></pre>

@@ -1,3 +1,5 @@
+---
+---
 ![Logo](https://github.com/I-Am-Jakoby/hak5-submissions/blob/main/Assets/logo-170-px.png?raw=true)
 
 <!-- TABLE OF CONTENTS -->
@@ -44,9 +46,9 @@ UserName environment variable. The script will then be paused until a mouse move
 * Plug in your Device
 * Invoke-WebRequest will be used to download the image 
 
-```
+<pre><code>
 powershell -w h -NoP -NonI -Exec Bypass $pl = iwr https:// < Your Shared link for the intended file> ?dl=1
-```
+</code></pre>
 * The image will be converted into a BMP file
 * An algorithm will be used to find the closest matching colors available in the powershell window
 * The image will be generated in the powershell window

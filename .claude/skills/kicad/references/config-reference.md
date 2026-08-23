@@ -1,3 +1,5 @@
+---
+---
 # .kicad-happy.json Config Reference
 
 Configuration file for kicad-happy. Placed in the project directory (or any parent directory). All analyzers, the EMC skill, and the BOM skill read this file automatically.
@@ -6,7 +8,7 @@ Configuration file for kicad-happy. Placed in the project directory (or any pare
 
 JSONC — JSON with <code>//</code> and <code>/* */</code> comments, and trailing commas allowed. The parser is purely stdlib; no external dependencies.
 
-```jsonc
+<pre><code>
 // Comments are allowed anywhere
 {
   "version": 1, // trailing commas are OK
@@ -14,17 +16,17 @@ JSONC — JSON with <code>//</code> and <code>/* */</code> comments, and trailin
     "name": "My Board",
   },
 }
-```
+</code></pre>
 
 ## Discovery and Merge Order
 
 The loader walks upward from the project directory, collecting every <code>.kicad-happy.json</code> it finds, then includes <code>~/.kicad-happy.json</code> as the base layer (lowest precedence). Files are merged closest-wins:
 
-```
+<pre><code>
 ~/.kicad-happy.json          ← base layer (user-wide defaults)
 /home/user/hw/.kicad-happy.json   ← workspace layer
 /home/user/hw/myboard/.kicad-happy.json  ← project layer (wins)
-```
+</code></pre>
 
 **Merge rules:**
 - Dict values: deep-merged recursively; closer keys win on conflict.
@@ -76,7 +78,7 @@ Each entry:
 
 **Entries missing <code>rule_id</code> are silently skipped** with a stderr warning.
 
-```jsonc
+<pre><code>
 "suppressions": [
   // Suppress for all instances of this rule
   {
@@ -96,7 +98,7 @@ Each entry:
     "reason": "USB VBUS handled by upstream filter board"
   },
 ]
-```
+</code></pre>
 
 ---
 
@@ -108,9 +110,9 @@ Valid values: <code>"digikey"</code>, <code>"mouser"</code>, <code>"lcsc"</code>
 
 Unknown values are warned and dropped. Default: <code>[]</code> (BOM manager auto-selects).
 
-```jsonc
+<pre><code>
 "preferred_suppliers": ["lcsc", "digikey"]
-```
+</code></pre>
 
 ---
 
@@ -125,12 +127,12 @@ BOM conventions for this project.
 
 Invalid <code>group_by</code> values are warned and the field is ignored (default behavior applies).
 
-```jsonc
+<pre><code>
 "bom": {
   "field_priority": ["MPN", "LCSC", "Digi-Key_PN"],
   "group_by": "mpn"
 }
-```
+</code></pre>
 
 ---
 
@@ -159,7 +161,7 @@ Filter and annotate power rails in analysis output. All patterns use fnmatch glo
 
 <code>ignore</code> and <code>flag</code> must be arrays; <code>voltage_overrides</code> values must be numeric. Invalid entries are warned and skipped.
 
-```jsonc
+<pre><code>
 "analysis": {
   "output_dir": "analysis",
   "retention": 5,
@@ -175,7 +177,7 @@ Filter and annotate power rails in analysis output. All patterns use fnmatch glo
     }
   }
 }
-```
+</code></pre>
 
 ---
 
@@ -213,7 +215,7 @@ Explicit design intent overrides. When absent, each field is **auto-detected** f
 5. Inferred from <code>target_market</code> (medical/aerospace → Class 3)
 6. Default: Class 2
 
-```jsonc
+<pre><code>
 "design_intent": {
   "product_class": "production",
   "ipc_class": 2,
@@ -224,7 +226,7 @@ Explicit design intent overrides. When absent, each field is **auto-detected** f
   "test_coverage_target": 0.90,
   "approved_manufacturers": ["Murata", "TDK", "Yageo", "ROHM"]
 }
-```
+</code></pre>
 
 ---
 
@@ -232,7 +234,7 @@ Explicit design intent overrides. When absent, each field is **auto-detected** f
 
 Production consumer electronics board targeting the EU market. LCSC primary supplier, IPC Class 2, with suppressions, power rail filtering, BOM config, and branding.
 
-```jsonc
+<pre><code>
 {
   "version": 1,
 
@@ -314,7 +316,7 @@ Production consumer electronics board targeting the EU market. LCSC primary supp
     "approved_manufacturers": ["Murata", "TDK", "Samsung", "ROHM", "Yageo", "onsemi", "STMicroelectronics"]
   }
 }
-```
+</code></pre>
 
 ## Quick Field Index
 

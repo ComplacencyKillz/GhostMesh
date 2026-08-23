@@ -1,3 +1,5 @@
+---
+---
 New backpack peripheral pins (Heltec V3 / HTIT-WB32LAF)
 Verified against the actual board header photo (heltec_front_back/).
 

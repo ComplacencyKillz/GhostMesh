@@ -1,3 +1,5 @@
+---
+---
 # Diff Analysis Reference
 
 Compare two KiCad analysis JSON files (base vs head) and report changes. Supports schematic, PCB, EMC, and SPICE analyzer outputs with auto-detection. Zero dependencies — Python 3.8+ stdlib only.
@@ -38,9 +40,9 @@ The tool operates on pre-analyzed JSON produced by <code>analyze_schematic.py</c
 
 ## CLI Reference
 
-```
+<pre><code>
 python3 diff_analysis.py <base> <head> [options]
-```
+</code></pre>
 
 ### Positional Arguments
 
@@ -174,9 +176,9 @@ No changes detected, or diff result is empty.
 
 <code>SIGNAL_REGISTRY</code> is derived at import time from <code>detection_schema.SCHEMAS</code>:
 
-```python
+<pre><code>
 SIGNAL_REGISTRY = {dt: (s.identity_fields, s.value_fields) for dt, s in _SCHEMAS.items()}
-```
+</code></pre>
 
 Each detection type maps to <code>(identity_fields, value_fields)</code> where both are lists of dotpath strings.
 
@@ -233,7 +235,7 @@ Returns <code>None</code> if nothing is found (item is excluded from matching).
 
 ### Top-Level Structure
 
-```json
+<pre><code>
 {
   "diff_version": "1.0",
   "analyzer_type": "schematic|pcb|emc|spice",
@@ -250,7 +252,7 @@ Returns <code>None</code> if nothing is found (item is excluded from matching).
   "diff": { ... }
 }
 
-```
+</code></pre>
 
 ### Summary Counts
 
@@ -279,7 +281,7 @@ The <code>diff</code> object contains only sections with actual changes. Empty s
 
 All list-based sections (components, signal analysis detections, footprints) use the same structure:
 
-```json
+<pre><code>
 {
   "added": [{ "reference": "R5", "value": "10k", ... }],
   "removed": [{ "reference": "R3", "value": "4.7k", ... }],
@@ -294,7 +296,7 @@ All list-based sections (components, signal analysis detections, footprints) use
   }],
   "unchanged_count": 12
 }
-```
+</code></pre>
 
 The <code>delta_pct</code> field is only present for numeric comparisons where the base value is nonzero.
 
@@ -304,7 +306,7 @@ The <code>--text</code> flag renders a summary header followed by per-section de
 
 Format:
 
-```
+<pre><code>
 Design Changes: schematic (major) — 5 changes
   +2 added, -1 removed, ~2 modified
 
@@ -316,7 +318,7 @@ Components:
 Signal Analysis:
   + New Voltage Dividers: r_top_ref=R5 r_bottom_ref=R6
   ~ Rc Filters R1/C3: cutoff_hz 1591.55 → 3386.28
-```
+</code></pre>
 
 ---
 

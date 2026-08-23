@@ -1,3 +1,5 @@
+---
+---
 # Tales from the Afternow — Creator Reference Document
 
 **Purpose:** Complete creative and thematic reference for the creator of GhostMesh and

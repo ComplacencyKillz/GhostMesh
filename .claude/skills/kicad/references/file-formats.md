@@ -1,3 +1,5 @@
+---
+---
 # KiCad File Format Reference
 
 Detailed field-by-field documentation for all KiCad file types. Consult this when manually parsing or inspecting raw KiCad files.
@@ -30,7 +32,7 @@ All modern KiCad files use Lisp-like S-expressions: <code>(keyword value1 (child
 ## Schematic (<code>.kicad_sch</code>)
 
 ### Top-Level Structure
-```
+<pre><code>
 (kicad_sch
   (version ...) (generator ...) (generator_version ...) (uuid ...) (paper ...)
   (lib_symbols ...)        ; Embedded copies of all library symbols used
@@ -48,10 +50,10 @@ All modern KiCad files use Lisp-like S-expressions: <code>(keyword value1 (child
   (sheet ...)              ; Hierarchical sub-sheet references
   (sheet_instances ...)    ; Sheet path/page info
 )
-```
+</code></pre>
 
 ### Symbol Instance (placed component)
-```
+<pre><code>
 (symbol
   (lib_id "Library:SymbolName")     ; Library reference
   (at X Y ANGLE)                     ; Position
@@ -73,7 +75,7 @@ All modern KiCad files use Lisp-like S-expressions: <code>(keyword value1 (child
     )
   )
 )
-```
+</code></pre>
 
 ### Extracting Key Info from Schematics
 
@@ -97,13 +99,13 @@ For detailed step-by-step net tracing with coordinate math and rotation transfor
 **Power rails**: Look for symbols with <code>lib_id</code> starting with <code>power:</code> (e.g., <code>power:+3V3</code>, <code>power:GND</code>). These create global nets named after their value.
 
 ### Hierarchical Sheets
-```
+<pre><code>
 (sheet (at X Y) (size W H) (uuid "...")
   (property "Sheetname" "PowerSupply" ...)
   (property "Sheetfile" "power_supply.kicad_sch" ...)
   (pin "VIN" input (at X Y ANGLE) (uuid "..."))
 )
-```
+</code></pre>
 Each sheet has its own <code>.kicad_sch</code> file. Pins on the sheet symbol connect to <code>hierarchical_label</code> nodes inside.
 
 ---
@@ -111,7 +113,7 @@ Each sheet has its own <code>.kicad_sch</code> file. Pins on the sheet symbol co
 ## PCB Layout (<code>.kicad_pcb</code>)
 
 ### Top-Level Structure
-```
+<pre><code>
 (kicad_pcb
   (version ...) (generator ...) (generator_version ...)
   (general (thickness 1.6) (legacy_teardrops no))
@@ -134,10 +136,10 @@ Each sheet has its own <code>.kicad_sch</code> file. Pins on the sheet symbol co
   (gr_text ...)             ; Board text
   (group ...)               ; Groups (KiCad 6+)
 )
-```
+</code></pre>
 
 ### Layer Definitions
-```
+<pre><code>
 (layers
   (0 "F.Cu" signal)         ; Front copper
   (2 "B.Cu" signal)         ; Back copper (number varies by version)
@@ -149,11 +151,11 @@ Each sheet has its own <code>.kicad_sch</code> file. Pins on the sheet symbol co
   (35 "F.Fab" user)         ; Front fabrication
   ...
 )
-```
+</code></pre>
 **Note**: Layer numbers differ between versions. In KiCad 5: F.Cu=0, B.Cu=31, inner=1-30. In KiCad 6+: B.Cu number depends on layer count (e.g., B.Cu=2 for 2-layer, B.Cu=4 for 4-layer).
 
 ### Footprint on PCB
-```
+<pre><code>
 (footprint "Package:SOT-563"
   (layer "F.Cu")                    ; Which side of board
   (uuid "...")
@@ -182,10 +184,10 @@ Each sheet has its own <code>.kicad_sch</code> file. Pins on the sheet symbol co
   ; 3D model:
   (model "path/to/model.wrl" (offset ...) (scale ...) (rotate ...))
 )
-```
+</code></pre>
 
 ### Tracks, Vias, and Zones
-```
+<pre><code>
 ; KiCad ≤9: net referenced by integer ID
 (segment (start X1 Y1) (end X2 Y2) (width 0.2) (layer "F.Cu") (net 7) (uuid "..."))
 (via (at X Y) (size 0.6) (drill 0.3) (layers "F.Cu" "B.Cu") (net 7) (uuid "..."))
@@ -204,14 +206,14 @@ Each sheet has its own <code>.kicad_sch</code> file. Pins on the sheet symbol co
   (polygon (pts (xy X1 Y1) (xy X2 Y2) ...))      ; User-drawn outline
   (filled_polygon (pts ...))                        ; Computed fill result
 )
-```
+</code></pre>
 
 ### Board Outline
 Look for graphical items on <code>Edge.Cuts</code> layer:
-```
+<pre><code>
 (gr_line (start X1 Y1) (end X2 Y2) (layer "Edge.Cuts") ...)
 (gr_arc (start ...) (mid ...) (end ...) (layer "Edge.Cuts") ...)
-```
+</code></pre>
 
 ### Tracing Net Connectivity on PCB
 To find everything connected to a net:
@@ -233,7 +235,7 @@ To find everything connected to a net:
 
 ## Symbol Library (<code>.kicad_sym</code>)
 
-```
+<pre><code>
 (kicad_symbol_lib
   (version ...) (generator ...) (generator_version ...)
   (symbol "SymbolName"
@@ -258,7 +260,7 @@ To find everything connected to a net:
     )
   )
 )
-```
+</code></pre>
 
 **Pin types**: <code>input</code>, <code>output</code>, <code>bidirectional</code>, <code>tri_state</code>, <code>passive</code>, <code>free</code>, <code>unspecified</code>, <code>power_in</code>, <code>power_out</code>, <code>open_collector</code>, <code>open_emitter</code>, <code>no_connect</code>
 
@@ -270,7 +272,7 @@ To find everything connected to a net:
 
 Stored in <code>.pretty/</code> directories (one file per footprint).
 
-```
+<pre><code>
 (footprint "FootprintName"
   (version ...) (generator ...) (layer "F.Cu")
   (descr "Description text")
@@ -284,7 +286,7 @@ Stored in <code>.pretty/</code> directories (one file per footprint).
   ; 3D model:
   (model "path.wrl" ...)
 )
-```
+</code></pre>
 
 **Pad types**: <code>smd</code>, <code>thru_hole</code>, <code>np_thru_hole</code> (non-plated), <code>connect</code> (edge connector)
 **Pad shapes**: <code>circle</code>, <code>rect</code>, <code>oval</code>, <code>roundrect</code>, <code>trapezoid</code>, <code>custom</code>
@@ -294,7 +296,7 @@ Stored in <code>.pretty/</code> directories (one file per footprint).
 ## Custom Design Rules (<code>.kicad_dru</code>)
 
 Text-based constraint rules applied during DRC. Example:
-```
+<pre><code>
 (version 1)
 (rule "Track width, outer layer"
   (layer outer)
@@ -305,14 +307,14 @@ Text-based constraint rules applied during DRC. Example:
   (condition "A.isPlated() && B.isPlated() && A.Net != B.Net")
   (constraint clearance (min 0.127mm))
 )
-```
+</code></pre>
 Useful for enforcing manufacturer capabilities (e.g., JLCPCB, PCBWay).
 
 ---
 
 ## Netlist (<code>.net</code>)
 
-```
+<pre><code>
 (export (version D)
   (components
     (comp (ref U1)
@@ -330,14 +332,14 @@ Useful for enforcing manufacturer capabilities (e.g., JLCPCB, PCBWay).
     )
   )
 )
-```
+</code></pre>
 The netlist explicitly lists every net and which component pins belong to it.
 
 ---
 
 ## Legacy KiCad 5 Schematic (<code>.sch</code>)
 
-```
+<pre><code>
 EESchema Schematic File Version 4
 EELAYER 30 0
 EELAYER END
@@ -356,7 +358,7 @@ Wire Wire Line                           ; Electrical wire
   x1 y1 x2 y2
 Text Label x y orientation size ~ 0      ; Local net label
 NetName
-```
+</code></pre>
 
 **Key differences from modern format:**
 - Coordinates in mils (1/1000 inch), not mm

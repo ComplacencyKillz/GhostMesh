@@ -39,7 +39,7 @@ This skill owns:
 
 ## Cache location
 
-```
+<pre><code>
 <project>/
   design.kicad_sch
   datasheets/
@@ -47,7 +47,7 @@ This skill owns:
     extracted/
       manifest.json         # extraction manifest (legacy name: index.json)
       TPS61023DRLR.json     # structured extraction (this skill's output)
-```
+</code></pre>
 
 ## Reference guides
 
@@ -77,7 +77,7 @@ Run <code>python3 skills/datasheets/scripts/plan_extraction.py <project></code> 
 
 The recommended consumer surface is the typed <code>lookup(mpn, cache_dir=...)</code> facade plus the trust-gating helpers from <code>datasheet_types</code>. Import like:
 
-```python
+<pre><code>
 import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "datasheets"))
 from datasheet_types import lookup, has_data, best, trusted
@@ -97,7 +97,7 @@ if has_data(pu_range):
 
 # All SpecValues at threshold (for multi-value fields like absolute_max).
 hi_conf = trusted(facts.base.absolute_max.get("VDD", []), min_confidence="high")
-```
+</code></pre>
 
 **Defensive patterns** (mirrors <code>kicad/SKILL.md</code> § "Probing Analyzer JSON"):
 

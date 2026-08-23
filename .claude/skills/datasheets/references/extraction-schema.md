@@ -1,3 +1,5 @@
+---
+---
 # Extraction Schema Reference
 
 Canonical schema for structured datasheet extraction JSON files stored in <code>datasheets/extracted/</code>. The extraction itself is performed by the LLM reading selected PDF pages; this document defines what fields the LLM must produce and how the cache manager and verifier interpret them.
@@ -8,7 +10,7 @@ Current <code>EXTRACTION_VERSION</code>: **2** (in <code>datasheet_extract_cache
 
 ## Top-Level Structure
 
-```json
+<pre><code>
 {
   "mpn": "TPS61023DRLR",
   "manufacturer": "Texas Instruments",
@@ -26,7 +28,7 @@ Current <code>EXTRACTION_VERSION</code>: **2** (in <code>datasheet_extract_cache
   "spice_specs": {...},
   "extraction_metadata": {...}
 }
-```
+</code></pre>
 
 ### Top-Level Fields
 
@@ -351,7 +353,7 @@ The extractor populates <code>source_pdf</code> and <code>extracted_from_pages</
 
 <code>datasheets/extracted/manifest.json</code> (legacy name: <code>index.json</code>) tracks all cached extractions. The cache manager reads and writes this file; extraction code does not need to update it directly.
 
-```json
+<pre><code>
 {
   "version": 1,
   "last_updated": "2026-04-15T12:00:00+00:00",
@@ -369,7 +371,7 @@ The extractor populates <code>source_pdf</code> and <code>extracted_from_pages</
     }
   }
 }
-```
+</code></pre>
 
 Index keys are MPN strings sanitized by <code>_sanitize_mpn()</code>: non-alphanumeric characters replaced with underscores, with a 6-character MD5 suffix appended to avoid collisions (e.g., <code>TPS61023DRLR_a1b2c3</code>). The suffix is derived from the raw MPN.
 

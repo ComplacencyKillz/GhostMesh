@@ -1,3 +1,5 @@
+---
+---
 # GhostMesh — CLAUDE.md
 
 ## What This Project Is

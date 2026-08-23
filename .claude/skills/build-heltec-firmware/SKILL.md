@@ -27,14 +27,14 @@ so the user can flash it from the Windows host (the boards live on Windows USB â
 1. **Confirm the checkout is at the pinned tag** (a wrong tag shifts APIs/layout):
    ```bash
    cd /home/servermonk/repos/meshtastic-firmware && git describe --tags   # â†’ v2.7.15.567b8ea
-   ```
+<pre><code>
 
 2. **Run the setup script** â€” copies the modules in, registers them in <code>Modules.cpp</code>, and applies the
    GPS timepulse vendor patch. Idempotent (safe to re-run); the one command replaces the old manual
    copy + <code>sed</code>-register + patch dance:
    ```bash
    /home/servermonk/repos/ghostmesh/heltec-firmware/setup.sh   # defaults to ~/repos/meshtastic-firmware
-   ```
+</code></pre>
    - Adding a **new** module? Add its <code>cp</code>'d source (automatic) plus its <code>#include</code> + <code>new XxxModule();</code>
      lines to the <code>INCLUDES</code>/<code>REGISTER</code> arrays in <code>setup.sh</code>'s embedded Python (keep <code>ArmingModule</code>
      before the tampers â€” it sets <code>ghostmesh_armed</code>, which they read), and re-run.
@@ -51,7 +51,7 @@ so the user can flash it from the Windows host (the boards live on Windows USB â
 4. **Build** (~6â€“7 min incremental off the cache; a clean build is longer):
    ```bash
    cd /home/servermonk/repos/meshtastic-firmware && /home/servermonk/.pio-venv/bin/pio run -e heltec-v3
-   ```
+<pre><code>
    Success ends with <code>[SUCCESS]</code> and writes <code>.pio/build/heltec-v3/firmware.factory.bin</code>.
 
 5. **Deliver + verify integrity**:
@@ -59,11 +59,11 @@ so the user can flash it from the Windows host (the boards live on Windows USB â
    SRC=/home/servermonk/repos/meshtastic-firmware/.pio/build/heltec-v3/firmware.factory.bin
    DST=/media/sf_my-vm-share/repos/ghostmesh/ghostmesh-heltec-v3-<feature>.factory.bin
    cp "$SRC" "$DST" && sha256sum "$SRC" "$DST"   # the two hashes must match
-   ```
+</code></pre>
    **Also refresh the web flasher's hosted copy** so ghostmesh.info/config offers the latest build:
    ```bash
    cp "$SRC" /home/servermonk/repos/ghostmesh/ghostmesh.info/public/firmware/ghostmesh-heltec-v3.factory.bin
-   ```
+<pre><code>
    (Then rebuild + deploy the site â€” <code>ghostmesh-website-access</code> skill. That bin is committed so the
    deploy always has it; the flasher's "latest" dropdown fetches it from <code>/firmware/</code>.)
 

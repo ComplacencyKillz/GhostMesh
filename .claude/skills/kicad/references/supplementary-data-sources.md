@@ -1,3 +1,5 @@
+---
+---
 # Supplementary Data Sources
 
 When <code>analyze_schematic.py</code> returns incomplete data — typically for legacy KiCad 5 <code>.sch</code> projects where some <code>.lib</code> files are missing from the repo — use these additional project files to recover full analysis capability.
@@ -43,7 +45,7 @@ Look for a <code>.net</code> file in the project directory, named after the proj
 
 ### Netlist Structure
 
-```
+<pre><code>
 (export (version D)
   (components
     (comp (ref U1)
@@ -69,7 +71,7 @@ Look for a <code>.net</code> file in the project directory, named after the proj
     ...
   )
 )
-```
+</code></pre>
 
 ### What the Netlist Provides
 
@@ -84,7 +86,7 @@ Look for a <code>.net</code> file in the project directory, named after the proj
 
 The netlist is S-expression format — use the skill's <code>sexp_parser.py</code>:
 
-```python
+<pre><code>
 from sexp_parser import parse_file, find_all, find_first, get_value
 
 tree = parse_file('project.net')
@@ -106,7 +108,7 @@ for net in nets:
         ref = get_value(node, 'ref')
         pin = get_value(node, 'pin')
         pin_net_map[(ref, pin)] = net_name
-```
+</code></pre>
 
 With this map, you can perform the same subcircuit detection as the modern analyzer: find voltage dividers by checking shared nets between resistor pairs, identify regulator topologies by tracing VIN/VOUT/FB pin connections, etc.
 
@@ -128,7 +130,7 @@ Look for <code><project-name>-cache.lib</code> in the project directory. It's au
 
 ### Cache Library Structure
 
-```
+<pre><code>
 EESchema-LIBRARY Version 2.4
 #
 # STM32F407ZGTx
@@ -144,15 +146,15 @@ X PA1 35 -1600 800 200 R 50 50 1 1 B      ; X name number x y length orient size
 ...
 ENDDRAW
 ENDDEF
-```
+</code></pre>
 
 ### Pin Definition Fields
 
 The <code>X</code> lines define each pin:
 
-```
+<pre><code>
 X <name> <number> <x> <y> <length> <orientation> <sizeN> <sizeP> <unit> <convert> <type>
-```
+</code></pre>
 
 | Field | Example | Meaning |
 |-------|---------|---------|
@@ -261,9 +263,9 @@ When working with a KiCad 5 legacy project, the analyzer handles most of the wor
 
 ### Step 1: Run the schematic analyzer
 
-```bash
+<pre><code>
 python3 <skill-path>/scripts/analyze_schematic.py project.sch
-```
+</code></pre>
 
 The analyzer automatically parses <code>.lib</code> files (cache libraries and project libs), populates pin data, builds pin-to-net mapping, runs signal analysis, and detects subcircuits. Check the output for components with empty <code>pins</code> arrays — these are the ones missing <code>.lib</code> data.
 

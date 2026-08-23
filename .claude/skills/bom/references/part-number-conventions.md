@@ -1,3 +1,5 @@
+---
+---
 # Part Number Conventions in KiCad Projects
 
 This reference documents how real-world KiCad projects track part numbers. The <code>bom_manager.py</code> script handles the most common patterns automatically, but many projects use unconventional approaches. When the script doesn't detect a project's convention, use this guide to understand what you're looking at and adapt.
@@ -53,12 +55,12 @@ Some parts tracked in symbol properties, others in external files. Or different 
 
 Each distributor gets its own property field on every symbol.
 
-```
+<pre><code>
 (property "MPN" "GRM155R71C104KA88D" ...)
 (property "DigiKey" "490-10698-1-ND" ...)
 (property "Mouser" "81-GRM155R71C104KA8D" ...)
 (property "LCSC" "C14663" ...)
-```
+</code></pre>
 
 The <code>bom_manager.py</code> script handles this pattern and recognizes 50+ field name variants.
 
@@ -66,13 +68,13 @@ The <code>bom_manager.py</code> script handles this pattern and recognizes 50+ f
 
 Generic numbered supplier slots where the supplier name is in one field and the PN in another.
 
-```
+<pre><code>
 (property "Supplier 1" "Digikey" ...)
 (property "Supplier 1 Part #" "490-10698-1-ND" ...)
 (property "Supplier 1 Link" "https://www.digikey.com/..." ...)
 (property "Supplier 2" "Mouser" ...)
 (property "Supplier 2 Part #" "81-GRM155R71C104KA8D" ...)
-```
+</code></pre>
 
 Used by some projects and KiCad BOM export templates. The <code>bom_manager.py</code> script detects this pattern by reading the supplier name value and mapping it to a canonical distributor.
 
@@ -82,11 +84,11 @@ Variants: <code>Vendor</code> / <code>Vendor Part Number</code>, <code>Source</c
 
 A project-internal identifier (slug, database ID, or custom code) instead of or alongside MPNs.
 
-```
+<pre><code>
 (property "Key" "cap-cer-0402-100n" ...)
 (property "UST_ID" "UST-CAP-0042" ...)
 (property "PartID" "P00123" ...)
-```
+</code></pre>
 
 Some projects use <code>Key</code> fields with slugs like <code>ic-cy7c68013a-56</code>, or custom IDs like <code>UST_ID</code>. These IDs cross-reference to an external database or spreadsheet, not to a distributor.
 
@@ -96,14 +98,14 @@ Some projects use <code>Key</code> fields with slugs like <code>ic-cy7c68013a-56
 
 Component specifications stored as individual fields rather than relying on the Value field alone.
 
-```
+<pre><code>
 (property "Value" "100n" ...)
 (property "Tolerance" "10%" ...)
 (property "Voltage" "16V" ...)
 (property "TempCoef" "X7R" ...)
 (property "Power" "0.1W" ...)
 (property "Package" "0402" ...)
-```
+</code></pre>
 
 These are parametric search criteria, not part numbers. Useful for finding the right part when no MPN exists.
 
@@ -113,14 +115,14 @@ These are parametric search criteria, not part numbers. Useful for finding the r
 
 Full LCSC catalog metadata embedded from EasyEDA imports, including stock counts, pricing, process type, and category.
 
-```
+<pre><code>
 (property "LCSC" "C14663" ...)
 (property "Part" "100nF ±10% 16V X7R 0402 MLCC" ...)
 (property "Category" "Capacitors,Multilayer Ceramic Capacitors MLCC - SMD/SMT" ...)
 (property "Stock" "2648712" ...)
 (property "Price" "0.0017" ...)
 (property "Class" "Basic Component" ...)
-```
+</code></pre>
 
 Stock and price values are stale the moment they're saved. Don't use them for ordering decisions — always query current data from the distributor API.
 
@@ -128,7 +130,7 @@ Stock and price values are stale the moment they're saved. Don't use them for or
 
 Symbols downloaded from SnapEDA or SamacSys inject a distinctive set of metadata fields.
 
-```
+<pre><code>
 (property "Manufacturer_Part_Number" "TPS61023DRLR" ...)
 (property "Manufacturer_Name" "Texas Instruments" ...)
 (property "Mouser Part Number" "595-TPS63020DSJR" ...)
@@ -136,7 +138,7 @@ Symbols downloaded from SnapEDA or SamacSys inject a distinctive set of metadata
 (property "STANDARD" "IPC 7351B" ...)
 (property "PARTREV" "1.0" ...)
 (property "MAXIMUM_PACKAGE_HEIGHT" "1.45mm" ...)
-```
+</code></pre>
 
 These often coexist with the project's own field naming convention, creating inconsistency. <code>Manufacturer_Part_Number</code> (SnapEDA) might be on some symbols while <code>MPN</code> (project convention) is on others.
 
@@ -146,11 +148,11 @@ These often coexist with the project's own field naming convention, creating inc
 
 Some projects (especially for commodity passives) put what looks like a part number in the Value or Description field, not in a dedicated MPN field.
 
-```
+<pre><code>
 (property "Value" "EEEFK1V470P" ...)     # This is actually an MPN
 (property "Value" "RC0805FR-071ML" ...)   # This too
 (property "Value" "100n" ...)             # This is a value, not an MPN
-```
+</code></pre>
 
 **What to do:** If a Value field contains something that looks like an MPN (alphanumeric with manufacturer-specific patterns, not a simple value like "100n" or "10K"), it might be the MPN. Check by searching a distributor. But don't change it — the Value field is displayed on the schematic, so the user chose to show the MPN there deliberately.
 
@@ -164,11 +166,11 @@ Not all projects track BOM data in schematic properties. Some use external files
 
 A CSV or TSV with columns for reference designators, values, and part numbers.
 
-```csv
+<pre><code>
 Reference,Value,Footprint,MPN,DigiKey,Qty
 "C1,C2,C5",100nF,0402,GRM155R71C104KA88D,490-10698-1-ND,3
 R1,10K,0805,RC0805FR-0710KL,311-10.0KCRCT-ND,1
-```
+</code></pre>
 
 Common locations: <code>bom/</code>, <code>docs/</code>, <code>exports/</code>, project root. File names: <code>bom.csv</code>, <code>BOM.csv</code>, <code>parts.csv</code>, <code>partlist.csv</code>, <code><project>_bom.csv</code>.
 
@@ -184,10 +186,10 @@ Same as CSV but in a spreadsheet format. May have multiple sheets (e.g., one per
 
 KiCad can export all symbol fields to CSV via Tools > Edit Symbol Fields > Export. This CSV has one row per symbol instance with all properties as columns.
 
-```csv
+<pre><code>
 Reference,Value,Footprint,Datasheet,MPN,DigiKey,...
 C1,100nF,Capacitor_SMD:C_0402_1005Metric,~,GRM155R71C104KA88D,490-10698-1-ND,...
-```
+</code></pre>
 
 This is a round-trip format — the user can export, edit in a spreadsheet, and re-import. If you find one of these CSVs, it represents the definitive BOM state at the time of export.
 
@@ -205,12 +207,12 @@ These are generated outputs, not source-of-truth files. Don't edit them — edit
 
 Some projects keep freeform notes about parts in README, docs, or text files.
 
-```
+<pre><code>
 ## Parts List
 - U1: ESP32-S3-WROOM-1-N4 (DigiKey: 1965-ESP32-S3-WROOM-1-N4CT-ND)
 - All 0402 caps: Murata GRM series, LCSC C14663 or equivalent
 - Connectors from Samtec, order via Samtec.com directly
-```
+</code></pre>
 
 **What to do:** Extract the part numbers and offer to add them to the schematic properties for proper tracking. This is often a sign the project started without BOM management and the user added notes ad-hoc.
 
@@ -223,11 +225,11 @@ When encountering a new project, check in this order:
 1. **Run <code>bom_manager.py</code>** — it will detect most symbol property patterns automatically
 2. **Check for unrecognized fields** — the JSON output includes <code>unrecognized_fields</code> with values that look like part numbers in unknown field names
 3. **Look for external BOM files:**
-   ```
+<pre><code>
    *.csv, *.tsv, *.xlsx, *.xls, *.ods in the project directory
    bom/, docs/, exports/ subdirectories
    README or docs mentioning parts/sourcing
-   ```
+</code></pre>
 4. **Read a few symbols manually** — if the script shows no custom fields, read 3-5 symbols from the .kicad_sch to see if there are fields the script didn't recognize
 5. **Ask the user** — "I see your project doesn't have part numbers in the schematic properties. Do you track them somewhere else, or would you like to start adding them?"
 

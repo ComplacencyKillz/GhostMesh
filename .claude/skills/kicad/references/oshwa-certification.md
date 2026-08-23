@@ -1,3 +1,5 @@
+---
+---
 # OSHWA Certification Readiness
 
 Use this reference when preparing or auditing a KiCad project for the Open

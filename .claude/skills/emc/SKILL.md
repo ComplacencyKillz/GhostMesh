@@ -43,10 +43,10 @@ Automated EMC risk analysis for KiCad PCB designs. Identifies the most common ca
 
 ### Step 1: Run the analyzers
 
-```bash
+<pre><code>
 python3 <kicad-skill-path>/scripts/analyze_schematic.py design.kicad_sch --analysis-dir analysis/
 python3 <kicad-skill-path>/scripts/analyze_pcb.py design.kicad_pcb --full --analysis-dir analysis/
-```
+</code></pre>
 
 ### Step 2: Run EMC analysis
 
@@ -54,7 +54,7 @@ Pass <code>--analysis-dir analysis/</code> — the script auto-resolves <code>sc
 and <code>pcb.json</code> from the manifest's current run, and writes <code>emc.json</code> into
 the same folder so the manifest tracks it.
 
-```bash
+<pre><code>
 # Recommended: auto-resolve inputs from the current run
 python3 <skill-path>/scripts/analyze_emc.py --analysis-dir analysis/
 
@@ -82,7 +82,7 @@ python3 <skill-path>/scripts/analyze_emc.py --analysis-dir analysis/ --severity 
 
 # Human-readable text output
 python3 <skill-path>/scripts/analyze_emc.py --analysis-dir analysis/ --text
-```
+</code></pre>
 
 ### Step 3: Interpret results
 
@@ -118,7 +118,7 @@ Read the JSON report and incorporate findings into the design review. Each findi
 
 ## Output Format
 
-```json
+<pre><code>
 {
   "summary": {
     "total_checks": 42,
@@ -152,7 +152,7 @@ Read the JSON report and incorporate findings into the design review. Each findi
     "coverage_matrix": [{"standard": "...", "coverage": "partial", "note": "..."}]
   }
 }
-```
+</code></pre>
 
 ### Severity Levels
 

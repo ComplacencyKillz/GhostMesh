@@ -1,3 +1,5 @@
+---
+---
 # Meshtastic Serial Protocol — GhostMesh Implementation
 
 ## What GhostMesh Uses

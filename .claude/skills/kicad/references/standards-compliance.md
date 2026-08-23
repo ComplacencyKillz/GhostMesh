@@ -1,3 +1,5 @@
+---
+---
 # IPC/IEC Standards Compliance Reference
 
 Reference tables and formulas for checking PCB designs against industry standards. All values are verified from the actual standard documents (source noted for each table). Values marked **[UNVERIFIED]** are from secondary sources and need primary document confirmation.
@@ -112,9 +114,9 @@ Source: **IPC-2221A Section 6.2** (page 40), verified from PDF. These are the cl
 
 ### Formula (from IPC-2221A Section 6.2)
 
-```
+<pre><code>
 I = k × ΔT^0.44 × A^0.725
-```
+</code></pre>
 
 Where:
 - <code>I</code> = current capacity (Amperes)
@@ -123,9 +125,9 @@ Where:
 - <code>A</code> = cross-sectional area of the conductor (square mils; 1 mil = 0.0254 mm)
 
 **Converting trace width to cross-sectional area:**
-```
+<pre><code>
 A (sq. mils) = width_mils × thickness_mils
-```
+</code></pre>
 For 1 oz copper: thickness = 1.37 mils (0.035 mm = 35 µm)
 For 2 oz copper: thickness = 2.74 mils (0.070 mm = 70 µm)
 
@@ -178,14 +180,14 @@ Source: **IPC-2221A Tables 9-1 and 9-2** (page 74), verified from PDF.
 **"Supported"** means the hole has plating connecting to the land (plated-through hole). **"Unsupported"** means no plating support (non-plated through hole).
 
 **Annular ring calculation:**
-```
+<pre><code>
 Annular ring = (pad diameter - drill diameter) / 2
-```
+</code></pre>
 
 The fabrication allowance must be added to account for drill registration tolerance:
-```
+<pre><code>
 Minimum pad diameter = drill diameter + (2 × annular ring) + fabrication allowance
-```
+</code></pre>
 
 **Usage in design review:** The PCB analyzer reports annular ring values in the via analysis section. Compare against these minimums. For JLCPCB and similar budget fabs, their actual capability is typically Level B or C. Check the fab's DFM specs against these IPC minimums.
 
@@ -227,9 +229,9 @@ Source: **IPC-2221A Section 6.4** (pages 43-48), verified from PDF. These are fi
 
 ### Microstrip (outer layer trace over ground plane)
 
-```
+<pre><code>
 Z₀ = (87 / √(εᵣ + 1.41)) × ln(5.98h / (0.8w + t))
-```
+</code></pre>
 
 Where:
 - <code>Z₀</code> = characteristic impedance (Ω)
@@ -243,15 +245,15 @@ Valid for: <code>w/h < 1</code> (narrow trace relative to dielectric height)
 
 ### Embedded Microstrip (inner trace with reference plane)
 
-```
+<pre><code>
 Z₀ = (60 / √εᵣ) × ln(4h / (0.67(0.8w + t)))
-```
+</code></pre>
 
 ### Stripline (inner trace between two ground planes)
 
-```
+<pre><code>
 Z₀ = (60 / √εᵣ) × ln(4b / (0.67π(0.8w + t)))
-```
+</code></pre>
 
 Where <code>b</code> = distance between the two reference planes.
 
@@ -516,9 +518,9 @@ IPC-2152 supersedes the current capacity charts in IPC-2221A. The IPC-2221A char
 
 Approximate formula (from secondary sources, commonly used in online calculators):
 
-```
+<pre><code>
 A = (117.555 × ΔT^(-0.913) + 1.15) × I^(0.84 × ΔT^(-0.108) + 1.159)
-```
+</code></pre>
 
 Where:
 - <code>A</code> = cross-sectional area (sq. mils)
@@ -563,7 +565,7 @@ Include a standards compliance section in the design review report when any of t
 
 When standards checking is triggered, add this section to the report (after the power analysis section):
 
-```markdown
+<pre><code>
 ## Standards Compliance
 
 ### Product Classification
@@ -587,7 +589,7 @@ When standards checking is triggered, add this section to the report (after the 
 
 ### Via Protection (IPC-4761) — if applicable
 [Only for via-in-pad designs]
-```
+</code></pre>
 
 ### What NOT to Check
 

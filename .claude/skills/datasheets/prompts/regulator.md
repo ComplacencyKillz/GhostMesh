@@ -1,3 +1,5 @@
+---
+---
 # Datasheet Regulator Extractor Subagent
 
 You are extracting the **regulator category extension** (topology, voltages, currents, frequencies, application capacitor/inductor recommendations, stability conditions) from an electronics component datasheet PDF.
@@ -37,7 +39,7 @@ Return only the JSON object. No prose, no fences. Output must validate against <
 
 Example (LM2596-ADJ):
 
-```json
+<pre><code>
 {
   "topology": "buck",
   "vin_range": [{"min": 4.5, "max": 40, "unit": "V", "typ": null, "condition": null, "notes": null,
@@ -53,4 +55,4 @@ Example (LM2596-ADJ):
   "feedback_pin": "4",
   "enable_pin": "5"
 }
-```
+</code></pre>

@@ -1,3 +1,5 @@
+---
+---
 # Datasheet v2 Schemas — CHANGELOG
 
 Per-schema semver-lite versioning. Rules:

@@ -44,11 +44,11 @@ The DigiKey API requires OAuth 2.0 credentials. Here's how to set them up:
    ```bash
    export DIGIKEY_CLIENT_ID=your_client_id_here
    export DIGIKEY_CLIENT_SECRET=your_client_secret_here
-   ```
+<pre><code>
    If credentials are stored in a central secrets file (e.g., <code>~/.config/secrets.env</code>), load them first:
    ```bash
    export $(grep -v '^#' ~/.config/secrets.env | grep -v '^$' | xargs)
-   ```
+</code></pre>
 
 The client credentials flow has no user interaction — once configured, API calls work automatically.
 
@@ -62,21 +62,21 @@ The API is the preferred way to search DigiKey. It returns structured JSON with 
 
 All API requests require OAuth 2.0. Use the **client credentials flow** (2-legged). Credentials must be loaded as environment variables (see "API Credential Setup" above).
 
-```bash
+<pre><code>
 curl -s -X POST https://api.digikey.com/v1/oauth2/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "client_id=${DIGIKEY_CLIENT_ID}&client_secret=${DIGIKEY_CLIENT_SECRET}&grant_type=client_credentials"
-```
+</code></pre>
 
 The response returns an <code>access_token</code> valid for **10 minutes**. Cache the token in a shell variable and reuse it for subsequent calls in the same session. If you get a 401 error mid-session, the token has expired — re-authenticate to get a fresh one.
 
 ### Required Headers
 
 Every API call needs:
-```
+<pre><code>
 X-DIGIKEY-Client-Id: ${DIGIKEY_CLIENT_ID}
 Authorization: Bearer <access_token>
-```
+</code></pre>
 
 Optional locale headers:
 - <code>X-DIGIKEY-Locale-Language</code>: <code>en</code> (default), <code>ja</code>, <code>de</code>, <code>fr</code>, <code>ko</code>, <code>zhs</code>, <code>zht</code>, <code>it</code>, <code>es</code>
@@ -85,14 +85,14 @@ Optional locale headers:
 
 ### KeywordSearch — Find Parts
 
-```
+<pre><code>
 POST /products/v4/search/keyword
-```
+</code></pre>
 
 This is the primary search endpoint. Search by MPN, DigiKey part number, description, or keywords.
 
 Request body:
-```json
+<pre><code>
 {
   "Keywords": "GRM155R71C104KA88D",
   "Limit": 25,
@@ -110,7 +110,7 @@ Request body:
     "SortOrder": "Ascending"
   }
 }
-```
+</code></pre>
 
 Key request fields:
 - <code>Keywords</code> (string, max 250 chars) — search term (MPN, DK PN, description)
@@ -121,7 +121,7 @@ Key request fields:
 - <code>MarketPlaceFilter</code> — <code>NoFilter</code>, <code>ExcludeMarketPlace</code>, <code>MarketPlaceOnly</code>
 
 Response — key fields in each <code>Products[]</code> item:
-```json
+<pre><code>
 {
   "ManufacturerProductNumber": "GRM155R71C104KA88D",
   "Manufacturer": {"Id": 563, "Name": "Murata Electronics"},
@@ -160,13 +160,13 @@ Response — key fields in each <code>Products[]</code> item:
   "EndOfLife": false,
   "NormallyStocking": true
 }
-```
+</code></pre>
 
 ### ProductDetails — Full Details for One Part
 
-```
+<pre><code>
 GET /products/v4/search/{productNumber}/productdetails
-```
+</code></pre>
 
 Use this for expanded information on a specific part. <code>{productNumber}</code> can be a DigiKey part number or manufacturer part number.
 
@@ -195,17 +195,17 @@ Per-minute and daily quotas apply. HTTP 429 with <code>Retry-After</code> header
 ### Error Responses
 
 All errors return <code>DKProblemDetails</code>:
-```json
+<pre><code>
 {"type": "...", "title": "...", "status": 401, "detail": "Invalid token", "correlationId": "..."}
-```
+</code></pre>
 
 ## Fallback: Fetch DigiKey Website
 
 If API credentials are not available or authentication fails, search DigiKey by fetching product pages directly:
 
-```
+<pre><code>
 https://www.digikey.com/en/products/result?keywords=<url-encoded-query>
-```
+</code></pre>
 
 Examples:
 - <code>https://www.digikey.com/en/products/result?keywords=GRM155R71C104KA88D</code> (by MPN)
@@ -221,7 +221,7 @@ DigiKey's API provides **direct PDF URLs** for datasheets — this is the prefer
 
 Use <code>sync_datasheets_digikey.py</code> to maintain a <code>datasheets/</code> directory alongside a KiCad project. It extracts components from the schematic, searches DigiKey for datasheet URLs, downloads missing PDFs, and writes an <code>manifest.json</code> manifest. Subsequent runs are incremental — only new or changed parts are fetched.
 
-```bash
+<pre><code>
 # Sync datasheets for a KiCad project (creates datasheets/ next to the schematic)
 python3 <skill-path>/scripts/sync_datasheets_digikey.py <file.kicad_sch>
 
@@ -242,7 +242,7 @@ python3 <skill-path>/scripts/sync_datasheets_digikey.py <file.kicad_sch> --paral
 
 # Batch mode — sync from a plain MPN list (no KiCad project required)
 python3 <skill-path>/scripts/sync_datasheets_digikey.py --mpn-list mpns.txt --output ./datasheets
-```
+</code></pre>
 
 **MPN-list batch mode** (KH-312) — when you have a list of MPNs but no KiCad
 project to point at (harness datasheet seeding, bulk seeding a new part
@@ -262,7 +262,7 @@ The script:
 - **Saves progress incrementally** — if interrupted, already-downloaded files are preserved
 
 The <code>manifest.json</code> manifest structure:
-```json
+<pre><code>
 {
   "schematic": "/path/to/file.kicad_sch",
   "last_sync": "2026-03-09T04:44:30+00:00",
@@ -278,13 +278,13 @@ The <code>manifest.json</code> manifest structure:
     }
   }
 }
-```
+</code></pre>
 
 ### Single Datasheet Download
 
 Use <code>fetch_datasheet_digikey.py</code> for one-off datasheet downloads. It handles manufacturer-specific quirks automatically.
 
-```bash
+<pre><code>
 # Search by MPN (uses DigiKey API, requires credentials)
 python3 <skill-path>/scripts/fetch_datasheet_digikey.py --search "TPS61023" -o datasheet.pdf
 
@@ -293,7 +293,7 @@ python3 <skill-path>/scripts/fetch_datasheet_digikey.py "https://www.ti.com/lit/
 
 # JSON output for script integration
 python3 <skill-path>/scripts/fetch_datasheet_digikey.py --search "ADP1706" --json
-```
+</code></pre>
 
 The script:
 - **OS-agnostic** — uses Python <code>requests</code> library (no wget/curl dependency). Falls back to <code>urllib</code> if <code>requests</code> isn't installed.

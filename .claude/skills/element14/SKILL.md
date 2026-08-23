@@ -48,11 +48,11 @@ For BOM management and export workflows, see <code>bom</code>.
 4. **Set the environment variable** <code>ELEMENT14_API_KEY</code> before running the scripts:
    ```bash
    export ELEMENT14_API_KEY=your_api_key_here
-   ```
+<pre><code>
    If credentials are stored in a central secrets file (e.g., <code>~/.config/secrets.env</code>), load them first:
    ```bash
    export $(grep -v '^#' ~/.config/secrets.env | grep -v '^$' | xargs)
-   ```
+</code></pre>
 
 ## Product Search API
 
@@ -72,7 +72,7 @@ The <code>term</code> parameter supports three search types:
 
 ### Full Example
 
-```
+<pre><code>
 GET https://api.element14.com/catalog/products
   ?term=manuPartNum:GRM155R71C104KA88D
   &storeInfo.id=www.newark.com
@@ -81,7 +81,7 @@ GET https://api.element14.com/catalog/products
   &resultsSettings.responseGroup=medium
   &callInfo.responseDataFormat=JSON
   &callInfo.apiKey=YOUR_KEY
-```
+</code></pre>
 
 ### Response Groups
 
@@ -97,7 +97,7 @@ GET https://api.element14.com/catalog/products
 
 With <code>responseGroup=medium</code>, the response looks like:
 
-```json
+<pre><code>
 {
   "manufacturerPartNumberSearchReturn": {
     "numberOfResults": 5,
@@ -136,7 +136,7 @@ With <code>responseGroup=medium</code>, the response looks like:
     ]
   }
 }
-```
+</code></pre>
 
 Key fields:
 - <code>sku</code> — Newark/Farnell/element14 part number
@@ -187,7 +187,7 @@ element14's farnell.com CDN serves datasheet PDFs directly — no bot protection
 
 Use <code>sync_datasheets_element14.py</code> to maintain a <code>datasheets/</code> directory alongside a KiCad project. Same workflow and <code>manifest.json</code> format as the DigiKey, Mouser, and LCSC skills.
 
-```bash
+<pre><code>
 # Sync datasheets for a KiCad project
 python3 <skill-path>/scripts/sync_datasheets_element14.py <file.kicad_sch>
 
@@ -208,7 +208,7 @@ python3 <skill-path>/scripts/sync_datasheets_element14.py <file.kicad_sch> --par
 
 # Batch mode — sync from a plain MPN list (no KiCad project required)
 python3 <skill-path>/scripts/sync_datasheets_element14.py --mpn-list mpns.txt --output ./datasheets
-```
+</code></pre>
 
 **MPN-list batch mode** (KH-312) — when you have a list of MPNs but no
 KiCad project to point at. One MPN per line; blank lines and <code>#</code>
@@ -233,7 +233,7 @@ The script:
 
 Use <code>fetch_datasheet_element14.py</code> for one-off downloads.
 
-```bash
+<pre><code>
 # Search by MPN
 python3 <skill-path>/scripts/fetch_datasheet_element14.py --search "GRM155R71C104KA88D" -o datasheet.pdf
 
@@ -245,7 +245,7 @@ python3 <skill-path>/scripts/fetch_datasheet_element14.py "https://www.farnell.c
 
 # JSON output
 python3 <skill-path>/scripts/fetch_datasheet_element14.py --search "GRM155R71C104KA88D" --json
-```
+</code></pre>
 
 The script:
 - **OS-agnostic** — uses <code>requests</code> → <code>urllib</code> → <code>playwright</code> fallback chain
@@ -260,10 +260,10 @@ The script:
 
 If the API is unavailable, search by fetching product pages directly:
 
-```
+<pre><code>
 https://www.newark.com/search?st=<query>
 https://uk.farnell.com/search?st=<query>
-```
+</code></pre>
 
 ## Tips
 

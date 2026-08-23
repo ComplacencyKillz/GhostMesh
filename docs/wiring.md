@@ -1,3 +1,5 @@
+---
+---
 # Wiring Guide
 
 Two independent, battery-powered devices:

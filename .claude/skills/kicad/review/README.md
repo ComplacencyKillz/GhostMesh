@@ -1,3 +1,5 @@
+---
+---
 # <code>skills/kicad/review/</code> — Deep Review Sub-component (v2.0)
 
 This is an internal sub-component of the kicad skill. It is NOT a standalone skill (no nested SKILL.md — confirmed unsupported across Claude Code, Codex, Gemini CLI). Referenced from <code>skills/kicad/SKILL.md</code> as a progressive-disclosure link.

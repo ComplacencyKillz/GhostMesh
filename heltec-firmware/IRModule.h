@@ -6,7 +6,7 @@
 //
 // Decodes the GhostMesh NECext IR command set (16-bit address 0x474D = 'GM', 8-bit command) from a
 // VS1838B IR receiver on GPIO48. Commands:
-//   0x01 ARM · 0x02 DISARM · 0x03 WIPE · 0x04 CONFIRM
+//   0x01 ARM · 0x02 DISARM · 0x03 WIPE · 0x04 CONFIRM · 0x05 RUN
 // ARM/DISARM set the shared `ghostmesh_armed` state (see GhostMeshArming.h) and broadcast
 // ARMED/DISARMED over LoRa, alongside the slide-switch ArmingModule (last action wins). WIPE and
 // CONFIRM drive an out-of-band destruct: the operator must send ARM → WIPE → CONFIRM in order,

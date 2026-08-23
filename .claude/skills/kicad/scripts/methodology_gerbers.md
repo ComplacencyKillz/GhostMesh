@@ -1,3 +1,5 @@
+---
+---
 # Gerber & Drill File Analyzer — Methodology
 
 This document describes the analysis methodology used by <code>analyze_gerbers.py</code>. It covers Gerber RS-274X parsing, Excellon drill parsing, layer identification, X2 attribute extraction, and all higher-level analyses performed on a fabrication output directory.

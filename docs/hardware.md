@@ -1,3 +1,5 @@
+---
+---
 # Hardware Reference
 
 > **Board schematic (source of truth):** the KiCad design lives in <code>kicad/</code> —

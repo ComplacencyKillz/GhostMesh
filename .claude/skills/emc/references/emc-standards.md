@@ -1,3 +1,5 @@
+---
+---
 # EMC Standards Quick Reference
 
 All limit values verified against official regulatory text and accredited test lab documentation (April 2026).

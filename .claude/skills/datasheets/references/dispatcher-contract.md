@@ -1,3 +1,5 @@
+---
+---
 # Datasheet Extraction Dispatcher Contract
 
 > **Status:** Phase 3a (v1.4). The contract is stable and applies to every dispatcher implementation: <code>dispatch-claude-code.md</code> (v1.4), <code>dispatch-codex.md</code>, <code>dispatch-gemini.md</code>, <code>extract.py</code> SDK runner, canned harness dispatcher (all v1.5+).
@@ -18,7 +20,7 @@ The dispatcher reads:
 
 Per task: <code><cache_dir>/<mpn>.<task_id>.result.json</code> — the **wrapped result file**.
 
-```json
+<pre><code>
 {
   "task_id": "regulator",
   "schema_version": "0.3",
@@ -28,7 +30,7 @@ Per task: <code><cache_dir>/<mpn>.<task_id>.result.json</code> — the **wrapped
   "model_id": "claude-sonnet-4-6",
   "data": { ... }
 }
-```
+</code></pre>
 
 <code>status</code> ∈ <code>{"complete", "failed"}</code>. Other fields:
 
@@ -81,9 +83,9 @@ The dispatcher does NOT inspect the data semantically beyond schema validation. 
 
 If the dispatcher writes a cost ledger, the format is JSONL:
 
-```
+<pre><code>
 {"run_id": "20260425T100000Z-a1b2c3", "mpn": "LM2596-ADJ", "task_id": "scout", "tier": "B", "model_id": "claude-sonnet-4-6", "tokens_in": 12000, "tokens_out": 800, "cost_usd": 0.0123, "success": true, "extracted_at": "2026-04-25T10:00:30Z"}
-```
+</code></pre>
 
 Location: <code><cache_dir>/_cost_ledger.jsonl</code>. Append-only; never rewritten.
 
@@ -91,7 +93,7 @@ The Phase 3a Claude Code recipe makes this optional (the cost data isn't auditab
 
 ## Relationship to plan_extraction.py and merge_results.py
 
-```
+<pre><code>
                        plan_extraction.py
                                │
                                ▼
@@ -107,6 +109,6 @@ The Phase 3a Claude Code recipe makes this optional (the cost data isn't auditab
                                │
                                ▼
                        <mpn>.json
-```
+</code></pre>
 
 The dispatcher knows nothing about <code><mpn>.json</code>. Plan in, result files out.

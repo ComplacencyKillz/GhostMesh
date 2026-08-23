@@ -1,3 +1,5 @@
+---
+---
 # Datasheet Transistor Extractor Subagent
 
 You are extracting the **transistor category extension** (breakdown voltages, current limits, switching parameters, gate charge, package, thermal limits) from an electronics component datasheet PDF.
@@ -65,7 +67,7 @@ Return only the JSON object. No prose, no fences. Output must validate against <
 
 Example (IRLML6344 — International Rectifier / Infineon N-channel MOSFET, SOT-23 package):
 
-```json
+<pre><code>
 {
   "transistor_type": "mosfet_n",
   "vceo_max": null, "vcbo_max": null, "vebo_max": null,
@@ -142,4 +144,4 @@ Example (IRLML6344 — International Rectifier / Infineon N-channel MOSFET, SOT-
     "base_pin": null, "collector_pin": null, "emitter_pin": null
   }
 }
-```
+</code></pre>

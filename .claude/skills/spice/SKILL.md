@@ -49,9 +49,9 @@ If no simulator is installed, skip simulation gracefully and note it in the repo
 
 ### Step 1: Run the schematic analyzer
 
-```bash
+<pre><code>
 python3 <kicad-skill-path>/scripts/analyze_schematic.py design.kicad_sch --analysis-dir analysis/
-```
+</code></pre>
 
 ### Step 2: Run SPICE simulations
 
@@ -60,7 +60,7 @@ from the manifest's current run, writes <code>spice.json</code> into the same ru
 folder, and parks intermediate <code>.cir</code> / <code>.raw</code> files at
 <code><run>/spice_work/</code> by default.
 
-```bash
+<pre><code>
 # Recommended: auto-resolve schematic + write spice.json into the current run
 python3 <skill-path>/scripts/simulate_subcircuits.py --analysis-dir analysis/
 
@@ -78,13 +78,13 @@ python3 <skill-path>/scripts/simulate_subcircuits.py --analysis-dir analysis/ --
 
 # Omit file paths from output (cleaner for reports)
 python3 <skill-path>/scripts/simulate_subcircuits.py --analysis-dir analysis/ --compact
-```
+</code></pre>
 
 ### Step 2b (optional): PCB parasitic-aware simulation
 
 When both schematic and PCB exist, run parasitic-annotated simulation for more accurate results on analog circuits:
 
-```bash
+<pre><code>
 # Analyze PCB with full trace segment detail
 python3 <kicad-skill-path>/scripts/analyze_pcb.py design.kicad_pcb --full --output pcb.json
 
@@ -93,7 +93,7 @@ python3 <skill-path>/scripts/extract_parasitics.py pcb.json --output parasitics.
 
 # Run simulation with PCB parasitics injected into testbenches
 python3 <skill-path>/scripts/simulate_subcircuits.py analysis.json --parasitics parasitics.json --output sim_report.json
-```
+</code></pre>
 
 With <code>--parasitics</code>, testbenches include trace resistance and via inductance between components. The report shows the parasitic impact — e.g., "48mΩ trace resistance shifts RC filter fc down 0.3%."
 
@@ -103,7 +103,7 @@ With <code>--parasitics</code>, testbenches include trace resistance and via ind
 
 Run N simulations per subcircuit with randomized component values within tolerance bands. Reports statistical distributions and sensitivity analysis — which component contributes most to output variation.
 
-```bash
+<pre><code>
 # Run 100 Monte Carlo trials per subcircuit
 python3 <skill-path>/scripts/simulate_subcircuits.py analysis.json --monte-carlo 100 --output sim_report.json
 
@@ -112,7 +112,7 @@ python3 <skill-path>/scripts/simulate_subcircuits.py analysis.json --monte-carlo
 
 # Set random seed for reproducibility (default: 42)
 python3 <skill-path>/scripts/simulate_subcircuits.py analysis.json --monte-carlo 100 --mc-seed 123
-```
+</code></pre>
 
 **Tolerance sourcing:** Tolerances are extracted from component value strings first (e.g., "680K 1%" → 1%, "22uF/6.3V/20%/X5R" → 20%). When not specified in the value string, defaults are used: resistors 5%, capacitors 10%, inductors 20%.
 
@@ -163,7 +163,7 @@ The script selects subcircuits from the analyzer's <code>findings[]</code> array
 
 ## Output Format
 
-```json
+<pre><code>
 {
   "summary": {"total": 5, "pass": 3, "warn": 1, "fail": 0, "skip": 1},
   "simulation_results": [
@@ -184,7 +184,7 @@ The script selects subcircuits from the analyzer's <code>findings[]</code> array
   "total_elapsed_s": 0.032,
   "simulator": "ngspice"
 }
-```
+</code></pre>
 
 **Status values and what they mean:**
 
@@ -243,46 +243,46 @@ When incorporating simulation results into a design review report, follow this p
 
 ### For passing simulations (confidence builders)
 
-```
+<pre><code>
 ### RC Filter R5/C3 (fc=15.9kHz lowpass) -- Confirmed
 Simulated fc=15.9kHz, <0.3% from calculated. Phase=-45 deg at fc as expected.
-```
+</code></pre>
 
 Keep passing results brief — they confirm what the analyzer already reported. Group them if there are many.
 
 ### For warnings (context required)
 
-```
+<pre><code>
 ### Opamp U4A (inverting gain=-10)
 Simulated gain=20.0dB at 1kHz, matching expected -10x. Bandwidth 98.8kHz
 (ideal model). Note: LM358 GBW is ~1MHz, so actual bandwidth would be
 ~100kHz — verify signal frequency stays below 85kHz for <1dB gain error.
-```
+</code></pre>
 
 ### For failures (investigation needed)
 
-```
+<pre><code>
 ### RC Filter R12/C8 -- MISMATCH
 Simulated fc=3.2kHz vs expected 15.9kHz (80% deviation). This likely indicates
 the analyzer misidentified the filter topology — R12 may be serving a different
 purpose (pull-up, not series filter element). Manually verify the circuit
 around R12/C8 in the schematic.
-```
+</code></pre>
 
 ### For skips (note the gap)
 
-```
+<pre><code>
 ### Crystal Y1 (32.768kHz) -- Not simulated
 Active oscillator module — no external load caps to validate.
-```
+</code></pre>
 
 ### Summary line for the simulation section
 
-```
+<pre><code>
 ## Simulation Verification (4 pass, 1 warn, 0 fail, 1 skip)
 Verified 5 subcircuits in 0.03s. All passive circuits confirmed.
 One opamp result requires interpretation (see U4A above).
-```
+</code></pre>
 
 ## Model Accuracy Reference
 

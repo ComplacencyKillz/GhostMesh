@@ -1,3 +1,5 @@
+---
+---
 # Claude Code Dispatcher Recipe
 
 > **Reference dispatcher for v1.4 Phase 3a.** Satisfies <code>dispatcher-contract.md</code> using Claude Code's <code>Agent</code> tool.
@@ -63,14 +65,14 @@ For each returned agent output:
      "data": <agent JSON, or null>,
      "error": "<validation error message>"  // only if status == failed
    }
-   ```
+<pre><code>
 4. Write to <code><cache_dir>/<mpn>.<task_id>.result.json</code>.
 
 ### Step 4 — Run merge_results.py
 
-```bash
+<pre><code>
 python3 skills/datasheets/scripts/merge_results.py <mpn> --cache-dir <cache_dir>
-```
+</code></pre>
 
 If exit code is 0: extraction is complete; <code><cache_dir>/<mpn>.json</code> is the canonical cache file. Done.
 
@@ -83,23 +85,23 @@ For each failed task:
 1. Read the existing <code><mpn>.<task_id>.result.json</code> to get the <code>error</code> message.
 2. Read <code>task.prompt_template</code> again, substitute placeholders, **and append**:
 
-   ```
+</code></pre>
    ## Previous attempt failed
 
    Your previous output failed validation with this error:
    <error>
 
    Re-read the relevant pages and produce a corrected output. Pay particular attention to: <hint based on error category — e.g. "missing required field topology", "min > max in VIN_max">.
-   ```
+<pre><code>
 
 3. Invoke <code>Agent</code> again with the augmented prompt.
 4. Wrap and write the new result file (overwriting the failed one).
 
 ### Step 6 — Re-merge with --retry-failed
 
-```bash
+<pre><code>
 python3 skills/datasheets/scripts/merge_results.py <mpn> --cache-dir <cache_dir> --retry-failed
-```
+</code></pre>
 
 Exit code 0 always (this is the second-and-final merge). Tasks that succeeded merge cleanly; tasks that still failed are partial-merged with <code>{"_extraction_failed": true, "reason": ...}</code>.
 
@@ -111,9 +113,9 @@ Claude Code's <code>Agent</code> tool supports parallel tool-call dispatch withi
 
 If you want to record cost data for analysis, append one JSONL entry per <code>Agent</code> invocation to <code><cache_dir>/_cost_ledger.jsonl</code>:
 
-```json
+<pre><code>
 {"run_id": "20260425T100000Z-a1b2c3", "mpn": "LM2596-ADJ", "task_id": "scout", "tier": "B", "model_id": "claude-sonnet-4-6", "tokens_in": null, "tokens_out": null, "cost_usd": null, "success": true, "extracted_at": "2026-04-25T10:00:30Z"}
-```
+</code></pre>
 
 Tokens and cost are unavailable from inside Claude Code's <code>Agent</code> tool — leave them null in v1.4. v1.5 SDK dispatcher populates them.
 
@@ -127,7 +129,7 @@ Tokens and cost are unavailable from inside Claude Code's <code>Agent</code> too
 
 ## Example conversation flow (LM2596-ADJ)
 
-```
+<pre><code>
 USER: Run Phase 3a extraction for LM2596-ADJ from /path/to/LM2596.pdf
 
 ORCHESTRATOR:
@@ -142,7 +144,7 @@ ORCHESTRATOR:
   - Run merge_results.py LM2596-ADJ
   - If any failures → retry once, re-merge with --retry-failed
   - Hand off to harness for 4-check gate
-```
+</code></pre>
 
 ---
 
@@ -169,11 +171,11 @@ Same dispatch primitive (Claude Code <code>Task</code> tool); same output-valida
 
 Once the design_context task has written its result file, invoke:
 
-```bash
+<pre><code>
 python3 skills/kicad/review/scripts/merge_annotations.py \
     --raw-dir analysis/ \
     --review analysis/review_annotations.json \
     --merged-dir analysis/merged/
-```
+</code></pre>
 
 This applies overlays to a copy of each raw analyzer JSON. The raw files remain unmodified.

@@ -55,11 +55,11 @@ PCBWay accepts XLS, XLSX, or CSV BOMs.
 
 ### Turnkey / Partial Turnkey BOM
 
-```csv
+<pre><code>
 Line#,Qty,Designator,MPN,Manufacturer,Description,Package,Type
 1,3,"C1,C2,C5",GRM155R71C104KA88D,Murata,100nF 16V X7R MLCC,0402,SMD
 2,1,U1,ESP32-S3-WROOM-1-N16R8,Espressif,ESP32-S3 WiFi/BT module,ESP32-S3-WROOM-1,SMD
-```
+</code></pre>
 
 Required columns:
 | Column | Description |

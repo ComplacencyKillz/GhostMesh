@@ -1,3 +1,5 @@
+---
+---
 # PCB Layout Analyzer — Methodology
 
 This document describes the analysis methodology used by <code>analyze_pcb.py</code>. It covers parsing, extraction, connectivity analysis, DFM scoring, and all physical layout analyses.
@@ -51,7 +53,7 @@ KiCad 10: No net declarations section. Nets are identified by name strings direc
 
 Each <code>(footprint ...)</code> or <code>(module ...)</code> block produces:
 
-```python
+<pre><code>
 {
     "library": "Resistor_SMD:R_0402_1005Metric",
     "reference": "R1",
@@ -68,7 +70,7 @@ Each <code>(footprint ...)</code> or <code>(module ...)</code> block produces:
     "connected_nets": ["GND", "+3V3"],
     "models_3d": ["${KICAD8_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0402.wrl"],
 }
-```
+</code></pre>
 
 **Pad extraction** per footprint includes:
 - Pad number, type (<code>smd</code>, <code>thru_hole</code>, <code>np_thru_hole</code>), shape (<code>circle</code>, <code>rect</code>, <code>oval</code>, <code>roundrect</code>, <code>custom</code>)
@@ -413,7 +415,7 @@ Legacy KiCad 5 net class definitions (stored in PCB file): default and named cla
 
 ## 21. Output Structure
 
-```json
+<pre><code>
 {
     "analyzer_type": "pcb",
     "summary": { "total_findings": 42, "by_severity": { "error": 2, "warning": 15, "info": 25 } },
@@ -448,7 +450,7 @@ Legacy KiCad 5 net class definitions (stored in PCB file): default and named cla
     "copper_presence_summary": { ... },
     "board_thickness_mm": 1.6
 }
-```
+</code></pre>
 
 Sections previously at top level (<code>thermal_analysis</code>, <code>thermal_pad_vias</code>, <code>tombstoning_risk</code>, <code>placement_analysis</code>, <code>current_capacity</code>, <code>copper_presence</code>, <code>dfm</code>) are now flattened into <code>findings[]</code>. Summary data is preserved in <code>dfm_summary</code>, <code>placement_density</code>, <code>copper_presence_summary</code>, and <code>board_thickness_mm</code>.
 

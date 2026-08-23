@@ -1,3 +1,5 @@
+---
+---
 # PDF Schematic Analysis & Extraction
 
 How to analyze schematics provided as PDF files — reference designs, dev board schematics, eval board docs, application notes — and extract useful information for incorporation into KiCad projects.
@@ -151,7 +153,7 @@ For multi-page schematics, track inter-sheet connections:
 
 For complex extractions, build a net map:
 
-```
+<pre><code>
 Net Name: USB_DP
   Page 2: U1 pin 33 (MCU USB_DP)
   Page 2: R5 pin 1 (22R series resistor)
@@ -163,7 +165,7 @@ Net Name: +3V3
   Page 1: C3, C4 (output decoupling)
   Page 2: U1 VDD pins (MCU power)
   Page 3: R8, R9 (I2C pull-ups)
-```
+</code></pre>
 
 This map becomes the basis for recreating the schematic in KiCad.
 

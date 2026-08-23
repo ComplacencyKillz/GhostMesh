@@ -1,3 +1,5 @@
+---
+---
 # Tracing Net Connectivity in Raw <code>.kicad_sch</code> Files
 
 KiCad schematics don't store explicit netlists — connectivity is implicit via coordinate matching. To verify a connection between two pins:
@@ -6,22 +8,22 @@ KiCad schematics don't store explicit netlists — connectivity is implicit via 
 
 **This is the single most common source of errors when tracing nets programmatically.** KiCad symbol library coordinates use math convention (Y-up), but schematic placement coordinates use screen convention (Y-down). You MUST subtract pin Y from symbol Y:
 
-```
+<pre><code>
 absolute = (symbol_X + pin_X, symbol_Y - pin_Y)
-```
+</code></pre>
 
 **Getting this wrong inverts the entire pin map** — pin 1 appears where pin N should be, and vice versa. Every "missing connection" or "wrong pin" finding that comes from coordinate math should be double-checked for this error. If a script reports that a pin is unconnected but the user says the schematic is correct, the Y-axis transform is almost certainly wrong.
 
 ## Step 1: Find pin positions in the symbol library definition
 
 Each symbol has pins defined with relative offsets in the <code>lib_symbols</code> section:
-```
+<pre><code>
 (symbol "BSS84_1_1"
   (pin input line (at -5.08 0 0) ... (number "1"))      ; Gate
   (pin passive line (at 2.54 5.08 270) ... (number "3")) ; Drain
   (pin passive line (at 2.54 -5.08 90) ... (number "2")) ; Source
 )
-```
+</code></pre>
 
 ## Step 2: Calculate absolute pin positions
 
@@ -59,12 +61,12 @@ Do not assume a pin exits on a particular side based on the pin name or number a
 Search for <code>(wire (pts (xy X1 Y1) (xy X2 Y2)))</code> where one endpoint matches the pin position. Follow the wire chain endpoint-to-endpoint.
 
 **KiCad 9 wire format note:** The <code>(wire</code> keyword, <code>(pts</code> keyword, and coordinate data may be on separate lines:
-```
+<pre><code>
 (wire
     (pts
         (xy 41.91 77.47) (xy 60.96 77.47)
     )
-```
+</code></pre>
 When extracting wires programmatically, search up to 4-5 lines ahead from <code>(wire</code> to find the <code>(xy ...)</code> coordinates.
 
 ## Step 4: Identify net names at wire endpoints
@@ -77,11 +79,11 @@ Look for:
 - **Other component pins**: Another symbol's pin at the same coordinate
 
 **Global label parsing note (KiCad 9):** The <code>(at ...)</code> is NOT on the line immediately after <code>(global_label "...")</code>. There is a <code>(shape ...)</code> line in between:
-```
+<pre><code>
 (global_label "EN_5V"
     (shape input)
     (at 43.18 128.27 180)
-```
+</code></pre>
 When extracting labels, search 2-3 lines ahead for the <code>(at ...)</code> coordinates, not just the next line.
 
 **Labels connect via wires, not just at pin endpoints.** A global label is typically placed at the far end of a short wire stub extending from the pin. To find which label connects to which pin, you must trace the wire chain from the pin endpoint to the label position — checking only the exact pin coordinate will miss most connections.

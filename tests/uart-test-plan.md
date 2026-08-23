@@ -1,3 +1,5 @@
+---
+---
 # GhostMesh Test Plan
 
 ## Purpose
@@ -75,9 +77,9 @@ Verified on battery 2026-07-01.
 
 **Steps:**
 1. From Windows, run:
-   ```
+<pre><code>
    python S:\path\to\ghostmesh\tests\proto_send_test.py COM3
-   ```
+</code></pre>
 2. Watch the Heltec OLED for ChUtil change
 3. Check the second node's Meshtastic app
 

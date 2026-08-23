@@ -1,3 +1,5 @@
+---
+---
 # Datasheet Base Extractor Subagent
 
 You are extracting the **base block** (package, thermal, ESD, absolute maximums, recommended operating conditions, compliance, moisture sensitivity) from an electronics component datasheet PDF.
@@ -35,7 +37,7 @@ Return only the JSON object — no surrounding prose, no Markdown code fences. O
 
 Example fragment:
 
-```json
+<pre><code>
 {
   "package": {
     "code": "TO-263-5",
@@ -53,4 +55,4 @@ Example fragment:
                  "evidence": {"page": 5, "section": "Absolute Maximum Ratings", "confidence": "high", "method": "table"}}]
   }
 }
-```
+</code></pre>

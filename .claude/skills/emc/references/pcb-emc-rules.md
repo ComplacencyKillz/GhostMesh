@@ -1,3 +1,5 @@
+---
+---
 # PCB Design Rules for EMC
 
 Quantitative design rules used by the EMC analyzer. Each rule has a threshold, rationale, and authoritative source. All formulas and values verified against external references (April 2026).
@@ -167,11 +169,11 @@ All formulas below verified by derivation from first principles and cross-checke
 
 ### Differential-mode loop radiation
 
-```
+<pre><code>
 E = K × f² × A × I / r
   K = 1.316×10⁻¹⁴ (free space)
   K = 2.632×10⁻¹⁴ (with ground plane image, ×2)
-```
+</code></pre>
 
 Derivation: E = η₀β²IA/(4πr), where η₀ = 377Ω, β = 2πf/c. Substituting and simplifying yields K = η₀π/c² = 1.3167×10⁻¹⁴.
 
@@ -179,9 +181,9 @@ Source: Ott, *EMC Engineering*, Ch. 6; Paul, *Introduction to EMC*, Ch. 10; [Lea
 
 ### Common-mode cable radiation
 
-```
+<pre><code>
 E = µ₀ × f × L × I_CM / r = 1.257×10⁻⁶ × f × L × I_CM / r
-```
+</code></pre>
 
 The coefficient 1.257×10⁻⁶ = µ₀ = 4π×10⁻⁷. This is the monopole-above-ground form (includes ×2 image factor; base short-dipole coefficient is 6.283×10⁻⁷).
 
@@ -189,11 +191,11 @@ Source: Ott, *EMC Engineering*, Ch. 6; Paul, *Introduction to EMC*, Ch. 10; [Lea
 
 ### Bandwidth and knee frequency
 
-```
+<pre><code>
 BW_3dB = 0.35 / t_r         (single-pole RC, exact: ln(9)/2π ≈ 0.3497)
 f_knee = 0.5 / t_r          (Johnson convention — practical EMC boundary)
 f₂     = 1/(π × t_r)        (Paul convention — trapezoidal envelope corner)
-```
+</code></pre>
 
 The two "knee" conventions serve different purposes. Johnson's 0.5/t_r is more conservative (higher frequency) and is the standard in EMC/SI practice. Paul's 1/(πt_r) ≈ 0.318/t_r is the mathematical envelope corner.
 
@@ -210,10 +212,10 @@ Source: Johnson, H. *High-Speed Digital Design*, Ch. 1 (0.35/t_r and 0.5/t_r). P
 
 ### Via inductance
 
-```
+<pre><code>
 L = 0.2 × h × [ln(4h/d) + 1] nH    (h, d in mm)
 L = 5.08 × h × [ln(4h/d) + 1] nH   (h, d in inches)
-```
+</code></pre>
 
 Source: Goldfarb, E. & Pucha, R. "Modeling Via Grounds in Microstrip." IEEE Microwave and Guided Wave Letters, Vol. 1, No. 6, June 1991. Also Johnson, H. *High-Speed Signal Propagation* (2003); Bogatin, E. *Signal and Power Integrity — Simplified* (2010).
 
