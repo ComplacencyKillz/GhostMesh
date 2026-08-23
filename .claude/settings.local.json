@@ -12,7 +12,8 @@
       "Bash(curl -s https://raw.githubusercontent.com/meshtastic/firmware/master/src/mesh/PhoneAPI.cpp)",
       "Bash(curl -s \"https://raw.githubusercontent.com/meshtastic/firmware/master/src/mesh/PhoneAPI.cpp\")",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "WebFetch(domain:docs.flipper.net)"
+      "WebFetch(domain:docs.flipper.net)",
+      "Bash(grep *)"
     ]
   }
 }
