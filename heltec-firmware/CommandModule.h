@@ -33,9 +33,12 @@ class CommandModule : public SinglePortModule, private concurrency::OSThread
     uint32_t reqBuzzMs = 0, buzzUntil = 0;
     uint32_t reqVibrateMs = 0, vibrateUntil = 0;
 
-    // ── spaced reply queue (so /help's 11 messages don't flood the airtime) ──
+    // ── spaced reply queue (so /help's messages don't flood the airtime) ──
     // Slot is 96 (not 64) so the compact /cfg bitmask line (~74 chars) isn't truncated at source.
-    static constexpr uint8_t kReplyQ = 12;
+    // Depth 16: /help alone is 14 lines, and /ls can enqueue one line per staged payload on top of
+    // whatever's already queued — keep headroom rather than silently dropping the tail (see
+    // enqueueReply: a full queue drops, it doesn't block).
+    static constexpr uint8_t kReplyQ = 16;
     char replyQ[kReplyQ][96];
     uint32_t replyToQ[kReplyQ] = {0}; // per-reply destination (see enqueueReply / runOnce drain)
     uint8_t replyHead = 0, replyTail = 0;
@@ -88,21 +91,36 @@ class CommandModule : public SinglePortModule, private concurrency::OSThread
     void doWipeCommand(const char *arg);
     void serviceWipeButton(uint32_t now);
     void doFactoryWipe();
+    // /run @id <name> — the Heltec never executes anything; this just accepts/denies (armed-gated)
+    // so the requester gets confirmation, and — since the raw text still flows through to the app
+    // view (see handleReceived's CONTINUE) — the FAP wired to id sees the same line and can offer to
+    // launch the named payload via Bad USB. See docs/command-cli.md and payloads/README.md.
+    void doRun(const char *name);
     void enqueueReply(const char *msg);
     void sendText(const char *msg);
     void sendTextTo(const char *msg, uint32_t to);  // like sendText but to a specific node
     void sendTextToPhone(const char *msg);          // deliver ONLY to the USB/BLE client — no LoRa TX
 
-    // ── payload file transfer (/put) — defined in CommandModule_payload.cpp ──
-    // The web configurator's file uploader. Chunked base64 over the PROTO text channel (the only
-    // channel a Meshtastic node exposes on serial), reassembled to LittleFS and CRC32-verified.
-    // Stop-and-wait: the node acks each chunk so the client never bursts (a burst overruns serial).
+    // ── payload file transfer (/put, /get, /ls) — defined in CommandModule_payload.cpp ──
+    // The web configurator's file uploader (/put) and its mirror-image downloader (/get), plus a
+    // directory listing (/ls). Chunked base64 over the PROTO text channel (the only channel a
+    // Meshtastic node exposes on serial), reassembled/read from LittleFS, CRC32-verified. Both
+    // directions are stop-and-wait: one side paces the other with a per-chunk ack so a burst never
+    // overruns serial ingest (see the file's top comment for the full protocol + rationale).
     void handlePut(char *text);            // dispatch a '/put ...' line addressed to us
     void putBegin(char *save);             // open file, reset progress, size checks
     void putData(char *save);              // one in-order base64 chunk -> append, queue an ack
     void putEnd(char *save);               // size + CRC32 -> reply ok/need/fail
     void servicePutAck();                  // called from runOnce: emit a pending chunk ack (fast)
     void servicePutTimeout(uint32_t now);  // called from runOnce: abort a stalled transfer
+
+    void doLs();                           // /ls @id -> one reply line per file in /ghostmesh/, then LS end
+    void handleGet(char *text, uint32_t from); // dispatch a '/get ...' line addressed to us
+    void getBegin(char *save, uint32_t from);  // open + CRC the requested file, send GET begin + chunk 0
+    void getAck(char *save);                   // client acked a chunk -> queue the next send (or finish)
+    void serviceGetSend();                     // called from runOnce: flush a pending chunk/finish line
+    void serviceGetTimeout(uint32_t now);      // called from runOnce: abort a stalled download
+    void getSendRouted(const char *msg);       // route a GET reply: phone-only if the requester is us, else unicast
 };
 
 extern CommandModule *commandModule;

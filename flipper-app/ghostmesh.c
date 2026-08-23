@@ -4,6 +4,7 @@
 #include <gui/view_holder.h>
 #include <gui/modules/text_input.h>
 #include <string.h>
+#include <strings.h> // strncasecmp — /run request matching
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -12,6 +13,7 @@
 #include "helpers/log_manager.h"
 #include "helpers/ir_tx.h"
 #include "helpers/gm_backup.h"
+#include "helpers/payload_run.h"
 #include "views/main_view.h"
 
 #define TAG             "GhostMesh"
@@ -33,6 +35,7 @@ static const MenuEntry MENU[] = {
     {"Control",    GhostMeshScreenControl},
     {"Status",     GhostMeshScreenStatus},
     {"Settings",   GhostMeshScreenSettings},
+    {"Payloads",   GhostMeshScreenPayloads},
     {"Backup",     GhostMeshScreenBackup},
 };
 #define MENU_COUNT ((uint8_t)(sizeof(MENU) / sizeof(MENU[0])))
@@ -110,6 +113,16 @@ typedef struct {
     uint8_t  settings_sel;    // selected row (never a header)
     uint16_t set_vals[GM_SETTINGS_MAX];
 
+    // Payloads state — /run request tracking + local /ext/badusb/ browse (see helpers/payload_run.h)
+    bool     payload_run_pending;
+    char     payload_run_name[40];
+    char     payload_status[40];
+    char     payload_names[PAYLOAD_MAX_FILES][40];
+    uint8_t  payload_count;
+    uint8_t  payload_sel;
+    uint8_t  payload_scroll;
+    bool     request_run_launch; // set from input; the main loop performs the actual loader_start
+
     // Send feedback
     char sent_display[24];
     uint8_t feedback_ticks;
@@ -166,6 +179,31 @@ static void on_position(const ProtoPosition* p, void* ctx) {
 static void gm_local_id(GhostMeshApp* app, char* out, size_t sz) {
     uint32_t id = proto_mode_get_local_node(app->proto);
     snprintf(out, sz, "%04lx", (unsigned long)(id & 0xFFFF));
+}
+
+// Parse "/run @<id> <name>" from a raw RX line. The Heltec never executes anything itself (see
+// CommandModule::doRun) — it's this FAP, watching everything its own wired backpack processes, that
+// recognizes a request addressed to THAT backpack and offers to stage it. Case-insensitive on both
+// the command word and the id, matching the firmware's own leniency. Returns true + fills `name` iff
+// this line is a /run request AND the id matches this node's own last-4 hex — a request for some
+// OTHER backpack (relayed traffic this node merely overheard) is correctly ignored.
+static bool parse_run_request(GhostMeshApp* app, const char* text, char* name, size_t name_sz) {
+    if(strncasecmp(text, "/run @", 6) != 0) return false;
+    const char* p = text + 6;
+    char id[8];
+    gm_local_id(app, id, sizeof(id));
+    size_t idlen = strlen(id);
+    if(strncasecmp(p, id, idlen) != 0) return false;
+    p += idlen;
+    if(*p != ' ') return false; // must be a clean id boundary, not e.g. a longer id sharing a prefix
+    while(*p == ' ') p++;
+    if(!*p) return false;
+    strncpy(name, p, name_sz - 1);
+    name[name_sz - 1] = '\0';
+    // Trim any trailing whitespace the sender's line may carry.
+    size_t n = strlen(name);
+    while(n > 0 && (name[n - 1] == ' ' || name[n - 1] == '\r' || name[n - 1] == '\n')) name[--n] = '\0';
+    return n > 0;
 }
 
 // Ask the local node for its current config; the CFG reply repopulates the screen.
@@ -360,6 +398,14 @@ static void on_input(InputKey key, InputType type, void* ctx) {
                         sizeof(app->backup_result) - 1);
                 app->backup_result[sizeof(app->backup_result) - 1] = '\0';
             }
+            if(app->screen == GhostMeshScreenPayloads) {
+                // Refresh the local /ext/badusb/ listing every time — cheap, and it's the only way
+                // to notice a file staged since the last visit (no mesh round-trip involved).
+                app->payload_sel    = 0;
+                app->payload_scroll = 0;
+                app->payload_count  = payload_run_scan(app->payload_names, PAYLOAD_MAX_FILES);
+                if(!app->payload_run_pending) app->payload_status[0] = '\0';
+            }
             break;
         case InputKeyBack:  // hub is the top level → exit the app
             app->running = false;
@@ -507,6 +553,65 @@ static void on_input(InputKey key, InputType type, void* ctx) {
         case InputKeyOk:
             settings_request(app); // refresh from the node
             break;
+        case InputKeyBack:
+            app->screen = GhostMeshScreenMenu;
+            break;
+        default:
+            break;
+        }
+        break;
+
+    case GhostMeshScreenPayloads:
+        switch(key) {
+        case InputKeyUp:
+            if(!app->payload_run_pending && app->payload_sel > 0) {
+                app->payload_sel--;
+                if(app->payload_sel < app->payload_scroll) app->payload_scroll = app->payload_sel;
+            }
+            break;
+        case InputKeyDown:
+            if(!app->payload_run_pending && app->payload_count > 0 &&
+               app->payload_sel < app->payload_count - 1) {
+                app->payload_sel++;
+                if(app->payload_sel >= app->payload_scroll + VISIBLE_ROWS)
+                    app->payload_scroll = (uint8_t)(app->payload_sel - VISIBLE_ROWS + 1);
+            }
+            break;
+        case InputKeyLeft:
+            // Dismiss a pending run request without launching it — drop to the browse list.
+            if(app->payload_run_pending) {
+                app->payload_run_pending = false;
+                app->payload_status[0]   = '\0';
+            }
+            break;
+        case InputKeyOk: {
+            const char* target = NULL;
+            if(app->payload_run_pending) {
+                target = app->payload_run_name;
+            } else if(app->payload_count > 0) {
+                target = app->payload_names[app->payload_sel];
+                strncpy(app->payload_run_name, target, sizeof(app->payload_run_name) - 1);
+                app->payload_run_name[sizeof(app->payload_run_name) - 1] = '\0';
+            }
+            if(!target) break;
+            // Defense in depth, mirroring the Heltec's own gate on /run: even a locally-browsed
+            // launch requires this Flipper to have last seen the backpack ARMED.
+            if(!app->node_armed_known || !app->node_armed) {
+                strncpy(app->payload_status, "ARMED required", sizeof(app->payload_status) - 1);
+                app->payload_status[sizeof(app->payload_status) - 1] = '\0';
+                break;
+            }
+            if(!payload_run_exists(app->payload_run_name)) {
+                strncpy(app->payload_status, "Not staged on SD", sizeof(app->payload_status) - 1);
+                app->payload_status[sizeof(app->payload_status) - 1] = '\0';
+                break;
+            }
+            // Main loop performs the actual hand-off (same "input sets a flag" pattern as backup).
+            app->request_run_launch = true;
+            strncpy(app->payload_status, "Launching...", sizeof(app->payload_status) - 1);
+            app->payload_status[sizeof(app->payload_status) - 1] = '\0';
+            break;
+        }
         case InputKeyBack:
             app->screen = GhostMeshScreenMenu;
             break;
@@ -669,6 +774,7 @@ int32_t ghostmesh_app(void* p) {
     // history_ptrs must outlive each main_view_update call; declared here so
     // the draw callback never reads a dead stack frame.
     const char* history_ptrs[RX_HISTORY_MAX];
+    const char* payload_ptrs[PAYLOAD_MAX_FILES]; // same reasoning, for the Payloads browse list
     uint8_t scroll_tick = 0;
     uint8_t config_retry_tick = 0;
 
@@ -679,11 +785,19 @@ int32_t ghostmesh_app(void* p) {
     state.menu_names    = menu_names;
     state.menu_count    = MENU_COUNT;
     state.history_lines = history_ptrs;
+    state.payload_names = payload_ptrs;
 
     while(app->running) {
         if(app->request_backup) {
             app->request_backup = false;
             run_backup(app); // modal: swaps the viewport for the keyboard, then encrypts to SD
+        }
+        if(app->request_run_launch) {
+            // Hand off to Bad USB, then exit our own app normally — loader_start switches the
+            // foreground app once we return (see helpers/payload_run.c's top comment).
+            app->request_run_launch = false;
+            payload_run_launch(app->payload_run_name);
+            app->running = false;
         }
         state.scroll_tick      = scroll_tick++;
         state.screen           = app->screen;
@@ -769,6 +883,14 @@ int32_t ghostmesh_app(void* p) {
             } else if(strcmp(app->rx_text_buf, "DISARMED") == 0) {
                 app->node_armed = false;
                 app->node_armed_known = true;
+            } else if(parse_run_request(app, app->rx_text_buf, app->payload_run_name,
+                                         sizeof(app->payload_run_name))) {
+                // A "/run @<us> <name>" line addressed to THIS backpack — see doRun in
+                // CommandModule.cpp and parse_run_request above. Just records it; the operator
+                // still has to open Payloads and press OK (armed-gated) to actually stage it.
+                app->payload_run_pending = true;
+                strncpy(app->payload_status, "Run request received", sizeof(app->payload_status) - 1);
+                app->payload_status[sizeof(app->payload_status) - 1] = '\0';
             } else if(strncmp(app->rx_text_buf, "CFG ", 4) == 0) {
                 // Node's /cfg reply → populate the Settings screen. Compact bitmask form:
                 // "CFG prox=.. light=.. rep=<hex> out=<hex> in=<hex> gps=.. gpsint=.. telint=..".
@@ -826,6 +948,17 @@ int32_t ghostmesh_app(void* p) {
             history_ptrs[i] = app->rx_history_lines[i];
         state.history_count  = app->rx_history_count;
         state.history_scroll = app->rx_history_scroll;
+
+        // Rebuild payload pointer array; copy through the rest of the Payloads screen state.
+        for(uint8_t i = 0; i < app->payload_count; i++)
+            payload_ptrs[i] = app->payload_names[i];
+        state.payload_count       = app->payload_count;
+        state.payload_selected    = app->payload_sel;
+        state.payload_scroll      = app->payload_scroll;
+        state.payload_run_pending = app->payload_run_pending;
+        strncpy(state.payload_run_name, app->payload_run_name, sizeof(state.payload_run_name) - 1);
+        state.payload_run_name[sizeof(state.payload_run_name) - 1] = '\0';
+        state.payload_status = app->payload_status[0] ? app->payload_status : NULL;
 
         if(app->feedback_ticks > 0) {
             state.show_feedback = true;

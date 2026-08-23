@@ -149,16 +149,6 @@ The custom Heltec modules build on top of stock Meshtastic. See [`heltec-firmwar
 
 ---
 
-## Scope & Authorization
-
-GhostMesh is offensive-capable hardware for **authorized** work: sanctioned red-team engagements, physical and wireless security assessments you have written permission to conduct, personal lab research, and grid-down communications.
-
-It is not built for, and will not accept, use against systems or people you are not authorized to test. No jamming, no unauthorized interception, no mass targeting, no malware. The destruct erases the operator's own device — nothing else.
-
-Deploy it only where you have the authority to. See [`docs/red-team-lab-use-cases.md`](docs/red-team-lab-use-cases.md).
-
----
-
 ## License
 
 MIT — see [LICENSE](LICENSE).

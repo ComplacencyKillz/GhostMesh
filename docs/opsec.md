@@ -111,5 +111,3 @@ For covert deployment:
 - Capture or decrypt traffic on channels you do not own
 - Control third-party Meshtastic nodes you do not own
 - Store credentials, PII, or exfiltrated data
-
-Use against systems or people you are not authorized to test is outside the scope of this project and is your legal responsibility.

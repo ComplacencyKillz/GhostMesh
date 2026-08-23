@@ -354,8 +354,3 @@ All docs live in `docs/`. Key references:
 | `flipper-app/helpers/proto_notes.md` | Protobuf field number reference |
 | `heltec-firmware/README.md` | Custom Heltec Meshtastic modules — build steps + module list |
 
----
-
-## Scope and Authorization
-
-GhostMesh is built for authorized security testing, personal lab use, grid-down communications, and open-source learning. It does not implement jamming, spectrum interference, unauthorized traffic capture, or destructive payloads. See `docs/red-team-lab-use-cases.md` for the full authorized use case list.

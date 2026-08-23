@@ -138,6 +138,10 @@ ProcessMessage CommandModule::handleReceived(const meshtastic_MeshPacket &mp)
             handlePut(text);
             return ProcessMessage::CONTINUE;
         }
+        if (strncasecmp(p, "/get ", 5) == 0) {
+            handleGet(text, getFrom(&mp));
+            return ProcessMessage::CONTINUE;
+        }
     }
 
     // Reception feedback: only for genuinely incoming traffic, not our own self-sends. A '/'-command
@@ -218,6 +222,10 @@ void CommandModule::handleCommandText(char *text, uint32_t from)
         doCfg();
     } else if (strcasecmp(cmd, "/wipe") == 0) {
         doWipeCommand(arg);
+    } else if (strcasecmp(cmd, "/ls") == 0) {
+        doLs();
+    } else if (strcasecmp(cmd, "/run") == 0) {
+        doRun(arg);
     } else {
         if (ghostmesh_config.repUnknown) enqueueReply("? unknown cmd — try /help");
     }
@@ -255,6 +263,9 @@ void CommandModule::doHelp()
         "/set @id mode <active|deployed|dormant> - power/deploy stance",
         "/cfg @id - report current config (bitmask)",
         "/wipe @id - complete erase (armed+confirm)",
+        "/ls @id - list staged payloads",
+        "/get @id begin <name> - download a payload",
+        "/run @id <name> - request Bad USB run (armed)",
     };
     for (const char *l : lines)
         enqueueReply(l);
@@ -301,6 +312,7 @@ void CommandModule::doSet(const char *key, const char *val)
         {"bc_light", &ghostmesh_config.bcLight}, {"bc_prox", &ghostmesh_config.bcProx},
         {"rep_help", &ghostmesh_config.repHelp}, {"rep_status", &ghostmesh_config.repStatus},
         {"rep_err", &ghostmesh_config.repErr},   {"rep_unknown", &ghostmesh_config.repUnknown},
+        {"rep_run", &ghostmesh_config.repRun},
         {"in_tilt", &ghostmesh_config.inTilt},   {"in_light", &ghostmesh_config.inLight},
         {"in_prox", &ghostmesh_config.inProx},   {"in_ir", &ghostmesh_config.inIr},
     };
@@ -398,14 +410,15 @@ void CommandModule::doSet(const char *key, const char *val)
 }
 
 // ── /cfg: reply the current config as one compact bitmask line ───────────────────────
-// rep bits: 0 arm,1 buzz,2 vib,3 led,4 wipe,5 tilt-bc,6 light-bc,7 prox-bc,8 help,9 status,10 err,11 unknown
+// rep bits: 0 arm,1 buzz,2 vib,3 led,4 wipe,5 tilt-bc,6 light-bc,7 prox-bc,8 help,9 status,10 err,11 unknown,12 run
 // out bits: 0 led,1 buzz,2 vib,3 screen,4 hbled,5 gpsled ; in bits: 0 tilt,1 light,2 prox,3 ir
 void CommandModule::doCfg()
 {
     const GhostMeshConfig &c = ghostmesh_config;
     uint16_t rep = (c.repArm) | (c.repBuzz << 1) | (c.repVib << 2) | (c.repLed << 3) | (c.repWipe << 4) |
                    (c.bcTilt << 5) | (c.bcLight << 6) | (c.bcProx << 7) |
-                   (c.repHelp << 8) | (c.repStatus << 9) | (c.repErr << 10) | (c.repUnknown << 11);
+                   (c.repHelp << 8) | (c.repStatus << 9) | (c.repErr << 10) | (c.repUnknown << 11) |
+                   (c.repRun << 12);
     uint8_t out = (c.notifyLed) | (c.notifyBuzz << 1) | (c.notifyVib << 2) | (c.outScreen << 3) |
                   (c.outHbled << 4) | (c.outGpsled << 5);
     uint8_t in = (c.inTilt) | (c.inLight << 1) | (c.inProx << 2) | (c.inIr << 3);
@@ -619,6 +632,27 @@ void CommandModule::doWipeCommand(const char *arg)
     wipePending = true; // runOnce fires it once this reply has actually gone out
 }
 
+// ── /run @id <name>: accept/deny only — the Heltec never executes anything ───────────
+// This node's only job is the armed gate + a courtesy reply. The FAP wired to this backpack sees
+// the SAME raw "/run @id <name>" line (handleReceived returns CONTINUE, same as every command) and
+// is the one that offers to hand off to Bad USB — see ghostmesh.c's RX handling. That split matters:
+// it means a mesh operator can target any backpack by id, from anywhere on the channel, and the
+// physical Flipper attached to that backpack is the only thing that can ever actually fire a script.
+void CommandModule::doRun(const char *name)
+{
+    if (!name || !*name) {
+        if (ghostmesh_config.repErr) enqueueReply("RUN needs a payload name");
+        return;
+    }
+    if (!ghostmesh_armed) {
+        if (ghostmesh_config.repRun) enqueueReply("RUN denied: not armed");
+        return;
+    }
+    char r[48];
+    snprintf(r, sizeof(r), "RUN %s queued", name);
+    if (ghostmesh_config.repRun) enqueueReply(r);
+}
+
 // ── Physical wipe button: armed + double-press with a 2–5 s gap ──────────────────────
 void CommandModule::serviceWipeButton(uint32_t now)
 {
@@ -775,6 +809,8 @@ int32_t CommandModule::runOnce()
     serviceWipeButton(now);
     servicePutAck();        // emit a pending /put chunk ack immediately (flow control, off the reply queue)
     servicePutTimeout(now); // abort a file transfer that has gone quiet mid-stream
+    serviceGetSend();       // emit a pending /get chunk (or the closing "ok") immediately
+    serviceGetTimeout(now); // abort a download that has gone quiet mid-stream
 
     // Emit one queued reply per REPLY_SPACING_MS so /help doesn't hog the airtime. Route by the
     // destination captured when the reply was queued: the local StreamAPI client (self-addressed

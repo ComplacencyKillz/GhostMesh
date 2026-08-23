@@ -19,6 +19,7 @@ typedef enum {
     GhostMeshScreenControl,    // IR arm/disarm/wipe; BACK → menu
     GhostMeshScreenBackup,     // encrypted config backup result; BACK → menu
     GhostMeshScreenSettings,   // live node config (/set + /cfg over the local link); BACK → menu
+    GhostMeshScreenPayloads,   // Bad USB payload launch (mesh-triggered or local browse); BACK → menu
 } GhostMeshScreen;
 
 typedef struct {
@@ -60,6 +61,17 @@ typedef struct {
     bool     settings_loaded;                 // a /cfg reply has populated the values
     uint8_t  settings_selected;               // highlighted row (never a header)
     uint16_t set_vals[GM_SETTINGS_MAX];       // parallel to GM_SETTINGS
+
+    // ── Payloads screen (GhostMeshScreenPayloads) — Bad USB launch ────
+    // A "/run @id <name>" mesh command (from any node) or a local browse of /ext/badusb/ can stage a
+    // launch; either way, firing it always requires being ARMED and pressing OK on THIS device.
+    bool        payload_run_pending;              // a matching /run request has arrived
+    char        payload_run_name[40];
+    const char* payload_status;                   // feedback line: "not staged", "launching...", etc.
+    const char** payload_names;                   // local /ext/badusb/ listing (browse mode)
+    uint8_t     payload_count;
+    uint8_t     payload_selected;
+    uint8_t     payload_scroll;
 
     // ── Menu hub (GhostMeshScreenMenu) ───────────────────────────────
     const char** menu_names;

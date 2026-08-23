@@ -46,6 +46,9 @@ every reply within the cap and leaves room for each command's help to grow.
 | `/cfg` | — | Report the current config as one compact bitmask line (see below). |
 | `/wipe` | `<token>` | Complete flash erase. Requires armed + confirmation — see below. |
 | `/put` | `begin\|d\|end …` | Chunked file upload to the node's flash. Machine protocol — the web configurator drives it, not humans. See below. |
+| `/ls` | — | Lists files staged in `/ghostmesh/` on the node's flash — one reply per file, then a count. Reply gated by `rep_status`. |
+| `/get` | `begin\|ack …` | Chunked file download — the mirror of `/put`. Machine protocol. See below. |
+| `/run` | `<name>` | Request a Bad USB launch **on whichever Flipper is wired to this backpack**, by payload name. Requires armed. The Heltec never executes anything — see below. |
 
 ## File transfer (`/put`)
 
@@ -74,6 +77,48 @@ LittleFS, and CRC32-verified. USB is just the fast, reliable case; the identical
   KB); an oversized transfer is rejected at `begin` with `toobig`/`nospace`.
 - A transfer that goes quiet mid-stream is aborted after ~15 s (`timeout`).
 
+## Listing and download (`/ls`, `/get`)
+
+`/get` is `/put` with the roles reversed — the node reads a file and streams it out, paced by the
+client's per-chunk ack instead of the client pacing the node. `/ls` is the directory listing that
+tells you what's there to `/get` in the first place.
+
+```
+/ls @id                        → LS <name> <bytes>   (one per file)
+                                  LS end <count>
+/get @id begin <name>          → GET <fid> begin <nchunks> <bytes> <crc32hex> <name>
+                                  GET <fid> d 0 <base64>            (sent immediately, unprompted)
+                                | GET 0 notfound | GET 0 toobig max=<KB>KB
+/get @id ack <fid> <index>     → GET <fid> d <index+1> <base64>     (index was the node's last send)
+                                | GET <fid> ok <crc32hex>            (index was the LAST chunk — done)
+                                | GET <fid> d <index> <base64>       (any other ack: re-send current)
+```
+
+Replies are routed to whoever asked — phone-only (no airtime) for the local USB/serial client, a
+directed unicast for a remote node — so a small payload can be `/get` over the mesh too, just paced
+by LoRa airtime instead of instant over USB. A stalled download aborts after ~15 s
+(`GET <fid> timeout`), same as `/put`.
+
+This is how a payload actually gets used, not just uploaded: `/put` a script onto a backpack over
+USB, then either pull it onto the wired Flipper's own SD card (`/ext/badusb/`) via `/get`, or copy it
+there directly with qFlipper — either way, once it's staged, `/run` (below) can fire it from
+anywhere on the mesh.
+
+## Running a payload (`/run`)
+
+The Heltec **never executes anything** — `/run @id <name>` only checks `ghostmesh_armed` and
+acks/denies (gated by `rep_run`, default **on**). The actual trigger happens on the FAP side: because
+every command the node processes still flows through to its own wired StreamAPI client (that's how
+`/cfg`/`ARMED`/tamper broadcasts already reach the FAP), the Flipper attached to backpack `@id` sees
+the exact same `/run @id <name>` line and offers to launch it — on the **Payloads** screen, requiring
+armed *and* a physical OK press there, and then Bad USB's own OK press on top of that before anything
+actually fires. Three independent gates (mesh armed-check, FAP armed + OK, Bad USB's own OK) between
+a mesh command and a keystroke. The Payloads screen also works with no mesh command at all — Up/Down
+browses whatever's staged in `/ext/badusb/`, OK launches the selected one, same armed gate.
+
+`/run` never carries bytes — only a name — matching the design constraint in
+`docs/red-team-lab-use-cases.md` §5: payloads are pre-staged and selected by name, never injected.
+
 ## Configuration (persisted)
 
 `/set` tunes a deployed node live — no reflash — and the change is saved to NVS, so it survives
@@ -101,6 +146,7 @@ when the command came *over* the mesh. Turn any of these off to go quieter still
 | `bc_tilt` / `bc_light` / `bc_prox` | the `TAMPER` / `TAMPER_LIGHT` / `PERSON_DETECTED` broadcasts | **on** |
 | `rep_help` / `rep_status` | the `/help` listing / the `/status` reply | **on** |
 | `rep_err` / `rep_unknown` | `/set` error messages / the unknown-command reply | **on** |
+| `rep_run` | the `/run` accept/deny reply (the launch itself is never gated by this — see "Running a payload") | **on** |
 
 > With `rep_wipe off`, the two-step mesh `/wipe` can't be completed (the token is never shown) — the
 > physical double-press and IR `ARM→WIPE→CONFIRM` paths still work. **`/cfg` and the `/set` success
@@ -160,17 +206,17 @@ These three are orthogonal axes — an armed dead-drop that hides is `SENTINEL` 
 CFG prox=<u> light=<u> rep=<hex> out=<hex> in=<hex> gps=<u> tel=<u> gpsint=<u> telint=<u> arm=<u>
 ```
 
-| Mask | bit0 | bit1 | bit2 | bit3 | bit4 | bit5 | bit6 | bit7 | bit8 | bit9 | bit10 | bit11 |
-|------|------|------|------|------|------|------|------|------|------|------|-------|-------|
-| `rep` | arm | buzz | vib | led | wipe | tilt-bc | light-bc | prox-bc | help | status | err | unknown |
-| `out` | led | buzz | vib | screen | hbled | gpsled | — | — | | | | |
-| `in`  | tilt | light | prox | ir | — | — | — | — | | | | |
+| Mask | bit0 | bit1 | bit2 | bit3 | bit4 | bit5 | bit6 | bit7 | bit8 | bit9 | bit10 | bit11 | bit12 |
+|------|------|------|------|------|------|------|------|------|------|------|-------|-------|-------|
+| `rep` | arm | buzz | vib | led | wipe | tilt-bc | light-bc | prox-bc | help | status | err | unknown | run |
+| `out` | led | buzz | vib | screen | hbled | gpsled | — | — | | | | | |
+| `in`  | tilt | light | prox | ir | — | — | — | — | | | | | |
 
 `arm=` is the live arm state (`1`/`0`) — it drives the SENTINEL preset's displayed posture.
 
-Example: `/cfg @f69c` → `CFG prox=200 light=2000 rep=ff0 out=3f in=f gps=1 tel=1 gpsint=0 telint=0 arm=0`
-(here `rep=ff0` = wipe + all tamper broadcasts + all query replies on, routine command confirmations
-off — the default).
+Example: `/cfg @f69c` → `CFG prox=200 light=2000 rep=1ff0 out=3f in=f gps=1 tel=1 gpsint=0 telint=0 arm=0`
+(here `rep=1ff0` = wipe + all tamper broadcasts + all query replies + run accept/deny on, routine
+command confirmations off — the default).
 
 ### Three ways to configure a node
 

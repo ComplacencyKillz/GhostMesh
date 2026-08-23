@@ -318,6 +318,37 @@ static void draw_settings_screen(Canvas* canvas, const MainViewState* s) {
     draw_footer(canvas, "Up/Dn pick  Lt/Rt set", s);
 }
 
+// Payloads: a "/run @id <name>" mesh command (any node) or a local browse of what's already staged
+// on /ext/badusb/ — either way, OK here only STAGES the launch (checks armed + the file exists) and
+// hands off to Bad USB, which still needs its own OK press before anything actually fires.
+static void draw_payloads_screen(Canvas* canvas, const MainViewState* s) {
+    draw_header(canvas, "Payloads", s);
+    canvas_set_font(canvas, FontSecondary);
+
+    if(s->payload_run_pending) {
+        canvas_draw_str(canvas, 4, (uint8_t)(LIST_Y + ROW_H - 2), "RUN REQUEST:");
+        const char* name = marquee(s->payload_run_name, s->scroll_tick, LIST_CHARS);
+        canvas_draw_str(canvas, 4, (uint8_t)(LIST_Y + 2 * ROW_H - 2), name);
+        if(s->payload_status)
+            canvas_draw_str(canvas, 4, (uint8_t)(LIST_Y + 3 * ROW_H - 2), s->payload_status);
+        draw_footer(canvas, "OK:Launch  Lt:Dismiss", s);
+        return;
+    }
+
+    if(s->payload_count == 0) {
+        canvas_draw_str(canvas, 4, (uint8_t)(LIST_Y + ROW_H - 2), "No payloads staged.");
+        canvas_draw_str(canvas, 4, (uint8_t)(LIST_Y + 2 * ROW_H - 2), "Copy to /ext/badusb/");
+        if(s->payload_status)
+            canvas_draw_str(canvas, 4, (uint8_t)(LIST_Y + 3 * ROW_H - 2), s->payload_status);
+        draw_footer(canvas, "BACK:Menu", s);
+        return;
+    }
+
+    draw_list(canvas, s->payload_names, s->payload_count, s->payload_selected, s->payload_scroll,
+              true, s);
+    draw_footer(canvas, s->payload_status ? s->payload_status : "OK:Launch (armed)", s);
+}
+
 // ── ViewPort callbacks ─────────────────────────────────────────────────────────
 
 static void draw_cb(Canvas* canvas, void* ctx) {
@@ -334,6 +365,7 @@ static void draw_cb(Canvas* canvas, void* ctx) {
     case GhostMeshScreenControl:   draw_control_screen(canvas, &mv->state);    break;
     case GhostMeshScreenBackup:    draw_backup_screen(canvas, &mv->state);     break;
     case GhostMeshScreenSettings:  draw_settings_screen(canvas, &mv->state);   break;
+    case GhostMeshScreenPayloads:  draw_payloads_screen(canvas, &mv->state);   break;
     default:                       draw_menu_screen(canvas, &mv->state);       break;
     }
     furi_mutex_release(mv->mutex);

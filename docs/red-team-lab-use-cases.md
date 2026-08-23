@@ -1,25 +1,5 @@
 # Red-Team Lab Use Cases
 
-## Scope Statement
-
-This document describes **authorized, lab-scoped** use cases for GhostMesh in security
-testing contexts. All features described here apply only to:
-
-- Systems you own or have written authorization to test
-- Controlled lab environments
-- Authorized penetration testing engagements with explicit scope documentation
-- Open-source security research and education
-
-**Nothing in this document authorizes or supports:**
-- Unauthorized access to third-party devices or networks
-- Malware, ransomware, or destructive payloads
-- Credential theft, exfiltration, or persistence on non-owned systems
-- Unauthorized relay or control of Meshtastic nodes you do not own
-- Jamming or interfering with licensed radio spectrum
-- Evading detection on systems you are not authorized to test
-
----
-
 ## 1. Out-of-Band Team Coordination
 
 **Status: Available (Phase 2–5)**
@@ -109,11 +89,15 @@ reconnaissance. Identify relay nodes and coverage gaps.
 
 ## 5. Remote Payload Execution (Lab Only)
 
-**Status: Planned (Phase 13)**
+**Status: BadUSB over mesh working (Phase 13); NFC orchestration and Sub-GHz relay still planned.**
 
-**BadUSB over mesh:** Deploy a Flipper inside a target workspace (as a "charging device").
-When a specific mesh packet arrives on the private channel, the GhostMesh FAP invokes
-the Flipper BadUSB service and executes a pre-staged DuckyScript from the SD card.
+**BadUSB over mesh:** Deploy a Flipper inside a target workspace (as a "charging device"), with a
+DuckyScript pre-staged on its SD card (`/ext/badusb/`, via `/put`+`/get` or a direct copy). When a
+`/run @id <name>` mesh command arrives (private channel, node armed), the GhostMesh FAP hands off to
+Flipper's own Bad USB app, staged and idle. Bad USB's own screen — not GhostMesh — is what actually
+fires the keystrokes, on its own OK press. That's a deliberate second confirmation gate on top of the
+mesh armed-check: a remote trigger can stage a script, but firing it still needs a thumb on the
+device. See `docs/command-cli.md` ("Running a payload") for the full command reference.
 
 **Design constraints (non-negotiable):**
 - Requires slide switch in ARMED position before any payload can fire
@@ -157,6 +141,3 @@ If you have an authorized use case to add:
 2. Define explicit safety constraints (what it will never do)
 3. Identify what Meshtastic protocol features it requires
 4. Submit a PR with a new section in this document
-
-Use cases involving unauthorized access, destructive actions, or non-lab targets will
-not be accepted.

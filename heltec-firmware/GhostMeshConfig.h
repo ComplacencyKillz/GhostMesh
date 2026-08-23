@@ -43,6 +43,8 @@ struct GhostMeshConfig {
     bool repStatus;  // rep bit 9  — /status reply
     bool repErr;     // rep bit 10 — /set error messages (bad key/val, needs args, bad mode)
     bool repUnknown; // rep bit 11 — unknown-command reply
+    bool repRun;     // rep bit 12 — /run accept/deny reply (the Heltec never executes anything itself;
+                      // this just acks/denies so the requester knows it landed — see /run in CommandModule)
 
     // ── Sensor input enables (battery): does the module poll its hardware? /cfg `in` bits 0..3 ──
     bool inTilt;   // in bit 0
