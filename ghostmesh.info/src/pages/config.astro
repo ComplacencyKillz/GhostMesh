@@ -51,16 +51,20 @@ import SubLayout from '../layouts/SubLayout.astro';
     </p>
     <div id="gm-rep"></div>
 
-    <h2>OUTPUTS <span class="tag">GO DARK</span>
-      <button id="gm-silent" class="gm-btn gm-btn--ghost" style="float:right;">[ SILENT ]</button></h2>
+    <div class="gm-sechead">
+      <h2>OUTPUTS <span class="tag">GO DARK</span></h2>
+      <button id="gm-silent" class="gm-btn gm-btn--ghost">[ SILENT ]</button>
+    </div>
     <p style="margin-top:0.3rem; font-size:0.8rem; color:var(--text-dim); line-height:1.5;">
       The node's physical indicators. <strong>SILENT</strong> kills them all at once — screen dark,
       no LED blinks, no sound. (GPS LED is best-effort.)
     </p>
     <div id="gm-out"></div>
 
-    <h2>SENSOR INPUTS <span class="tag">BATTERY</span>
-      <button id="gm-sensors" class="gm-btn gm-btn--ghost" style="float:right;">[ SENSORS OFF ]</button></h2>
+    <div class="gm-sechead">
+      <h2>SENSOR INPUTS <span class="tag">BATTERY</span></h2>
+      <button id="gm-sensors" class="gm-btn gm-btn--ghost">[ SENSORS OFF ]</button>
+    </div>
     <p style="margin-top:0.3rem; font-size:0.8rem; color:var(--text-dim); line-height:1.5;">
       Turn a sensor off to stop it polling and save battery.
     </p>
@@ -129,31 +133,75 @@ import SubLayout from '../layouts/SubLayout.astro';
 
 </SubLayout>
 
-<style>
+<style is:global>
+  /* is:global on purpose — the toggle rows, flasher and uploader controls are injected
+     by JS (innerHTML), so Astro's scoped styles never reach them. All selectors are
+     gm-/pu-/fl- prefixed so nothing leaks into the rest of the site. */
+
   .gm-note { border:1px solid var(--blue); padding:0.8rem 1rem; margin:1rem 0;
     font-size:0.85rem; line-height:1.5; }
   .gm-note--warn { border-color:#c96; color:#eca; }
-  #gm-connect-row { display:flex; align-items:center; gap:1rem; margin:1.2rem 0; flex-wrap:wrap; }
-  .gm-btn { background:transparent; border:1px solid var(--terminal); color:var(--terminal);
-    font-family:inherit; font-size:0.9rem; padding:0.55rem 1.1rem; cursor:pointer; letter-spacing:1px;
-    transition:background .15s,color .15s; }
-  .gm-btn:hover { background:var(--terminal); color:#000; }
-  .gm-btn--ghost { border-color:var(--text-dim); color:var(--text-dim); }
-  .gm-btn--ghost:hover { background:var(--text-dim); color:#000; }
-  .gm-status { font-size:0.8rem; color:var(--text-dim); letter-spacing:1px; }
-  .gm-status.on { color:var(--terminal); }
+  #gm-connect-row { display:flex; align-items:center; gap:1rem; margin:1.4rem 0; flex-wrap:wrap; }
+
+  /* ── Buttons: one system across the whole configurator ────── */
+  .gm-btn {
+    display:inline-block; background:transparent;
+    border:1px solid var(--text-dim); color:var(--text);
+    font-family:inherit; font-size:0.72rem; letter-spacing:0.2em; text-transform:uppercase;
+    padding:0.6rem 1.3rem; cursor:pointer;
+    transition:border-color .15s, color .15s, background .15s, box-shadow .15s, transform .05s; }
+  .gm-btn:hover { border-color:var(--blue); color:var(--blue); box-shadow:0 0 0 3px rgba(0,212,255,0.06); }
+  .gm-btn:active { transform:translateY(1px); }
+
+  /* Primary CTA — establish link */
+  #gm-connect { border-color:var(--terminal); color:var(--terminal); }
+  #gm-connect:hover { background:var(--terminal); color:#04120a; border-color:var(--terminal);
+    box-shadow:0 0 16px rgba(0,255,65,0.35); }
+
+  /* Secondary / master actions (SILENT, SENSORS OFF, QUERY NODE) */
+  .gm-btn--ghost { font-size:0.64rem; padding:0.45rem 0.95rem;
+    color:var(--text-dim); border-color:var(--text-ghost); }
+  .gm-btn--ghost:hover { border-color:var(--blue); color:var(--blue); }
+
+  .gm-status { font-size:0.72rem; color:var(--text-dim); letter-spacing:0.2em; text-transform:uppercase; }
+  .gm-status.on { color:var(--terminal); text-shadow:0 0 8px rgba(0,255,65,0.5); }
+
+  /* ── Section header carrying a master action on the right ─── */
+  .gm-sechead { display:flex; align-items:flex-end; justify-content:space-between;
+    gap:1rem; flex-wrap:wrap; }
+  .gm-sechead h2 { flex:1 1 auto; min-width:180px; }
+  .gm-sechead .gm-btn { flex:0 0 auto; margin-bottom:0.5rem; }
+
+  /* ── Fields ───────────────────────────────────────────────── */
   .gm-field { margin:0.9rem 0; }
-  .gm-field label { display:block; font-size:0.75rem; color:var(--text-dim);
-    letter-spacing:1.5px; text-transform:uppercase; margin-bottom:0.35rem; }
-  .gm-field--row { display:flex; align-items:center; justify-content:space-between; max-width:340px; }
-  .gm-field--row label { margin:0; }
-  .gm-ctl { display:flex; align-items:center; gap:0.9rem; max-width:420px; }
+  .gm-field > label { display:block; font-size:0.7rem; color:var(--text-dim);
+    letter-spacing:0.15em; text-transform:uppercase; margin-bottom:0.4rem; }
+  .gm-ctl { display:flex; align-items:center; gap:0.9rem; max-width:440px; }
   .gm-ctl input[type=range] { flex:1; accent-color:var(--terminal); }
-  .gm-ctl output { min-width:64px; color:var(--blue); font-size:0.9rem; text-align:right; }
-  .gm-toggle { background:transparent; border:1px solid var(--text-dim); color:var(--text-dim);
-    font-family:inherit; font-size:0.75rem; padding:0.3rem 0.9rem; cursor:pointer; letter-spacing:1px;
-    min-width:56px; }
-  .gm-toggle[data-on="1"] { border-color:var(--terminal); color:var(--terminal); }
+  .gm-ctl output { min-width:66px; color:var(--blue); font-size:0.85rem; text-align:right;
+    letter-spacing:0.03em; }
+
+  /* Toggle rows read as a ruled control panel: label left, switch right */
+  .gm-field--row { display:flex; align-items:center; justify-content:space-between; gap:1rem;
+    max-width:440px; margin:0; padding:0.6rem 0.1rem; border-bottom:1px solid var(--text-ghost); }
+  .gm-field--row:first-child { border-top:1px solid var(--text-ghost); }
+  .gm-field--row > label { margin:0; font-size:0.72rem; color:var(--text);
+    letter-spacing:0.06em; text-transform:none; }
+
+  /* ── Toggle: unmistakable two-state switch with a status LED ─ */
+  .gm-toggle { display:inline-flex; align-items:center; justify-content:center; gap:0.55rem;
+    min-width:84px; background:transparent; border:1px solid var(--text-ghost); color:var(--text-dim);
+    font-family:inherit; font-size:0.7rem; letter-spacing:0.18em; padding:0.4rem 0.9rem; cursor:pointer;
+    transition:border-color .15s, color .15s, background .15s, box-shadow .15s; }
+  .gm-toggle::before { content:''; width:7px; height:7px; border-radius:50%;
+    background:var(--text-ghost); transition:inherit; }
+  .gm-toggle:hover { border-color:var(--blue); color:var(--blue); }
+  .gm-toggle:hover::before { background:var(--blue); }
+  .gm-toggle[data-on="1"] { border-color:var(--terminal); color:var(--terminal);
+    background:rgba(0,255,65,0.08); text-shadow:0 0 6px rgba(0,255,65,0.35); }
+  .gm-toggle[data-on="1"]::before { background:var(--terminal); box-shadow:0 0 8px rgba(0,255,65,0.85); }
+
+  /* ── Trace log ────────────────────────────────────────────── */
   .gm-log { background:rgba(0,0,0,0.5); border:1px solid rgba(120,160,140,0.25);
     padding:0.7rem 0.9rem; font-size:0.78rem; line-height:1.6; height:150px; overflow-y:auto;
     white-space:pre-wrap; word-break:break-word; }
@@ -162,10 +210,7 @@ import SubLayout from '../layouts/SubLayout.astro';
   .gm-log .gm-rx { color:var(--terminal); }
   .gm-log .gm-err { color:#e88; }
 
-  /* Flasher & uploader container tweaks */
-  #gm-flasher, #gm-uploader {
-    margin: 1rem 0;
-  }
+  #gm-flasher, #gm-uploader { margin:1rem 0; }
 </style>
 
 <script is:inline type="module">
