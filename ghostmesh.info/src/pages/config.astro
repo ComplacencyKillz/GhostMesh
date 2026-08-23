@@ -367,23 +367,32 @@ import SubLayout from '../layouts/SubLayout.astro';
     applyMask(c.rep, REP_BITS);
     applyMask(c.out, OUT_BITS);
     applyMask(c.in, IN_BITS);
-    // ── STANCE presets, derived from the same config ──
+    // ── STANCE presets ── SENTINEL (arm) has no granular row, so set it from the cfg token; BLACKOUT
+    // and HIBERNATE are derived from the granular toggles we just set (single source of truth).
     if (c.arm != null) setPreset('gm-sentinel', c.arm, 'ARMED', 'DISARMED');
-    if (c.out != null) setPreset('gm-blackout', c.out === 0 ? 1 : 0, 'DARK', 'LIT'); // all 6 outputs off ⇒ dark
-    if (c.gps != null && c.in != null) {                                             // infer HIBERNATE mode
-      const inAll = (c.in & 0x0f) === 0x0f, inNone = (c.in & 0x0f) === 0;
-      let mode = null;                                                               // null ⇒ custom (nothing lit)
-      if (c.gps && inAll) mode = 'active';
-      else if (!c.gps && inAll) mode = 'deployed';
-      else if (!c.gps && inNone) mode = 'dormant';
-      setSeg('gm-hibernate', mode);
-    }
+    refreshPresets();
   }
   function applyMask(v, bits) { if (v == null) return; bits.forEach(([k], i) => setToggle('gm-' + k, (v >> i) & 1)); }
   function setSlider(id, val, unit) { if (val == null) return; const el = $(id); if (!el) return; el.value = val; const o = $(id + '-out'); if (o) o.textContent = val + unit; }
   function setToggle(id, on) { const b = $(id); if (!b || on == null) return; b.dataset.on = on ? '1' : '0'; b.textContent = on ? 'ON' : 'OFF'; }
   function setPreset(id, on, onLabel, offLabel) { const b = $(id); if (!b) return; b.dataset.on = on ? '1' : '0'; b.textContent = on ? onLabel : offLabel; }
   function setSeg(id, mode) { const c = $(id); if (!c) return; for (const b of c.querySelectorAll('button')) b.classList.toggle('on', b.dataset.mode === mode); }
+
+  // Derive the STANCE presets from the CURRENT granular toggle states in the DOM. Called after any
+  // change (preset OR individual toggle) so the two views never drift — independent of whether the
+  // reconcile /cfg re-query lands. BLACKOUT = all outputs off; HIBERNATE = inferred from gps + inputs.
+  function refreshPresets() {
+    const anyOut = OUT_BITS.some(([k]) => $('gm-' + k) && $('gm-' + k).dataset.on === '1');
+    setPreset('gm-blackout', anyOut ? 0 : 1, 'DARK', 'LIT');
+    const gpsOn = $('gm-gps') && $('gm-gps').dataset.on === '1';
+    const insOn = IN_BITS.map(([k]) => $('gm-' + k) && $('gm-' + k).dataset.on === '1');
+    const inAll = insOn.every(Boolean), inNone = insOn.every((v) => !v);
+    let mode = null;
+    if (gpsOn && inAll) mode = 'active';
+    else if (!gpsOn && inAll) mode = 'deployed';
+    else if (!gpsOn && inNone) mode = 'dormant';
+    setSeg('gm-hibernate', mode);
+  }
 
   // Build the .gm-field--row toggle buttons for a section from its bit table (DRY — one row per bit).
   function renderToggles(containerId, bits) {
@@ -471,7 +480,12 @@ import SubLayout from '../layouts/SubLayout.astro';
     const toggleKeys = [...REP_BITS, ...OUT_BITS, ...IN_BITS, ['gps']].map(([k]) => k);
     for (const key of toggleKeys) {
       const id = 'gm-' + key;
-      $(id).addEventListener('click', () => { const on = $(id).dataset.on === '1' ? 0 : 1; setToggle(id, on); setKey(key, on ? 'on' : 'off'); });
+      $(id).addEventListener('click', () => {
+        const on = $(id).dataset.on === '1' ? 0 : 1;
+        setToggle(id, on);
+        refreshPresets(); // an individual output/sensor change may flip BLACKOUT/HIBERNATE
+        setKey(key, on ? 'on' : 'off');
+      });
     }
 
     // ── STANCE presets: each is a single command; re-query after so the granular toggles snap. ──
@@ -484,13 +498,26 @@ import SubLayout from '../layouts/SubLayout.astro';
     });
     $('gm-blackout').addEventListener('click', async () => {
       const nextDark = $('gm-blackout').dataset.on !== '1';
-      setPreset('gm-blackout', nextDark ? 1 : 0, 'DARK', 'LIT');   // optimistic
+      // silent flips all six outputs together — mirror that on the granular toggles, then derive the
+      // preset from them, so the two views stay in lockstep even if the reconcile /cfg is dropped.
+      for (const [k] of OUT_BITS) setToggle('gm-' + k, nextDark ? 0 : 1);
+      refreshPresets();
       await setKey('silent', nextDark ? 'on' : 'off');
       setTimeout(requestCfg, 350);
     });
-    // HIBERNATE: pick a mode; the firmware applies the whole composite in one command.
+    // HIBERNATE: one composite command. Mirror its effect on the granular gps/inputs/telint so the
+    // individual rows match the chosen mode immediately (deployed/dormant map per the firmware).
     for (const btn of document.querySelectorAll('#gm-hibernate button')) {
-      btn.addEventListener('click', async () => { await setKey('mode', btn.dataset.mode); setTimeout(requestCfg, 450); });
+      btn.addEventListener('click', async () => {
+        const mode = btn.dataset.mode;
+        const gpsOn = mode === 'active', insOn = mode !== 'dormant';
+        setToggle('gm-gps', gpsOn ? 1 : 0);
+        for (const [k] of IN_BITS) setToggle('gm-' + k, insOn ? 1 : 0);
+        setSlider('gm-telint', mode === 'active' ? 120 : mode === 'deployed' ? 900 : 3600, ' s');
+        refreshPresets();
+        await setKey('mode', mode);
+        setTimeout(requestCfg, 450);
+      });
     }
 
     // Firmware flasher is standalone (owns its own port) — mount it now, no connection required.
