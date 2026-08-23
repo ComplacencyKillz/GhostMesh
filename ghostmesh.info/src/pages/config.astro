@@ -104,6 +104,10 @@ import SubLayout from '../layouts/SubLayout.astro';
         <output id="gm-gpsint-out">— s</output>
       </div>
     </div>
+    <div class="gm-field gm-field--row">
+      <label>Telemetry</label>
+      <button class="gm-toggle" id="gm-tel" data-on="0">OFF</button>
+    </div>
     <div class="gm-field">
       <label>Telemetry interval</label>
       <div class="gm-ctl">
@@ -347,7 +351,7 @@ import SubLayout from '../layouts/SubLayout.astro';
       const g = (k) => { const m = t.match(new RegExp('(?:^| )' + k + '=(\\d+)')); return m ? parseInt(m[1], 10) : null; };
       const gh = (k) => { const m = t.match(new RegExp('(?:^| )' + k + '=([0-9a-fA-F]+)')); return m ? parseInt(m[1], 16) : null; };
       applyCfg({ prox: g('prox'), light: g('light'), rep: gh('rep'), out: gh('out'), in: gh('in'),
-                 gps: g('gps'), gpsint: g('gpsint'), telint: g('telint'), arm: g('arm') });
+                 gps: g('gps'), tel: g('tel'), gpsint: g('gpsint'), telint: g('telint'), arm: g('arm') });
       log('< ' + t, 'gm-rx');
       $('gm-panel').style.display = 'block';
     } else if (t.startsWith('PUT ')) {
@@ -364,6 +368,7 @@ import SubLayout from '../layouts/SubLayout.astro';
     setSlider('gm-gpsint', c.gpsint, ' s');
     setSlider('gm-telint', c.telint, ' s');
     setToggle('gm-gps', c.gps);
+    setToggle('gm-tel', c.tel);
     applyMask(c.rep, REP_BITS);
     applyMask(c.out, OUT_BITS);
     applyMask(c.in, IN_BITS);
@@ -477,7 +482,7 @@ import SubLayout from '../layouts/SubLayout.astro';
     slider('gm-telint', 'telint', ' s');
 
     // Every toggle: flip data-on and send its /set key. Covers rep/out/in flags + the standalone gps.
-    const toggleKeys = [...REP_BITS, ...OUT_BITS, ...IN_BITS, ['gps']].map(([k]) => k);
+    const toggleKeys = [...REP_BITS, ...OUT_BITS, ...IN_BITS, ['gps'], ['tel']].map(([k]) => k);
     for (const key of toggleKeys) {
       const id = 'gm-' + key;
       $(id).addEventListener('click', () => {

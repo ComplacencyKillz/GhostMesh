@@ -130,9 +130,10 @@ when the command came *over* the mesh. Turn any of these off to go quieter still
 
 | Key | Effect | Default |
 |-----|--------|---------|
-| `gps <on\|off>` | GPS on/off (`config.position.gps_mode`) | on |
+| `gps <on\|off>` | GPS on/off (`config.position.gps_mode`). *Stops Meshtastic using GPS; on the current hardware it can't cut the module's power (the Vext power-gate on the PCB does that).* | on |
+| `tel <on\|off>` | environment (BME280) telemetry on/off (`moduleConfig.telemetry.environment_measurement_enabled`) | on |
 | `gpsint <secs>` | GPS update interval (`0` = Meshtastic default) | 0 |
-| `telint <secs>` | environment (BME280) telemetry interval (`0` = default) | 0 |
+| `telint <secs>` | environment telemetry interval (`0` = default) | 0 |
 
 **Presets (stance)** — one-touch postures, surfaced as the STANCE controls in the web configurator and
 the FAP Settings screen. Each applies a whole composite in **one** command, so a preset never fires a
@@ -156,7 +157,7 @@ These three are orthogonal axes — an armed dead-drop that hides is `SENTINEL` 
 `/cfg` returns one compact line with the booleans packed into three hex bitmasks:
 
 ```
-CFG prox=<u> light=<u> rep=<hex> out=<hex> in=<hex> gps=<u> gpsint=<u> telint=<u> arm=<u>
+CFG prox=<u> light=<u> rep=<hex> out=<hex> in=<hex> gps=<u> tel=<u> gpsint=<u> telint=<u> arm=<u>
 ```
 
 | Mask | bit0 | bit1 | bit2 | bit3 | bit4 | bit5 | bit6 | bit7 | bit8 | bit9 | bit10 | bit11 |
@@ -167,7 +168,7 @@ CFG prox=<u> light=<u> rep=<hex> out=<hex> in=<hex> gps=<u> gpsint=<u> telint=<u
 
 `arm=` is the live arm state (`1`/`0`) — it drives the SENTINEL preset's displayed posture.
 
-Example: `/cfg @f69c` → `CFG prox=200 light=2000 rep=ff0 out=3f in=f gps=1 gpsint=0 telint=0 arm=0`
+Example: `/cfg @f69c` → `CFG prox=200 light=2000 rep=ff0 out=3f in=f gps=1 tel=1 gpsint=0 telint=0 arm=0`
 (here `rep=ff0` = wipe + all tamper broadcasts + all query replies on, routine command confirmations
 off — the default).
 

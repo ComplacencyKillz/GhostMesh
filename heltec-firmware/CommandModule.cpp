@@ -251,7 +251,7 @@ void CommandModule::doHelp()
         "/buzz @id [ms] - sound buzzer",
         "/vibrate @id [ms] - run vibration",
         "/set @id <key> <val> - prox light led buzz vib screen hbled gpsled",
-        "/set @id <key> - rep_* bc_* in_* silent sensors gps gpsint telint",
+        "/set @id <key> - rep_* bc_* in_* silent sensors gps tel gpsint telint",
         "/set @id mode <active|deployed|dormant> - power/deploy stance",
         "/cfg @id - report current config (bitmask)",
         "/wipe @id - complete erase (armed+confirm)",
@@ -352,6 +352,9 @@ void CommandModule::doSet(const char *key, const char *val)
     } else if (strcasecmp(key, "gps") == 0 && parse_onoff(val, &onoff)) {
         c.gpsOn = onoff; ghostmesh_apply_native_config();
         snprintf(reply, sizeof(reply), "gps=%d", onoff);
+    } else if (strcasecmp(key, "tel") == 0 && parse_onoff(val, &onoff)) {
+        c.telOn = onoff; ghostmesh_apply_native_config();
+        snprintf(reply, sizeof(reply), "tel=%d", onoff);
     } else if (strcasecmp(key, "notify") == 0 && parse_onoff(val, &onoff)) {
         c.notifyLed = c.notifyBuzz = c.notifyVib = onoff;
         if (curFx == FX_NONE) setSteadyLed(steadyR, steadyG, steadyB);
@@ -408,9 +411,9 @@ void CommandModule::doCfg()
     uint8_t in = (c.inTilt) | (c.inLight << 1) | (c.inProx << 2) | (c.inIr << 3);
     char reply[96];
     snprintf(reply, sizeof(reply),
-             "CFG prox=%u light=%u rep=%x out=%x in=%x gps=%u gpsint=%u telint=%u arm=%u",
-             c.proxThresholdCm, c.lightThreshold, rep, out, in, c.gpsOn, c.gpsUpdateSecs, c.telUpdateSecs,
-             ghostmesh_armed ? 1u : 0u);
+             "CFG prox=%u light=%u rep=%x out=%x in=%x gps=%u tel=%u gpsint=%u telint=%u arm=%u",
+             c.proxThresholdCm, c.lightThreshold, rep, out, in, c.gpsOn, c.telOn, c.gpsUpdateSecs,
+             c.telUpdateSecs, ghostmesh_armed ? 1u : 0u);
     enqueueReply(reply);
 }
 
@@ -435,6 +438,7 @@ void ghostmesh_apply_native_config()
     if (gps) { if (c.gpsOn) gps->enable(); else gps->disable(); }
     if (c.gpsUpdateSecs) config.position.gps_update_interval = c.gpsUpdateSecs;   // secs; re-read live
     if (c.telUpdateSecs) moduleConfig.telemetry.environment_update_interval = c.telUpdateSecs;
+    moduleConfig.telemetry.environment_measurement_enabled = c.telOn; // BME280 telemetry on/off
     if (nodeDB) nodeDB->saveToDisk(SEGMENT_CONFIG | SEGMENT_MODULECONFIG);
 }
 

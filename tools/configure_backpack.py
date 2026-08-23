@@ -17,7 +17,7 @@ Keys (see docs/command-cli.md for the full table):
   replies    rep_arm|rep_buzz|rep_vib|rep_led|rep_wipe <on|off>   bc_tilt|bc_light|bc_prox <on|off>
              rep_help|rep_status|rep_err|rep_unknown <on|off>   (/cfg + /set echo are never gated)
   inputs     in_tilt|in_light|in_prox|in_ir <on|off>     (sensors <on|off> = all four)
-  native     gps <on|off>          notify <on|off> = led+buzz+vib only
+  native     gps <on|off>   tel <on|off>   notify <on|off> = led+buzz+vib only
   stance     mode <active|deployed|dormant>   (HIBERNATE composite; SENTINEL is /arm//disarm, not /set)
 
 Requires GhostMesh firmware that processes self-directed commands (2026-08 or later).
@@ -48,13 +48,13 @@ def decode_cfg(line):
         return " ".join(f"{n}={'on' if (mask >> i) & 1 else 'off'}" for i, n in enumerate(names))
 
     prox, light = num("prox"), num("light")
-    gps, gi, ti = num("gps"), num("gpsint"), num("telint")
+    gps, tel, gi, ti = num("gps"), num("tel"), num("gpsint"), num("telint")
     arm = num("arm")
     out = [f"  sensing : prox={prox}cm light={light}"]
     out.append(f"  replies : {flags(num('rep', 16), _REP)}")
     out.append(f"  outputs : {flags(num('out', 16), _OUT)}")
     out.append(f"  inputs  : {flags(num('in', 16), _IN)}")
-    out.append(f"  gps     : gps={'on' if gps else 'off'} gpsint={gi}s telint={ti}s")
+    out.append(f"  gps/tel : gps={'on' if gps else 'off'} tel={'on' if tel else 'off'} gpsint={gi}s telint={ti}s")
     if arm is not None:
         out.append(f"  armed   : {'yes' if arm else 'no'}")
     return "\n".join(out)

@@ -52,6 +52,7 @@ struct GhostMeshConfig {
 
     // ── Meshtastic-native (applied to config.position / moduleConfig.telemetry via saveToDisk) ──
     bool     gpsOn;         // GPS enabled (gps_mode ENABLED/DISABLED)
+    bool     telOn;         // environment telemetry enabled (moduleConfig.telemetry.environment_measurement_enabled)
     uint16_t gpsUpdateSecs; // 0 = leave Meshtastic default; else config.position.gps_update_interval
     uint16_t telUpdateSecs; // 0 = leave default; else moduleConfig.telemetry.environment_update_interval
 };

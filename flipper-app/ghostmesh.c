@@ -776,11 +776,12 @@ int32_t ghostmesh_app(void* p) {
                 // own numeric token; toggles read a mask bit, or the standalone gps= token).
                 const char* buf = app->rx_text_buf;
                 const char* t;
-                unsigned rep = 0, out = 0, in = 0, gps = 0, arm = 0;
+                unsigned rep = 0, out = 0, in = 0, gps = 0, tel = 0, arm = 0;
                 if((t = strstr(buf, "rep="))) rep = (unsigned)strtoul(t + 4, NULL, 16);
                 if((t = strstr(buf, "out="))) out = (unsigned)strtoul(t + 4, NULL, 16);
                 if((t = strstr(buf, "in=")))  in = (unsigned)strtoul(t + 3, NULL, 16);
                 if((t = strstr(buf, "gps="))) gps = (unsigned)atoi(t + 4);
+                if((t = strstr(buf, "tel="))) tel = (unsigned)atoi(t + 4);
                 if((t = strstr(buf, "arm="))) arm = (unsigned)atoi(t + 4);
                 for(uint8_t i = 0; i < GM_SETTING_COUNT; i++) {
                     const GmSetting* g = &GM_SETTINGS[i];
@@ -796,6 +797,8 @@ int32_t ghostmesh_app(void* p) {
                             app->set_vals[i] = (out >> g->bit) & 1u;
                         else if(g->mask == GM_MASK_IN)
                             app->set_vals[i] = (in >> g->bit) & 1u;
+                        else if(strcmp(g->key, "tel") == 0) // standalone tel token
+                            app->set_vals[i] = tel ? 1u : 0u;
                         else // standalone gps token
                             app->set_vals[i] = gps ? 1u : 0u;
                     } else if(g->type == GM_STANCE) {

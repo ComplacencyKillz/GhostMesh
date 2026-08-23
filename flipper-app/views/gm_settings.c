@@ -43,6 +43,7 @@ const GmSetting GM_SETTINGS[] = {
     {GM_HEADER, "-GPS/TEL-", 0, 0, 0, 0, "", GM_MASK_NONE, 0},
     {GM_TOGGLE, "gps", "gps", 0, 0, 0, "", GM_MASK_NONE, 0}, // standalone: decoded from the gps= token
     {GM_SLIDER, "gps int", "gpsint", 0, 3600, 30, " s", GM_MASK_NONE, 0},
+    {GM_TOGGLE, "tel", "tel", 0, 0, 0, "", GM_MASK_NONE, 0}, // standalone: decoded from the tel= token
     {GM_SLIDER, "tel int", "telint", 0, 3600, 30, " s", GM_MASK_NONE, 0},
 };
 

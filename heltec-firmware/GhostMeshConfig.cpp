@@ -18,6 +18,7 @@ GhostMeshConfig ghostmesh_config = {
     true, true, true, true,    // repHelp, repStatus, repErr, repUnknown (rep 8..11) — reply by default
     true, true, true, true,    // inTilt, inLight, inProx, inIr      (in 0..3)
     true,                      // gpsOn
+    true,                      // telOn (environment telemetry enabled)
     0,                         // gpsUpdateSecs (0 = Meshtastic default)
     0,                         // telUpdateSecs (0 = Meshtastic default)
 };
@@ -61,6 +62,7 @@ void ghostmesh_config_ensure_loaded()
     c.inProx = p.getBool("iprx", c.inProx);
     c.inIr = p.getBool("iir", c.inIr);
     c.gpsOn = p.getBool("gpso", c.gpsOn);
+    c.telOn = p.getBool("telo", c.telOn);
     c.gpsUpdateSecs = p.getUShort("gpsint", c.gpsUpdateSecs);
     c.telUpdateSecs = p.getUShort("telint", c.telUpdateSecs);
     p.end();
@@ -103,6 +105,7 @@ void ghostmesh_config_save()
     p.putBool("iprx", c.inProx);
     p.putBool("iir", c.inIr);
     p.putBool("gpso", c.gpsOn);
+    p.putBool("telo", c.telOn);
     p.putUShort("gpsint", c.gpsUpdateSecs);
     p.putUShort("telint", c.telUpdateSecs);
     p.end();
