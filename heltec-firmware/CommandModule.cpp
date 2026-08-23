@@ -156,7 +156,12 @@ ProcessMessage CommandModule::handleReceived(const meshtastic_MeshPacket &mp)
 // ── Parse "/command @target [arg]" and dispatch ─────────────────────────────────────
 void CommandModule::handleCommandText(char *text, uint32_t from)
 {
-    (void)from; // any reply we DO send is broadcast, not directed (many are gated off by rep_* config)
+    // Route every reply this command produces back to whoever asked — NOT the whole mesh. from ==
+    // our own node num means the command came from the local USB/serial StreamAPI client (the web
+    // configurator or a USB FAP, self-addressed), so its replies go phone-only with zero LoRa airtime;
+    // a remote node gets a directed unicast. This is what stops "connecting spams a CFG line to the
+    // whole channel." Autonomous alerts (tamper/arm/etc.) use the broadcast* helpers, not this path.
+    curReplyTo = from;
 
     char *s = text;
     while (*s == ' ')
@@ -214,7 +219,7 @@ void CommandModule::handleCommandText(char *text, uint32_t from)
     } else if (strcasecmp(cmd, "/wipe") == 0) {
         doWipeCommand(arg);
     } else {
-        enqueueReply("? unknown cmd — try /help");
+        if (ghostmesh_config.repUnknown) enqueueReply("? unknown cmd — try /help");
     }
 }
 
@@ -236,6 +241,7 @@ bool CommandModule::targetsMe(const char *tgt)
 // ── /help: one message PER command (mesh text caps at ~200 chars, so we never cram) ──
 void CommandModule::doHelp()
 {
+    if (!ghostmesh_config.repHelp) return; // /help reply gated off (rep bit 8)
     static const char *lines[] = {
         "/help @id - this list",
         "/status @id - armed, battery, uptime",
@@ -246,6 +252,7 @@ void CommandModule::doHelp()
         "/vibrate @id [ms] - run vibration",
         "/set @id <key> <val> - prox light led buzz vib screen hbled gpsled",
         "/set @id <key> - rep_* bc_* in_* silent sensors gps gpsint telint",
+        "/set @id mode <active|deployed|dormant> - power/deploy stance",
         "/cfg @id - report current config (bitmask)",
         "/wipe @id - complete erase (armed+confirm)",
     };
@@ -256,6 +263,7 @@ void CommandModule::doHelp()
 // ── /status: current node state ─────────────────────────────────────────────────────
 void CommandModule::doStatus()
 {
+    if (!ghostmesh_config.repStatus) return; // /status reply gated off (rep bit 9)
     char me[8];
     snprintf(me, sizeof(me), "%04x", (unsigned)(nodeDB->getNodeNum() & 0xFFFF));
     unsigned bat = powerStatus ? powerStatus->getBatteryChargePercent() : 0;
@@ -278,7 +286,7 @@ static bool parse_onoff(const char *v, bool *out) {
 void CommandModule::doSet(const char *key, const char *val)
 {
     if (!key || !val) {
-        enqueueReply("SET needs <key> <val>");
+        if (ghostmesh_config.repErr) enqueueReply("SET needs <key> <val>");
         return;
     }
     GhostMeshConfig &c = ghostmesh_config;
@@ -291,12 +299,14 @@ void CommandModule::doSet(const char *key, const char *val)
         {"rep_vib", &ghostmesh_config.repVib},   {"rep_led", &ghostmesh_config.repLed},
         {"rep_wipe", &ghostmesh_config.repWipe}, {"bc_tilt", &ghostmesh_config.bcTilt},
         {"bc_light", &ghostmesh_config.bcLight}, {"bc_prox", &ghostmesh_config.bcProx},
+        {"rep_help", &ghostmesh_config.repHelp}, {"rep_status", &ghostmesh_config.repStatus},
+        {"rep_err", &ghostmesh_config.repErr},   {"rep_unknown", &ghostmesh_config.repUnknown},
         {"in_tilt", &ghostmesh_config.inTilt},   {"in_light", &ghostmesh_config.inLight},
         {"in_prox", &ghostmesh_config.inProx},   {"in_ir", &ghostmesh_config.inIr},
     };
     for (auto &kf : kFlags) {
         if (strcasecmp(key, kf.k) == 0) {
-            if (!parse_onoff(val, &onoff)) { enqueueReply("SET: bad key/val"); return; }
+            if (!parse_onoff(val, &onoff)) { if (ghostmesh_config.repErr) enqueueReply("SET: bad key/val"); return; }
             *kf.f = onoff;
             snprintf(reply, sizeof(reply), "%s=%d", kf.k, onoff);
             ghostmesh_config_save();
@@ -355,8 +365,29 @@ void CommandModule::doSet(const char *key, const char *val)
     } else if (strcasecmp(key, "sensors") == 0 && parse_onoff(val, &onoff)) {
         c.inTilt = c.inLight = c.inProx = c.inIr = onoff;
         snprintf(reply, sizeof(reply), "sensors=%d", onoff);
+    } else if (strcasecmp(key, "mode") == 0) {
+        // HIBERNATE power/deployment stance. One command applies the whole composite so a preset
+        // never fires a burst of self-addressed /set packets (which the router would drop past the
+        // first). This is the power/sensing axis only — physical outputs are the separate BLACKOUT
+        // (silent) axis. Tamper INPUTS stay live for 'deployed' (a watching dead-drop); only
+        // 'dormant' stands them down.
+        if (strcasecmp(val, "active") == 0) {          // full field use
+            c.gpsOn = true;  c.telUpdateSecs = 120;
+            c.inTilt = c.inLight = c.inProx = c.inIr = true;
+        } else if (strcasecmp(val, "deployed") == 0) { // long-haul: hogs off, tamper watching
+            c.gpsOn = false; c.telUpdateSecs = 900;
+            c.inTilt = c.inLight = c.inProx = c.inIr = true;
+        } else if (strcasecmp(val, "dormant") == 0) {  // transport/storage: minimal, not watching
+            c.gpsOn = false; c.telUpdateSecs = 3600;
+            c.inTilt = c.inLight = c.inProx = c.inIr = false;
+        } else {
+            if (ghostmesh_config.repErr) enqueueReply("SET: mode = active|deployed|dormant");
+            return;
+        }
+        ghostmesh_apply_native_config();
+        snprintf(reply, sizeof(reply), "mode=%s", val);
     } else {
-        enqueueReply("SET: bad key/val");
+        if (ghostmesh_config.repErr) enqueueReply("SET: bad key/val");
         return;
     }
     ghostmesh_config_save();
@@ -364,20 +395,22 @@ void CommandModule::doSet(const char *key, const char *val)
 }
 
 // ── /cfg: reply the current config as one compact bitmask line ───────────────────────
-// rep bits: 0 arm,1 buzz,2 vib,3 led,4 wipe,5 tilt-bc,6 light-bc,7 prox-bc
+// rep bits: 0 arm,1 buzz,2 vib,3 led,4 wipe,5 tilt-bc,6 light-bc,7 prox-bc,8 help,9 status,10 err,11 unknown
 // out bits: 0 led,1 buzz,2 vib,3 screen,4 hbled,5 gpsled ; in bits: 0 tilt,1 light,2 prox,3 ir
 void CommandModule::doCfg()
 {
     const GhostMeshConfig &c = ghostmesh_config;
-    uint8_t rep = (c.repArm) | (c.repBuzz << 1) | (c.repVib << 2) | (c.repLed << 3) | (c.repWipe << 4) |
-                  (c.bcTilt << 5) | (c.bcLight << 6) | (c.bcProx << 7);
+    uint16_t rep = (c.repArm) | (c.repBuzz << 1) | (c.repVib << 2) | (c.repLed << 3) | (c.repWipe << 4) |
+                   (c.bcTilt << 5) | (c.bcLight << 6) | (c.bcProx << 7) |
+                   (c.repHelp << 8) | (c.repStatus << 9) | (c.repErr << 10) | (c.repUnknown << 11);
     uint8_t out = (c.notifyLed) | (c.notifyBuzz << 1) | (c.notifyVib << 2) | (c.outScreen << 3) |
                   (c.outHbled << 4) | (c.outGpsled << 5);
     uint8_t in = (c.inTilt) | (c.inLight << 1) | (c.inProx << 2) | (c.inIr << 3);
     char reply[96];
     snprintf(reply, sizeof(reply),
-             "CFG prox=%u light=%u rep=%x out=%x in=%x gps=%u gpsint=%u telint=%u",
-             c.proxThresholdCm, c.lightThreshold, rep, out, in, c.gpsOn, c.gpsUpdateSecs, c.telUpdateSecs);
+             "CFG prox=%u light=%u rep=%x out=%x in=%x gps=%u gpsint=%u telint=%u arm=%u",
+             c.proxThresholdCm, c.lightThreshold, rep, out, in, c.gpsOn, c.gpsUpdateSecs, c.telUpdateSecs,
+             ghostmesh_armed ? 1u : 0u);
     enqueueReply(reply);
 }
 
@@ -596,6 +629,7 @@ void CommandModule::serviceWipeButton(uint32_t now)
             uint32_t dt = now - btnFirstAt;
             if (ghostmesh_armed && dt > WIPE_DBL_MIN_MS && dt < WIPE_DBL_MAX_MS) {
                 LOG_WARN("Command: WIPE via physical double-press");
+                curReplyTo = NODENUM_BROADCAST; // physical wipe has no requester — alert the whole mesh
                 if (ghostmesh_config.repWipe) enqueueReply("WIPING (button)");
                 wipePending = true;
             }
@@ -624,6 +658,7 @@ void CommandModule::enqueueReply(const char *msg)
         return; // queue full — drop (only happens under a flood; benign)
     strncpy(replyQ[replyTail], msg, sizeof(replyQ[0]) - 1);
     replyQ[replyTail][sizeof(replyQ[0]) - 1] = '\0';
+    replyToQ[replyTail] = curReplyTo; // remember who this reply is for (drain routes on it)
     replyTail = next;
 }
 
@@ -737,9 +772,18 @@ int32_t CommandModule::runOnce()
     servicePutAck();        // emit a pending /put chunk ack immediately (flow control, off the reply queue)
     servicePutTimeout(now); // abort a file transfer that has gone quiet mid-stream
 
-    // Emit one queued reply per REPLY_SPACING_MS so /help doesn't hog the airtime.
+    // Emit one queued reply per REPLY_SPACING_MS so /help doesn't hog the airtime. Route by the
+    // destination captured when the reply was queued: the local StreamAPI client (self-addressed
+    // command ⇒ dest == our node num) gets it phone-only with NO LoRa transmit; a remote requester
+    // gets a directed unicast; a broadcast dest (unsolicited/physical events) still goes to everyone.
     if (replyHead != replyTail && now >= nextReplyAt) {
-        sendText(replyQ[replyHead]);
+        uint32_t dest = replyToQ[replyHead];
+        if (dest == nodeDB->getNodeNum())
+            sendTextToPhone(replyQ[replyHead]); // local web/FAP client — off-mesh, no airtime
+        else if (dest == NODENUM_BROADCAST)
+            sendText(replyQ[replyHead]);        // unsolicited/physical event — everyone hears it
+        else
+            sendTextTo(replyQ[replyHead], dest); // remote requester — directed, not the whole mesh
         replyHead = (uint8_t)((replyHead + 1) % kReplyQ);
         nextReplyAt = now + REPLY_SPACING_MS;
     }

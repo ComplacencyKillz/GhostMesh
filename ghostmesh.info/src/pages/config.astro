@@ -28,6 +28,30 @@ import SubLayout from '../layouts/SubLayout.astro';
   </div>
 
   <div id="gm-panel" style="display:none;">
+    <h2>STANCE</h2>
+    <p style="margin-top:0.3rem; font-size:0.8rem; color:var(--text-dim); line-height:1.5;">
+      One-touch postures. Each is a single command — the granular controls below still tune everything
+      independently.
+    </p>
+    <div class="gm-stance">
+      <div class="gm-stance-row">
+        <div class="gm-stance-id"><span class="gm-stance-name">SENTINEL</span><span class="gm-stance-hint">tamper watch — arm / disarm</span></div>
+        <button class="gm-preset" id="gm-sentinel" data-on="0">DISARMED</button>
+      </div>
+      <div class="gm-stance-row">
+        <div class="gm-stance-id"><span class="gm-stance-name">BLACKOUT</span><span class="gm-stance-hint">all physical output dark</span></div>
+        <button class="gm-preset" id="gm-blackout" data-on="0">LIT</button>
+      </div>
+      <div class="gm-stance-row">
+        <div class="gm-stance-id"><span class="gm-stance-name">HIBERNATE</span><span class="gm-stance-hint">power &amp; sensing stance</span></div>
+        <div class="gm-seg" id="gm-hibernate">
+          <button data-mode="active">ACTIVE</button>
+          <button data-mode="deployed">DEPLOYED</button>
+          <button data-mode="dormant">DORMANT</button>
+        </div>
+      </div>
+    </div>
+
     <h2>SENSING</h2>
     <div class="gm-field">
       <label>Proximity trip</label>
@@ -46,27 +70,25 @@ import SubLayout from '../layouts/SubLayout.astro';
 
     <h2>MESH REPLIES <span class="tag">GO QUIET</span></h2>
     <p style="margin-top:0.3rem; font-size:0.8rem; color:var(--text-dim); line-height:1.5;">
-      What the node announces on the channel. Physical feedback (LED/buzzer/vibration) is separate,
-      below — turn these off to stop the chatter and let the hardware be the signal.
+      Every message the node can emit, each individually gateable. The top rows are event announcements;
+      the last four (help/status/error/unknown) are replies to a command. <strong>Replies only ride the
+      mesh when the command came over the mesh</strong> — commands from this configurator or a wired
+      Flipper are answered off-mesh, no airtime. Physical feedback (LED/buzzer/vibration) is a separate
+      axis below; turn these off to let the hardware be the only signal.
     </p>
     <div id="gm-rep"></div>
 
-    <div class="gm-sechead">
-      <h2>OUTPUTS <span class="tag">GO DARK</span></h2>
-      <button id="gm-silent" class="gm-btn gm-btn--ghost">[ SILENT ]</button>
-    </div>
+    <h2>OUTPUTS <span class="tag">GO DARK</span></h2>
     <p style="margin-top:0.3rem; font-size:0.8rem; color:var(--text-dim); line-height:1.5;">
-      The node's physical indicators. <strong>SILENT</strong> kills them all at once — screen dark,
-      no LED blinks, no sound. (GPS LED is best-effort.)
+      The node's physical indicators. The <strong>BLACKOUT</strong> stance above kills all of these at
+      once; here you gate them one at a time. (GPS LED is best-effort.)
     </p>
     <div id="gm-out"></div>
 
-    <div class="gm-sechead">
-      <h2>SENSOR INPUTS <span class="tag">BATTERY</span></h2>
-      <button id="gm-sensors" class="gm-btn gm-btn--ghost">[ SENSORS OFF ]</button>
-    </div>
+    <h2>SENSOR INPUTS <span class="tag">BATTERY</span></h2>
     <p style="margin-top:0.3rem; font-size:0.8rem; color:var(--text-dim); line-height:1.5;">
-      Turn a sensor off to stop it polling and save battery.
+      Turn a sensor off to stop it polling and save battery. The <strong>HIBERNATE</strong> stance sets
+      these as a group (DORMANT stands them all down); here you gate them one at a time.
     </p>
     <div id="gm-in"></div>
 
@@ -166,12 +188,6 @@ import SubLayout from '../layouts/SubLayout.astro';
   .gm-status { font-size:0.72rem; color:var(--text-dim); letter-spacing:0.2em; text-transform:uppercase; }
   .gm-status.on { color:var(--terminal); text-shadow:0 0 8px rgba(0,255,65,0.5); }
 
-  /* ── Section header carrying a master action on the right ─── */
-  .gm-sechead { display:flex; align-items:flex-end; justify-content:space-between;
-    gap:1rem; flex-wrap:wrap; }
-  .gm-sechead h2 { flex:1 1 auto; min-width:180px; }
-  .gm-sechead .gm-btn { flex:0 0 auto; margin-bottom:0.5rem; }
-
   /* ── Fields ───────────────────────────────────────────────── */
   .gm-field { margin:0.9rem 0; }
   .gm-field > label { display:block; font-size:0.7rem; color:var(--text-dim);
@@ -200,6 +216,38 @@ import SubLayout from '../layouts/SubLayout.astro';
   .gm-toggle[data-on="1"] { border-color:var(--terminal); color:var(--terminal);
     background:rgba(0,255,65,0.08); text-shadow:0 0 6px rgba(0,255,65,0.35); }
   .gm-toggle[data-on="1"]::before { background:var(--terminal); box-shadow:0 0 8px rgba(0,255,65,0.85); }
+
+  /* ── STANCE: one-touch posture presets ───────────────────── */
+  .gm-stance { max-width:520px; margin:0.6rem 0 1.2rem; }
+  .gm-stance-row { display:flex; align-items:center; justify-content:space-between; gap:1rem;
+    padding:0.75rem 0.1rem; border-bottom:1px solid var(--text-ghost); }
+  .gm-stance-row:first-child { border-top:1px solid var(--text-ghost); }
+  .gm-stance-name { display:block; font-size:0.82rem; letter-spacing:0.16em; color:var(--text); }
+  .gm-stance-hint { display:block; font-size:0.6rem; letter-spacing:0.1em; color:var(--text-dim);
+    text-transform:uppercase; margin-top:0.2rem; }
+
+  /* 2-state preset (SENTINEL, BLACKOUT) — the switch look, sized up. Green = engaged. */
+  .gm-preset { display:inline-flex; align-items:center; justify-content:center; gap:0.55rem;
+    min-width:120px; background:transparent; border:1px solid var(--text-ghost); color:var(--text-dim);
+    font-family:inherit; font-size:0.72rem; letter-spacing:0.16em; padding:0.5rem 1.1rem; cursor:pointer;
+    transition:border-color .15s, color .15s, background .15s, box-shadow .15s; }
+  .gm-preset::before { content:''; width:8px; height:8px; border-radius:50%;
+    background:var(--text-ghost); transition:inherit; }
+  .gm-preset:hover { border-color:var(--blue); color:var(--blue); }
+  .gm-preset:hover::before { background:var(--blue); }
+  .gm-preset[data-on="1"] { border-color:var(--terminal); color:var(--terminal);
+    background:rgba(0,255,65,0.08); text-shadow:0 0 6px rgba(0,255,65,0.35); }
+  .gm-preset[data-on="1"]::before { background:var(--terminal); box-shadow:0 0 9px rgba(0,255,65,0.85); }
+
+  /* 3-state segmented (HIBERNATE) — selected segment lit */
+  .gm-seg { display:inline-flex; border:1px solid var(--text-ghost); }
+  .gm-seg button { background:transparent; border:0; border-left:1px solid var(--text-ghost);
+    color:var(--text-dim); font-family:inherit; font-size:0.64rem; letter-spacing:0.12em;
+    padding:0.5rem 0.85rem; cursor:pointer; transition:color .15s, background .15s; }
+  .gm-seg button:first-child { border-left:0; }
+  .gm-seg button:hover { color:var(--blue); }
+  .gm-seg button.on { background:rgba(0,255,65,0.10); color:var(--terminal);
+    text-shadow:0 0 6px rgba(0,255,65,0.35); }
 
   /* ── Trace log ────────────────────────────────────────────── */
   .gm-log { background:rgba(0,0,0,0.5); border:1px solid rgba(120,160,140,0.25);
@@ -230,7 +278,9 @@ import SubLayout from '../layouts/SubLayout.astro';
   // Each entry: [/set key, display label]. Must match the firmware's doCfg() bit order.
   const REP_BITS = [['rep_arm', 'Arm/disarm'], ['rep_buzz', 'Buzz'], ['rep_vib', 'Vibrate'],
     ['rep_led', 'LED/FX'], ['rep_wipe', 'Wipe'], ['bc_tilt', 'Tamper: tilt'],
-    ['bc_light', 'Tamper: light'], ['bc_prox', 'Person detected']];
+    ['bc_light', 'Tamper: light'], ['bc_prox', 'Person detected'],
+    ['rep_help', 'Help reply'], ['rep_status', 'Status reply'], ['rep_err', 'Error replies'],
+    ['rep_unknown', 'Unknown-cmd reply']];
   const OUT_BITS = [['led', 'Status LED'], ['buzz', 'Buzzer'], ['vib', 'Vibration'],
     ['screen', 'Screen'], ['hbled', 'Onboard LED'], ['gpsled', 'GPS LED']];
   const IN_BITS = [['in_tilt', 'Tilt'], ['in_light', 'Light'], ['in_prox', 'Proximity'], ['in_ir', 'IR']];
@@ -297,7 +347,7 @@ import SubLayout from '../layouts/SubLayout.astro';
       const g = (k) => { const m = t.match(new RegExp('(?:^| )' + k + '=(\\d+)')); return m ? parseInt(m[1], 10) : null; };
       const gh = (k) => { const m = t.match(new RegExp('(?:^| )' + k + '=([0-9a-fA-F]+)')); return m ? parseInt(m[1], 16) : null; };
       applyCfg({ prox: g('prox'), light: g('light'), rep: gh('rep'), out: gh('out'), in: gh('in'),
-                 gps: g('gps'), gpsint: g('gpsint'), telint: g('telint') });
+                 gps: g('gps'), gpsint: g('gpsint'), telint: g('telint'), arm: g('arm') });
       log('< ' + t, 'gm-rx');
       $('gm-panel').style.display = 'block';
     } else if (t.startsWith('PUT ')) {
@@ -317,10 +367,23 @@ import SubLayout from '../layouts/SubLayout.astro';
     applyMask(c.rep, REP_BITS);
     applyMask(c.out, OUT_BITS);
     applyMask(c.in, IN_BITS);
+    // ── STANCE presets, derived from the same config ──
+    if (c.arm != null) setPreset('gm-sentinel', c.arm, 'ARMED', 'DISARMED');
+    if (c.out != null) setPreset('gm-blackout', c.out === 0 ? 1 : 0, 'DARK', 'LIT'); // all 6 outputs off ⇒ dark
+    if (c.gps != null && c.in != null) {                                             // infer HIBERNATE mode
+      const inAll = (c.in & 0x0f) === 0x0f, inNone = (c.in & 0x0f) === 0;
+      let mode = null;                                                               // null ⇒ custom (nothing lit)
+      if (c.gps && inAll) mode = 'active';
+      else if (!c.gps && inAll) mode = 'deployed';
+      else if (!c.gps && inNone) mode = 'dormant';
+      setSeg('gm-hibernate', mode);
+    }
   }
   function applyMask(v, bits) { if (v == null) return; bits.forEach(([k], i) => setToggle('gm-' + k, (v >> i) & 1)); }
   function setSlider(id, val, unit) { if (val == null) return; const el = $(id); if (!el) return; el.value = val; const o = $(id + '-out'); if (o) o.textContent = val + unit; }
   function setToggle(id, on) { const b = $(id); if (!b || on == null) return; b.dataset.on = on ? '1' : '0'; b.textContent = on ? 'ON' : 'OFF'; }
+  function setPreset(id, on, onLabel, offLabel) { const b = $(id); if (!b) return; b.dataset.on = on ? '1' : '0'; b.textContent = on ? onLabel : offLabel; }
+  function setSeg(id, mode) { const c = $(id); if (!c) return; for (const b of c.querySelectorAll('button')) b.classList.toggle('on', b.dataset.mode === mode); }
 
   // Build the .gm-field--row toggle buttons for a section from its bit table (DRY — one row per bit).
   function renderToggles(containerId, bits) {
@@ -333,6 +396,7 @@ import SubLayout from '../layouts/SubLayout.astro';
 
   async function requestCfg() { await send(encTextTo('/cfg @' + last4(), nodeNum), '/cfg @' + last4()); }
   async function setKey(key, val) { const cmd = '/set @' + last4() + ' ' + key + ' ' + val; await send(encTextTo(cmd, nodeNum), cmd); }
+  async function sendPlain(cmd) { const full = cmd + ' @' + last4(); await send(encTextTo(full, nodeNum), full); } // e.g. /arm
 
   // The /put payload uploader needs a live connection + node id, so it inits after handshake.
   // (The firmware flasher does NOT — it owns its own port and is mounted on page load; see init().)
@@ -410,9 +474,20 @@ import SubLayout from '../layouts/SubLayout.astro';
       $(id).addEventListener('click', () => { const on = $(id).dataset.on === '1' ? 0 : 1; setToggle(id, on); setKey(key, on ? 'on' : 'off'); });
     }
 
-    // Masters: fire the macro, then re-query so the individual toggles snap to their new state.
-    $('gm-silent').addEventListener('click', async () => { await setKey('silent', 'on'); setTimeout(requestCfg, 300); });
-    $('gm-sensors').addEventListener('click', async () => { await setKey('sensors', 'off'); setTimeout(requestCfg, 300); });
+    // ── STANCE presets: each is a single command; re-query after so the granular toggles snap. ──
+    // SENTINEL toggles arm/disarm (bare commands, not /set). BLACKOUT toggles the silent master.
+    $('gm-sentinel').addEventListener('click', async () => {
+      const armed = $('gm-sentinel').dataset.on === '1';
+      await sendPlain(armed ? '/disarm' : '/arm'); setTimeout(requestCfg, 350);
+    });
+    $('gm-blackout').addEventListener('click', async () => {
+      const dark = $('gm-blackout').dataset.on === '1';
+      await setKey('silent', dark ? 'off' : 'on'); setTimeout(requestCfg, 350);
+    });
+    // HIBERNATE: pick a mode; the firmware applies the whole composite in one command.
+    for (const btn of document.querySelectorAll('#gm-hibernate button')) {
+      btn.addEventListener('click', async () => { await setKey('mode', btn.dataset.mode); setTimeout(requestCfg, 450); });
+    }
 
     // Firmware flasher is standalone (owns its own port) — mount it now, no connection required.
     $('gm-flasher').appendChild(flasherInit({

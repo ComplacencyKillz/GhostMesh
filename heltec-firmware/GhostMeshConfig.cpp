@@ -15,6 +15,7 @@ GhostMeshConfig ghostmesh_config = {
     false, false, false, false,// repArm, repBuzz, repVib, repLed    (rep 0..3) — silent by default
     true,                      // repWipe                            (rep 4)
     true, true, true,          // bcTilt, bcLight, bcProx            (rep 5,6,7) — tamper stays on
+    true, true, true, true,    // repHelp, repStatus, repErr, repUnknown (rep 8..11) — reply by default
     true, true, true, true,    // inTilt, inLight, inProx, inIr      (in 0..3)
     true,                      // gpsOn
     0,                         // gpsUpdateSecs (0 = Meshtastic default)
@@ -51,6 +52,10 @@ void ghostmesh_config_ensure_loaded()
     c.bcTilt = p.getBool("btlt", c.bcTilt);
     c.bcLight = p.getBool("blit", c.bcLight);
     c.bcProx = p.getBool("bprx", c.bcProx);
+    c.repHelp = p.getBool("rhlp", c.repHelp);
+    c.repStatus = p.getBool("rsta", c.repStatus);
+    c.repErr = p.getBool("rerr", c.repErr);
+    c.repUnknown = p.getBool("runk", c.repUnknown);
     c.inTilt = p.getBool("itlt", c.inTilt);
     c.inLight = p.getBool("ilit", c.inLight);
     c.inProx = p.getBool("iprx", c.inProx);
@@ -89,6 +94,10 @@ void ghostmesh_config_save()
     p.putBool("btlt", c.bcTilt);
     p.putBool("blit", c.bcLight);
     p.putBool("bprx", c.bcProx);
+    p.putBool("rhlp", c.repHelp);
+    p.putBool("rsta", c.repStatus);
+    p.putBool("rerr", c.repErr);
+    p.putBool("runk", c.repUnknown);
     p.putBool("itlt", c.inTilt);
     p.putBool("ilit", c.inLight);
     p.putBool("iprx", c.inProx);

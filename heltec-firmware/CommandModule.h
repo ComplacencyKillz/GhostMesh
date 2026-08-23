@@ -37,8 +37,14 @@ class CommandModule : public SinglePortModule, private concurrency::OSThread
     // Slot is 96 (not 64) so the compact /cfg bitmask line (~74 chars) isn't truncated at source.
     static constexpr uint8_t kReplyQ = 12;
     char replyQ[kReplyQ][96];
+    uint32_t replyToQ[kReplyQ] = {0}; // per-reply destination (see enqueueReply / runOnce drain)
     uint8_t replyHead = 0, replyTail = 0;
     uint32_t nextReplyAt = 0;
+    // Where the reply for the command currently being handled should go. Set from the command's
+    // sender in handleCommandText: our own node num ⇒ the reply is for the local USB/serial client
+    // (web configurator / FAP) and goes phone-only, no LoRa; a remote node ⇒ directed unicast back to
+    // it; broadcast ⇒ an unsolicited/physical event (e.g. button wipe) that everyone should see.
+    uint32_t curReplyTo = 0xFFFFFFFFu; // == NODENUM_BROADCAST (literal so the header needs no mesh include)
 
     // ── wipe state (defense in depth: node must be ARMED for every path) ──
     uint16_t wipeToken = 0;      // one-time mesh confirm token (0 = none outstanding)

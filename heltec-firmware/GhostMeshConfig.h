@@ -34,6 +34,15 @@ struct GhostMeshConfig {
     bool bcTilt;   // rep bit 5 — TAMPER broadcast
     bool bcLight;  // rep bit 6 — TAMPER_LIGHT broadcast
     bool bcProx;   // rep bit 7 — PERSON_DETECTED broadcast
+    // rep bits 8..11 — request-response replies, each individually gateable. These never broadcast
+    // (they're routed only to whoever sent the command — off-mesh for the local Flipper/configurator,
+    // directed unicast for a remote node), so gating just lets a node stay tight-lipped even to a
+    // direct query. /cfg + /set success echo are deliberately NOT gated — they're the control channel
+    // the configurator/FAP read to populate their UI.
+    bool repHelp;    // rep bit 8  — /help listing
+    bool repStatus;  // rep bit 9  — /status reply
+    bool repErr;     // rep bit 10 — /set error messages (bad key/val, needs args, bad mode)
+    bool repUnknown; // rep bit 11 — unknown-command reply
 
     // ── Sensor input enables (battery): does the module poll its hardware? /cfg `in` bits 0..3 ──
     bool inTilt;   // in bit 0
