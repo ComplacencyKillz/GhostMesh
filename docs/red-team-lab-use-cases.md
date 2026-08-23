@@ -4,8 +4,8 @@
 
 **Status: Available (Phase 2–5)**
 
-During authorized assessments where cellular and WiFi comms may be monitored or
-unavailable, GhostMesh provides a fallback coordination channel over LoRa mesh.
+When cellular and WiFi comms may be monitored or unavailable, GhostMesh provides
+a coordination channel over LoRa mesh.
 
 - Each operator carries a Flipper + GhostMesh backpack
 - Canned message profiles cover common field status: check-in, moving, hold, abort, medical
@@ -99,13 +99,8 @@ fires the keystrokes, on its own OK press. That's a deliberate second confirmati
 mesh armed-check: a remote trigger can stage a script, but firing it still needs a thumb on the
 device. See `docs/command-cli.md` ("Running a payload") for the full command reference.
 
-**Design constraints (non-negotiable):**
-- Requires slide switch in ARMED position before any payload can fire
-- Scripts are stored on the SD card and selected by name — no arbitrary code injection
-- Only fires on the private channel — default channel packets cannot trigger payloads
-- All test payloads must be benign and reversible (print to terminal, create a text file,
-  blink an LED)
-- Lab/owned systems only
+**Design:** slide switch in ARMED position gates execution. Scripts selected by name from the
+SD card, not injected. Fires only on the private channel. Test payloads are benign and reversible.
 
 **NFC orchestration over mesh:** Send a mesh packet to command the Flipper to:
 - Emulate a stored NFC badge (`NFC_EMU:filename.nfc`) — Flipper taped to reader,
