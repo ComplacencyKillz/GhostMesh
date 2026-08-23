@@ -1,7 +1,7 @@
 # Hardware Reference
 
-> **Board schematic (source of truth):** the KiCad design lives in `kicad/` —
-> `kicad/FlipperZeroModule/` (schematic + PCB) and `kicad/HeltecModule/` (Heltec symbol/footprint).
+> **Board schematic (source of truth):** the KiCad design lives in <code>kicad/</code> —
+> <code>kicad/FlipperZeroModule/</code> (schematic + PCB) and <code>kicad/HeltecModule/</code> (Heltec symbol/footprint).
 > Where this document and the schematic disagree, the schematic wins.
 
 ## Component Spec
@@ -22,7 +22,7 @@ Every part in the build, with the maker and part marking to chase down a datashe
 | Light sensor | GL5528 photoresistor (LDR) | generic | Tamper — case opened | ADC |
 | Ultrasonic ranger | RCWL-1601 (3.3 V; HC-SR04 needs 5 V) | generic | Proximity — approach | GPIO (3.3 V) |
 | IR receiver | VS1838B | generic | NEC IR remote control | GPIO (38 kHz demod) |
-| RGB indicator | SK6812 | Adafruit-compatible | Status LED (`/led`, working) | 1-wire addressable |
+| RGB indicator | SK6812 | Adafruit-compatible | Status LED (<code>/led</code>, working) | 1-wire addressable |
 | Buzzer | passive magnetic buzzer | generic | Audible indicator (tones) | GPIO PWM via driver |
 | Haptic | 3 V coin/cyl vibration motor | generic | Vibration indicator | GPIO via driver |
 | Driver (bench) | PN2222A (TO-92) | generic NPN BJT | Low-side switch for buzzer/motor | — |
@@ -104,14 +104,14 @@ custom Meshtastic modules.
 | 19 | ❌ USB D- | ESP32-S3 native USB |
 | 20 | ❌ USB D+ | ESP32-S3 native USB |
 | 21 | ❌ OLED reset | Hardwired OLED reset — NOT free (proximity trigger uses GPIO38 instead) |
-| 26 | ✅ RGB status LED | External SK6812 data (`/led` via `neopixelWrite`; colors + gradient, working) — NOT Vext (that's GPIO36) |
+| 26 | ✅ RGB status LED | External SK6812 data (<code>/led</code> via <code>neopixelWrite</code>; colors + gradient, working) — NOT Vext (that's GPIO36) |
 | 33 | ✅ Free — confirmed | GPS UART1 TX (Heltec → BN-220 RX) |
 | 34 | ✅ Free — confirmed | GPS UART1 RX (BN-220 TX → Heltec) |
-| 35 | ❌ Onboard LED | White user LED (does NOT work as a UART RX); `CommandModule` mirrors the `/led` on/off state here (backup to the GPIO26 RGB) |
-| 36 | ❌ Vext control | Powers OLED + external 3.3V rail (Meshtastic `VEXT_ENABLE`, active LOW) |
-| 37 | ✅ Wipe button | Tact switch, INPUT_PULLUP → `CommandModule` factory reset (armed + double-press) |
-| 39 | ✅ Buzzer | Passive buzzer via PN2222 low-side driver — PWM tone (`CommandModule` `/buzz`) |
-| 40 | ✅ Vibration | Motor via PN2222 + 1N4007 flyback (`CommandModule` `/vibrate`); EE PCB uses AO3400 |
+| 35 | ❌ Onboard LED | White user LED (does NOT work as a UART RX); <code>CommandModule</code> mirrors the <code>/led</code> on/off state here (backup to the GPIO26 RGB) |
+| 36 | ❌ Vext control | Powers OLED + external 3.3V rail (Meshtastic <code>VEXT_ENABLE</code>, active LOW) |
+| 37 | ✅ Wipe button | Tact switch, INPUT_PULLUP → <code>CommandModule</code> factory reset (armed + double-press) |
+| 39 | ✅ Buzzer | Passive buzzer via PN2222 low-side driver — PWM tone (<code>CommandModule</code> <code>/buzz</code>) |
+| 40 | ✅ Vibration | Motor via PN2222 + 1N4007 flyback (<code>CommandModule</code> <code>/vibrate</code>); EE PCB uses AO3400 |
 | 41 | ❌ I2C bus 2 SDA | Sensor I2C bus (BME280, MAX17048 via Qwiic hub) |
 | 42 | ❌ I2C bus 2 SCL | Sensor I2C bus |
 | 43 | ⚠️ UART0 TX / CP2102 | USB console (flash/debug). **NOT the Flipper link** — CP2102 clamps it on battery |
@@ -139,7 +139,7 @@ custom Meshtastic modules.
 | Photoresistor (light tamper) | ADC | — | GPIO5 | 10 |
 | IR receiver (remote arm/disarm) | Digital GPIO | — | GPIO48 | 10 |
 
-**Heltec backpack outputs & controls** — operator triggers them over the FAP / mesh / IR; driven by `CommandModule`:
+**Heltec backpack outputs & controls** — operator triggers them over the FAP / mesh / IR; driven by <code>CommandModule</code>:
 
 | Component | Interface | Heltec GPIO | Phase |
 |-----------|-----------|-------------|-------|
@@ -158,7 +158,7 @@ custom Meshtastic modules.
 | IR receiver module | Remote arm/disarm | Heltec GPIO48 | 10 |
 | 1N4007 diode rectifier (2pcs) | Flyback for the vibration motor + coil buzzer | Heltec backpack | 10 |
 | PN2222 NPN transistor (2pcs) | Buzzer (GPIO39) + vibration (GPIO40) low-side drivers | Heltec backpack | 10 |
-| Passive buzzer | Tone alerts (distinct tones per event) via `/buzz` | Heltec GPIO39 | 10 |
+| Passive buzzer | Tone alerts (distinct tones per event) via <code>/buzz</code> | Heltec GPIO39 | 10 |
 
 **Not used:** DHT11 (redundant — BME280 is strictly better), LCD 1602 (both devices have
 displays), stepper motor, servo, joystick, potentiometer, UNO R3, 7-segment displays, the
@@ -254,7 +254,7 @@ UART1 (GPIO34 RX / GPIO33 TX):
 | BN-220 GPS | ✅ built-in | — |
 | Private channels / config | ✅ AdminMessage + config | — |
 | Complete-flash destruct | ⚠️ AdminMessage only resets config | ✅ GhostMeshWipe (built) |
-| Mesh command CLI (`/cmd @target`) | ❌ | ✅ CommandModule (built) |
+| Mesh command CLI (<code>/cmd @target</code>) | ❌ | ✅ CommandModule (built) |
 | Ultrasonic (RCWL-1601) → LoRa alert | ❌ | ✅ ProximityModule (built) |
 | Tilt switch → LoRa alert | built-in exists but isn't arm-gated | ✅ TiltModule (used) |
 | Slide switch arm/disarm + gate | ❌ | ✅ ArmingModule (built) |
@@ -268,11 +268,11 @@ UART1 (GPIO34 RX / GPIO33 TX):
 
 ## Confirmed Working State
 
-- FAP: menu-hub UI (Messages / RX History / Sensors / Control / Status / Backup / Settings); `RDY` after the handshake
+- FAP: menu-hub UI (Messages / RX History / Sensors / Control / Status / Backup / Settings); <code>RDY</code> after the handshake
 - TX/RX text over the mesh; per-message RSSI/SNR; dated CSV logging; marquee display
 - Telemetry: BME280 temp/humidity/pressure, BN-220 GPS position, battery % in the title bar
 - Backpack firmware: tamper (tilt / light), proximity (RCWL-1601 at 3.3V), arming toggle, buzzer + vibration + RGB LED — all over the private mesh, arm-gated
-- IR control: arm / disarm confirmed on hardware; the `ARM → WIPE → CONFIRM` destruct + complete-flash wipe built (spare-board test pending)
+- IR control: arm / disarm confirmed on hardware; the <code>ARM → WIPE → CONFIRM</code> destruct + complete-flash wipe built (spare-board test pending)
 - Encrypted config backup written by the FAP (backup → restore round-trip test pending)
 
 Full phase-by-phase status: [roadmap.md](roadmap.md).

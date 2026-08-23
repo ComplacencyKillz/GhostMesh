@@ -1,26 +1,26 @@
 ---
 name: pcbway
-description: PCBWay PCB fabrication and assembly — turnkey/consigned assembly, design rules, ordering workflow. Alternative to JLCPCB for manufacturing. Use with KiCad. Use this skill when the user mentions PCBWay, needs turnkey assembly (PCBWay sources parts by MPN), has parts not available on LCSC, needs assembled boards with non-LCSC components, wants to compare PCBWay vs JLCPCB, or needs assembly with parts sourced globally rather than from LCSC only. For gerber/CPL export, stencil ordering, and BOM management, see the `bom` skill.
+description: PCBWay PCB fabrication and assembly — turnkey/consigned assembly, design rules, ordering workflow. Alternative to JLCPCB for manufacturing. Use with KiCad. Use this skill when the user mentions PCBWay, needs turnkey assembly (PCBWay sources parts by MPN), has parts not available on LCSC, needs assembled boards with non-LCSC components, wants to compare PCBWay vs JLCPCB, or needs assembly with parts sourced globally rather than from LCSC only. For gerber/CPL export, stencil ordering, and BOM management, see the <code>bom</code> skill.
 ---
 
 # PCBWay — PCB Fabrication & Assembly
 
 PCBWay is a PCB fabrication and assembly service based in Shenzhen, China. It is an alternative to JLCPCB with similar capabilities and pricing.
 
-**Typical usage**: Order bare prototype PCBs + framed stencil from PCBWay during prototyping (parts sourced separately from DigiKey/Mouser, hand-assembled in lab). For production runs (100s qty), order fully assembled boards from PCBWay using turnkey component sourcing (PCBWay sources parts by MPN). JLCPCB is the primary alternative. For BOM management, gerber/CPL export, and stencil ordering, see the `bom` skill.
+**Typical usage**: Order bare prototype PCBs + framed stencil from PCBWay during prototyping (parts sourced separately from DigiKey/Mouser, hand-assembled in lab). For production runs (100s qty), order fully assembled boards from PCBWay using turnkey component sourcing (PCBWay sources parts by MPN). JLCPCB is the primary alternative. For BOM management, gerber/CPL export, and stencil ordering, see the <code>bom</code> skill.
 
 ## Related Skills
 
 | Skill | Purpose |
 |-------|---------|
-| `kicad` | Read/analyze KiCad project files, DFM scoring |
-| `bom` | BOM management, gerber/CPL export, stencil ordering |
-| `digikey` | Search DigiKey (prototype sourcing, primary — also preferred for datasheet downloads via API) |
-| `mouser` | Search Mouser (prototype sourcing, secondary) |
-| `lcsc` | Search LCSC (production sourcing, JLCPCB parts) |
-| `jlcpcb` | JLCPCB PCB fabrication & assembly (primary alternative) |
-| `emc` | EMC pre-compliance risk analysis — run before fab to catch EMC issues |
-| `spice` | SPICE simulation — verify analog subcircuits before committing to fab |
+| <code>kicad</code> | Read/analyze KiCad project files, DFM scoring |
+| <code>bom</code> | BOM management, gerber/CPL export, stencil ordering |
+| <code>digikey</code> | Search DigiKey (prototype sourcing, primary — also preferred for datasheet downloads via API) |
+| <code>mouser</code> | Search Mouser (prototype sourcing, secondary) |
+| <code>lcsc</code> | Search LCSC (production sourcing, JLCPCB parts) |
+| <code>jlcpcb</code> | JLCPCB PCB fabrication & assembly (primary alternative) |
+| <code>emc</code> | EMC pre-compliance risk analysis — run before fab to catch EMC issues |
+| <code>spice</code> | SPICE simulation — verify analog subcircuits before committing to fab |
 
 ## Key Differences from JLCPCB
 
@@ -64,14 +64,14 @@ Line#,Qty,Designator,MPN,Manufacturer,Description,Package,Type
 Required columns:
 | Column | Description |
 |--------|-------------|
-| `Line#` | Row number |
-| `Qty` | Quantity per board |
-| `Designator` | Reference designators (comma-separated) |
-| `MPN` | Manufacturer Part Number — PCBWay sources by this |
-| `Manufacturer` | Manufacturer name |
-| `Description` | Part description |
-| `Package` | Footprint/package name |
-| `Type` | `SMD`, `THT` (through-hole), or `Hybrid` |
+| <code>Line#</code> | Row number |
+| <code>Qty</code> | Quantity per board |
+| <code>Designator</code> | Reference designators (comma-separated) |
+| <code>MPN</code> | Manufacturer Part Number — PCBWay sources by this |
+| <code>Manufacturer</code> | Manufacturer name |
+| <code>Description</code> | Part description |
+| <code>Package</code> | Footprint/package name |
+| <code>Type</code> | <code>SMD</code>, <code>THT</code> (through-hole), or <code>Hybrid</code> |
 
 For turnkey, the **MPN** is the critical field — PCBWay uses it to source parts from their global supply chain.
 
@@ -81,7 +81,7 @@ For turnkey, the **MPN** is the critical field — PCBWay uses it to source part
 2. Export via Edit Symbol Fields > Export CSV
 3. Reformat columns to match PCBWay's expected format (add Line#, Qty, Type columns)
 
-For gerber export settings and CPL format, see the `bom` skill — both JLCPCB and PCBWay use the same formats.
+For gerber export settings and CPL format, see the <code>bom</code> skill — both JLCPCB and PCBWay use the same formats.
 
 ## PCB Design Rules (PCBWay Capabilities)
 
@@ -123,7 +123,7 @@ For gerber export settings and CPL format, see the `bom` skill — both JLCPCB a
 
 ### Importing DRU into KiCad
 
-If you have a PCBWay `.kicad_dru` design rules file, import it in KiCad Board Editor > Board Setup > Design Rules > Import Settings.
+If you have a PCBWay <code>.kicad_dru</code> design rules file, import it in KiCad Board Editor > Board Setup > Design Rules > Import Settings.
 
 ## Assembly Constraints
 
@@ -136,30 +136,30 @@ If you have a PCBWay `.kicad_dru` design rules file, import it in KiCad Board Ed
 
 ## PCBWay Partner API (Approval Required)
 
-Contact PCBWay for partner API access. Partner API at `https://api-partner.pcbway.com`.
+Contact PCBWay for partner API access. Partner API at <code>https://api-partner.pcbway.com</code>.
 
 Available endpoints:
-- **PCB Quotation** — `POST api/Pcb/PcbQuotation` — get PCB price
-- **Place Order** — `POST api/Pcb/PlaceOrder` — add to cart
-- **Confirm Order** — `POST api/Pcb/ConfirmOrder` — finalize and pay
-- **Query Order** — `POST api/Pcb/QueryOrderProcess` — track order status
+- **PCB Quotation** — <code>POST api/Pcb/PcbQuotation</code> — get PCB price
+- **Place Order** — <code>POST api/Pcb/PlaceOrder</code> — add to cart
+- **Confirm Order** — <code>POST api/Pcb/ConfirmOrder</code> — finalize and pay
+- **Query Order** — <code>POST api/Pcb/QueryOrderProcess</code> — track order status
 
-Documentation: `https://api-partner.pcbway.com/Help`
+Documentation: <code>https://api-partner.pcbway.com/Help</code>
 
 ## Ordering Workflow
 
 ### Prototype Order (Bare PCB + Stencil)
 
-1. **Export gerbers** from KiCad (see `bom` skill for export settings)
-2. Upload gerbers to `https://www.pcbway.com/orderonline.aspx` — configure layers, thickness, color, qty
-3. Order a **framed stencil** separately at `https://www.pcbway.com/stencil.aspx`
+1. **Export gerbers** from KiCad (see <code>bom</code> skill for export settings)
+2. Upload gerbers to <code>https://www.pcbway.com/orderonline.aspx</code> — configure layers, thickness, color, qty
+3. Order a **framed stencil** separately at <code>https://www.pcbway.com/stencil.aspx</code>
 4. Order — PCBs and stencil typically arrive in ~1 week
 
 ### Production Order (Assembled Boards)
 
-1. **Export gerbers** from KiCad (see `bom` skill for export settings)
+1. **Export gerbers** from KiCad (see <code>bom</code> skill for export settings)
 2. **Export BOM** as CSV with MPN, Manufacturer, Description, Package, Type columns
-3. **Export CPL** (centroid/placement file) as CSV (see `bom` skill for format)
+3. **Export CPL** (centroid/placement file) as CSV (see <code>bom</code> skill for format)
 4. Upload gerbers to PCBWay — configure PCB specs
 5. Select "PCB Assembly" — choose Turnkey, Partial Turnkey, or Consigned
 6. Upload BOM and centroid files

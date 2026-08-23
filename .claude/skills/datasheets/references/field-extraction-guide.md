@@ -2,9 +2,9 @@
 
 How to find each schema field in a typical datasheet PDF. Covers section naming conventions by vendor, what language to look for, and common mistakes.
 
-The extraction workflow starts with `datasheet_page_selector.py` identifying the relevant pages (pin table, absolute maximum ratings, operating conditions, electrical characteristics, application circuit). This guide describes what to look for once you have those pages.
+The extraction workflow starts with <code>datasheet_page_selector.py</code> identifying the relevant pages (pin table, absolute maximum ratings, operating conditions, electrical characteristics, application circuit). This guide describes what to look for once you have those pages.
 
-Use `null` for any field the datasheet does not specify. Do not guess or interpolate.
+Use <code>null</code> for any field the datasheet does not specify. Do not guess or interpolate.
 
 ---
 
@@ -90,64 +90,64 @@ Note: Espressif often separates the datasheet (pin specs, electrical) from a har
 
 ## Field-by-Field Guidance
 
-### `mpn`
+### <code>mpn</code>
 
-Use the exact part number from the datasheet's title or ordering information page, including the package and temperature suffix (e.g., `TPS61023DRLR`, not `TPS61023`). Omit marketing names or family names.
+Use the exact part number from the datasheet's title or ordering information page, including the package and temperature suffix (e.g., <code>TPS61023DRLR</code>, not <code>TPS61023</code>). Omit marketing names or family names.
 
-### `manufacturer`
+### <code>manufacturer</code>
 
 Use the company name as it appears on the datasheet header. For acquisitions (e.g., Maxim by Analog Devices, Linear Technology by Analog Devices), use the name on the datasheet being read, not the current parent company.
 
-### `category`
+### <code>category</code>
 
 Match to the category list in extraction-schema.md. The category determines which scoring rules apply. If the part spans categories (e.g., a PMIC with multiple regulators), use the primary function.
 
-### `package`
+### <code>package</code>
 
-Format: `"<package_name> (<pin_count>-pin)"`. Examples: `"TSSOP-14 (14-pin)"`, `"SOT-23-6 (6-pin)"`, `"QFN-32 (32-pin, 5x5mm)"`. The pin count is used to validate coverage in the scorer. Found in the ordering information or package outline section.
+Format: <code>"<package_name> (<pin_count>-pin)"</code>. Examples: <code>"TSSOP-14 (14-pin)"</code>, <code>"SOT-23-6 (6-pin)"</code>, <code>"QFN-32 (32-pin, 5x5mm)"</code>. The pin count is used to validate coverage in the scorer. Found in the ordering information or package outline section.
 
-### `pins[].number`
+### <code>pins[].number</code>
 
-Copy exactly as printed in the pin description table: `"1"`, `"2"`, `"A1"`, `"EP"` (exposed pad). Do not renumber or convert to integers.
+Copy exactly as printed in the pin description table: <code>"1"</code>, <code>"2"</code>, <code>"A1"</code>, <code>"EP"</code> (exposed pad). Do not renumber or convert to integers.
 
-### `pins[].name`
+### <code>pins[].name</code>
 
-Copy from the pin name column. When the datasheet shows alternative names (e.g., `SW/VOUT`), use the primary name for the operating mode you're documenting.
+Copy from the pin name column. When the datasheet shows alternative names (e.g., <code>SW/VOUT</code>), use the primary name for the operating mode you're documenting.
 
-### `pins[].type`
+### <code>pins[].type</code>
 
 Map from the datasheet's function column:
 
 | Datasheet language | Schema type |
 |-------------------|-------------|
-| VDD, VCC, VIN, VSUPPLY | `power` |
-| GND, AGND, PGND, VSS | `ground` |
-| FB, COMP, VREF, VSET (analog) | `analog` |
-| EN, SCL, SDA, TX, RX, CS, INT, ALERT | `digital` |
-| NC, No Connect | `no_connect` |
-| SDA/SCL (bidirectional bus), IO | `bidirectional` |
+| VDD, VCC, VIN, VSUPPLY | <code>power</code> |
+| GND, AGND, PGND, VSS | <code>ground</code> |
+| FB, COMP, VREF, VSET (analog) | <code>analog</code> |
+| EN, SCL, SDA, TX, RX, CS, INT, ALERT | <code>digital</code> |
+| NC, No Connect | <code>no_connect</code> |
+| SDA/SCL (bidirectional bus), IO | <code>bidirectional</code> |
 
-### `pins[].voltage_abs_max`
+### <code>pins[].voltage_abs_max</code>
 
 Found in the pin description table (individual pin limits) or the absolute maximum ratings table. Individual pin limits take precedence over the global abs max. Common traps:
 
 - **SW pin on switching regulators**: often has a lower abs max than VIN (e.g., VIN = 6V, SW = 6V, but separate footnote limits SW to 5.6V during startup)
-- **ESD clamp pins**: may have a negative lower limit (e.g., `-0.3V to 6V`) — store only the upper limit in this field
-- **I/O pins on MCUs**: often have a separate `VDDIO` limit distinct from the main supply
+- **ESD clamp pins**: may have a negative lower limit (e.g., <code>-0.3V to 6V</code>) — store only the upper limit in this field
+- **I/O pins on MCUs**: often have a separate <code>VDDIO</code> limit distinct from the main supply
 
-### `pins[].threshold_high_v` / `pins[].threshold_low_v`
+### <code>pins[].threshold_high_v</code> / <code>pins[].threshold_low_v</code>
 
 Look in the electrical characteristics table under "Logic Input Threshold" or similar. Common naming:
 
-- `V_IH`, `VIH`, `V_IL`, `VIL` — standard logic threshold names
-- `V_EN(H)`, `V_EN(L)` — enable pin thresholds (device-specific naming)
-- `V_IN(H)`, `V_IN(L)` — input pin thresholds
+- <code>V_IH</code>, <code>VIH</code>, <code>V_IL</code>, <code>VIL</code> — standard logic threshold names
+- <code>V_EN(H)</code>, <code>V_EN(L)</code> — enable pin thresholds (device-specific naming)
+- <code>V_IN(H)</code>, <code>V_IN(L)</code> — input pin thresholds
 
-Trap: Do not confuse `V_IH` (recommended minimum high input) with `V_OL`/`V_OH` (output levels). The extraction wants input thresholds — what the pin recognizes as logic high or low.
+Trap: Do not confuse <code>V_IH</code> (recommended minimum high input) with <code>V_OL</code>/<code>V_OH</code> (output levels). The extraction wants input thresholds — what the pin recognizes as logic high or low.
 
 Trap: Some datasheets list thresholds as fractions of VDD (e.g., "0.7 × VDD"). Record the fraction notation in the description, and store the absolute value calculated at the nominal operating voltage in the field.
 
-### `pins[].required_external`
+### <code>pins[].required_external</code>
 
 This is the most important field for design review automation. Sources:
 
@@ -160,26 +160,26 @@ Write in the datasheet's own language when possible. Include values and placemen
 
 ---
 
-### `absolute_maximum_ratings`
+### <code>absolute_maximum_ratings</code>
 
 Found in the "Absolute Maximum Ratings" table, usually near the front of the datasheet. Key naming conventions:
 
 | Datasheet label | Suggested key | Unit |
 |----------------|---------------|------|
-| VIN(max), Input Voltage | `vin_max_v` | V |
-| VOUT(max), Output Voltage | `vout_max_v` | V |
-| TJ(max), Junction Temperature | `junction_temp_max_c` | °C |
-| TSTG, Storage Temperature | `storage_temp_min_c`, `storage_temp_max_c` | °C |
-| ESD (HBM) | `esd_hbm_v` | V |
-| ESD (CDM) | `esd_cdm_v` | V |
+| VIN(max), Input Voltage | <code>vin_max_v</code> | V |
+| VOUT(max), Output Voltage | <code>vout_max_v</code> | V |
+| TJ(max), Junction Temperature | <code>junction_temp_max_c</code> | °C |
+| TSTG, Storage Temperature | <code>storage_temp_min_c</code>, <code>storage_temp_max_c</code> | °C |
+| ESD (HBM) | <code>esd_hbm_v</code> | V |
+| ESD (CDM) | <code>esd_cdm_v</code> | V |
 
 Trap: **Absolute maximum ratings are not operating conditions**. Exposing a pin to its abs max continuously will shorten device lifetime. Do not use abs max values as operating targets.
 
-Trap: Some datasheets list separate abs max for each pin in the pin description table. Capture those in `pins[].voltage_abs_max`, not here. The top-level absolute_maximum_ratings covers supply voltage and temperature.
+Trap: Some datasheets list separate abs max for each pin in the pin description table. Capture those in <code>pins[].voltage_abs_max</code>, not here. The top-level absolute_maximum_ratings covers supply voltage and temperature.
 
 ---
 
-### `recommended_operating_conditions`
+### <code>recommended_operating_conditions</code>
 
 Found in the "Recommended Operating Conditions" or "Operating Conditions" table. This is the range where the device is guaranteed to perform per the electrical characteristics.
 
@@ -191,37 +191,37 @@ Key traps:
 
 ---
 
-### `electrical_characteristics.*`
+### <code>electrical_characteristics.*</code>
 
 Found in the "Electrical Characteristics" table. This table is usually organized with columns: Parameter, Min, Typ, Max, Unit, Test Conditions.
 
 Which value to record:
 
-- Use **Typ** for `vref_v`, `switching_frequency_khz` (nominal specs)
+- Use **Typ** for <code>vref_v</code>, <code>switching_frequency_khz</code> (nominal specs)
 - Use **Max** for threshold voltages, quiescent current limits, propagation delay
-- Use **Min** for `dropout_mv` (worst case is what matters for design margin)
+- Use **Min** for <code>dropout_mv</code> (worst case is what matters for design margin)
 - Use **Typ** for SPICE model parameters (behavioral accuracy)
 
 Key field lookup:
 
 | Field | What to find in the table |
 |-------|--------------------------|
-| `vref_v` | Reference voltage or feedback threshold; labeled "VREF", "VFB", "Feedback Voltage" |
-| `switching_frequency_khz` | "Oscillator frequency", "Switching frequency", "fSW" |
-| `quiescent_current_ua` | "IQ", "IDD (quiescent)", "Supply current (no load)" — exclude gate drive and switching losses |
-| `dropout_mv` | "Dropout voltage" at rated output current; labeled "VDO", "VIN-VOUT" |
-| `gbw_hz` | "Gain Bandwidth Product", "GBW", "Unity gain frequency" |
-| `slew_vus` | "Slew rate", "SR" — use the slower of rising/falling |
-| `prop_delay_ns` | "Propagation delay", "tPD" — use the worst case across all measurement conditions |
-| `clamping_voltage_v` | "VC", "Clamping voltage" at the specified IEC 61000-4-2 test current |
+| <code>vref_v</code> | Reference voltage or feedback threshold; labeled "VREF", "VFB", "Feedback Voltage" |
+| <code>switching_frequency_khz</code> | "Oscillator frequency", "Switching frequency", "fSW" |
+| <code>quiescent_current_ua</code> | "IQ", "IDD (quiescent)", "Supply current (no load)" — exclude gate drive and switching losses |
+| <code>dropout_mv</code> | "Dropout voltage" at rated output current; labeled "VDO", "VIN-VOUT" |
+| <code>gbw_hz</code> | "Gain Bandwidth Product", "GBW", "Unity gain frequency" |
+| <code>slew_vus</code> | "Slew rate", "SR" — use the slower of rising/falling |
+| <code>prop_delay_ns</code> | "Propagation delay", "tPD" — use the worst case across all measurement conditions |
+| <code>clamping_voltage_v</code> | "VC", "Clamping voltage" at the specified IEC 61000-4-2 test current |
 
-Trap: **Gain Bandwidth vs Unity Gain Bandwidth**. Some datasheets list both. Use the unity-gain stable bandwidth for `gbw_hz`.
+Trap: **Gain Bandwidth vs Unity Gain Bandwidth**. Some datasheets list both. Use the unity-gain stable bandwidth for <code>gbw_hz</code>.
 
 Trap: **Quiescent vs active supply current**. Record the quiescent (no-load, static) current, not the active switching current, unless the datasheet doesn't distinguish.
 
 ---
 
-### `application_circuit.*`
+### <code>application_circuit.*</code>
 
 Found in the typical application circuit section. This section often spans multiple pages with a reference schematic, a component table, and layout notes.
 
@@ -229,34 +229,34 @@ Found in the typical application circuit section. This section often spans multi
 
 **inductor_recommended**: Usually in a "Inductor Selection" subsection or a component table. Capture value, saturation current requirement, and DCR guidance if given.
 
-**input_cap_recommended / output_cap_recommended**: Labeled in the component table or application notes. Common format: `"10µF, X5R or X7R, 10V rating"`. Include dielectric and voltage rating if specified.
+**input_cap_recommended / output_cap_recommended**: Labeled in the component table or application notes. Common format: <code>"10µF, X5R or X7R, 10V rating"</code>. Include dielectric and voltage rating if specified.
 
 **vout_formula**: Look for a formula in the "Setting the Output Voltage" or "Programming Output Voltage" section. Record the exact formula; do not simplify.
 
 **notes**: Capture layout-critical guidance: copper pour requirements, trace width recommendations, component placement distance constraints, feedback routing warnings.
 
-Trap: Some datasheets have minimal application sections and instead reference an application note (SLVA XXXX, AN1234, etc.). If the datasheet itself has no circuit recommendations, set `application_circuit` to null and note the reference in `extraction_metadata`.
+Trap: Some datasheets have minimal application sections and instead reference an application note (SLVA XXXX, AN1234, etc.). If the datasheet itself has no circuit recommendations, set <code>application_circuit</code> to null and note the reference in <code>extraction_metadata</code>.
 
 ---
 
-### `spice_specs.*`
+### <code>spice_specs.*</code>
 
-SPICE specs come from the same electrical characteristics table as `electrical_characteristics`. The difference is that `spice_specs` uses the exact key names from `spice_part_library.py` for direct model generation.
+SPICE specs come from the same electrical characteristics table as <code>electrical_characteristics</code>. The difference is that <code>spice_specs</code> uses the exact key names from <code>spice_part_library.py</code> for direct model generation.
 
-For opamps: `gbw_hz`, `slew_vus`, `vos_mv`, `aol_db`, `rin_ohms` come from the electrical characteristics table. `supply_min`/`supply_max` come from recommended operating conditions. `rro`/`rri` come from the features list or the output swing specification (if the output swings within a few mV of the rail, `rro = true`).
+For opamps: <code>gbw_hz</code>, <code>slew_vus</code>, <code>vos_mv</code>, <code>aol_db</code>, <code>rin_ohms</code> come from the electrical characteristics table. <code>supply_min</code>/<code>supply_max</code> come from recommended operating conditions. <code>rro</code>/<code>rri</code> come from the features list or the output swing specification (if the output swings within a few mV of the rail, <code>rro = true</code>).
 
-For regulators: `vref` comes from the reference voltage spec. `dropout_mv` from the dropout table. `iq_ua` from quiescent current. `iout_max_ma` from the maximum output current rating.
+For regulators: <code>vref</code> comes from the reference voltage spec. <code>dropout_mv</code> from the dropout table. <code>iq_ua</code> from quiescent current. <code>iout_max_ma</code> from the maximum output current rating.
 
 ---
 
 ## Common Mistakes
 
-**Mixing abs max with operating conditions.** The schematic verifier compares pin voltages against `voltage_abs_max`; an incorrectly low value will generate false positives.
+**Mixing abs max with operating conditions.** The schematic verifier compares pin voltages against <code>voltage_abs_max</code>; an incorrectly low value will generate false positives.
 
 **Using the wrong table row.** Electrical characteristics tables often have multiple rows for the same parameter under different test conditions (temperature range, load current, VIN). Pick the row matching typical operation, not the extreme test condition.
 
-**Leaving required fields null when the datasheet has them.** If the pin table has a voltage limit column, populate `voltage_abs_max` for every pin — not just the ones that look interesting. The scorer deducts points for name-only pins.
+**Leaving required fields null when the datasheet has them.** If the pin table has a voltage limit column, populate <code>voltage_abs_max</code> for every pin — not just the ones that look interesting. The scorer deducts points for name-only pins.
 
-**Truncating the MPN.** `TPS61023` and `TPS61023DRLR` may have different specs (package parasitics, temperature grade). Extract from the correct datasheet and record the full part number.
+**Truncating the MPN.** <code>TPS61023</code> and <code>TPS61023DRLR</code> may have different specs (package parasitics, temperature grade). Extract from the correct datasheet and record the full part number.
 
 **Copying from a different variant's table.** Datasheets often cover a family. Check that the table row applies to the specific part number you are extracting.

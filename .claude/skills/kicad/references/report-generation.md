@@ -25,7 +25,7 @@ These sections are expected in a complete design review unless genuinely not app
 - Component Summary
 - Power Tree
 - Analyzer Verification
-- Deep Review, when `analysis/deep_review.json` exists
+- Deep Review, when <code>analysis/deep_review.json</code> exists
 - Signal Analysis Review
 - Power Analysis
 - PCB Layout Analysis, when a PCB exists
@@ -42,8 +42,8 @@ These sections are expected in a complete design review unless genuinely not app
 Every substantive finding should make its evidence basis clear. Use these categories consistently:
 
 - **Datasheet-verified** — checked against the manufacturer PDF, with page / figure / table / equation citation
-- **Extraction-verified** — checked against structured datasheet extraction in `datasheets/extracted/`
-- **Raw-file verified** — checked against the raw `.kicad_sch`, `.kicad_pcb`, or fabrication files
+- **Extraction-verified** — checked against structured datasheet extraction in <code>datasheets/extracted/</code>
+- **Raw-file verified** — checked against the raw <code>.kicad_sch</code>, <code>.kicad_pcb</code>, or fabrication files
 - **Analyzer-derived** — came from analyzer output and was accepted after review
 - **Inference-only** — plausible engineering reasoning, but not directly verified against datasheet or raw file
 
@@ -101,9 +101,9 @@ Use this template. Include sections that are relevant to the design — skip sec
 [2-4 sentence description of the board: MCU, power architecture, key peripherals, domain (IoT/motor control/RF/instrumentation/etc.), form factor context]
 
 ## Previous Review Delta
-[**Include when prior review files or analyzer JSON exist in the project directory.** Scan for `*review*.md`, `*design-review*.md`, and prior `*_analysis.json` files.
+[**Include when prior review files or analyzer JSON exist in the project directory.** Scan for <code>*review*.md</code>, <code>*design-review*.md</code>, and prior <code>*_analysis.json</code> files.
 
-If prior analyzer JSON exists, run `diff_analysis.py old.json new.json` to generate a structured component/signal/EMC diff. Present as:]
+If prior analyzer JSON exists, run <code>diff_analysis.py old.json new.json</code> to generate a structured component/signal/EMC diff. Present as:]
 
 | Status | Count |
 |--------|-------|
@@ -140,15 +140,15 @@ If no prior review exists, omit this section entirely.]
 ## Analyzer Verification
 [Spot-checks proving the analyzer data is trustworthy]
 ### Component Count — [N/N match status]
-### Component Pinout Verification — [Table: ALL components verified against raw schematic + **manufacturer PDF datasheets** (not KiCad library symbols): Ref | Value | Pins | Datasheet Verified | Verification Status | Match. Every component must be checked — not just ICs. Include connectors, transistors, diodes, and critical passives. The "Datasheet Verified" column must reference the actual PDF datasheet with page/section number — not the `.kicad_sym` library file. Use the following **Verification Status** categories:
+### Component Pinout Verification — [Table: ALL components verified against raw schematic + **manufacturer PDF datasheets** (not KiCad library symbols): Ref | Value | Pins | Datasheet Verified | Verification Status | Match. Every component must be checked — not just ICs. Include connectors, transistors, diodes, and critical passives. The "Datasheet Verified" column must reference the actual PDF datasheet with page/section number — not the <code>.kicad_sym</code> library file. Use the following **Verification Status** categories:
 - **Verified (datasheet)** — cross-checked against manufacturer PDF datasheet (cite page/section)
-- **Verified (extraction)** — cross-checked against pre-extracted specs from `datasheets/extracted/` (extraction score >= 6.0)
+- **Verified (extraction)** — cross-checked against pre-extracted specs from <code>datasheets/extracted/</code> (extraction score >= 6.0)
 - **Unverified** — no datasheet or extraction available; plausibility assessment only. State what was assessed and confidence level.
 - **Skipped** — passive/mechanical component where pinout verification is not meaningful (2-pin passives, mounting holes)
 
-Custom library symbols (e.g., `sacmap:TPS61023`) are highest priority for datasheet verification because there's no upstream KiCad library as a secondary check. When pre-extracted datasheet specs are available, use them for faster verification. Fall back to direct PDF reading when extraction score < 6.0 or when pin-level detail is insufficient. Each finding in the report should also indicate its evidence basis: datasheet-verified, extraction-verified, or inference-only.]
+Custom library symbols (e.g., <code>sacmap:TPS61023</code>) are highest priority for datasheet verification because there's no upstream KiCad library as a secondary check. When pre-extracted datasheet specs are available, use them for faster verification. Fall back to direct PDF reading when extraction score < 6.0 or when pin-level detail is insufficient. Each finding in the report should also indicate its evidence basis: datasheet-verified, extraction-verified, or inference-only.]
 ### Pinout Ambiguity & Plausibility — [Components where the symbol's pin assignment depends on the specific MPN. Table: Ref | lib_id | Footprint | MPN | Assumed Pinout | Datasheet Pinout | Plausibility | Status. When verification is possible (MPN + datasheet), verify directly. When it isn't, assess plausibility: does the assumed pinout match the dominant convention for this device type and package? Report confidence: "matches most common convention," "plausible but multiple variants exist," or "unusual — most parts in this category use a different pinout." Flag CRITICAL when no MPN is specified AND the assumed pinout is uncommon or genuinely ambiguous.]
-### Connector Pin Tables — [For connectors with >2 pins (debug headers, programming ports, I/O connectors): table of Pin | Net | Function. The `ic_pin_analysis` section includes connector data — present it as a quick-reference table. Particularly valuable for debug/programming headers (EN, 3V3, TX, GND, RX, BOOT) where pin order matters for cable orientation.]
+### Connector Pin Tables — [For connectors with >2 pins (debug headers, programming ports, I/O connectors): table of Pin | Net | Function. The <code>ic_pin_analysis</code> section includes connector data — present it as a quick-reference table. Particularly valuable for debug/programming headers (EN, 3V3, TX, GND, RX, BOOT) where pin order matters for cable orientation.]
 ### Net Tracing — [All power rails + critical signal nets traced end-to-end: list all pins, verify connectivity, confirm correctness]
 ### PCB Verification — [If PCB analyzed: footprint count match, pad-net spot-check, board dimensions confirmed]
 ### Gerber Verification — [If gerbers analyzed: layer completeness, drill count, alignment check]
@@ -156,7 +156,7 @@ Custom library symbols (e.g., `sacmap:TPS61023`) are highest priority for datash
 ## Deep Review
 
 Findings from the per-IC usage-vs-datasheet pass
-(`analysis/deep_review.json`) — first-class findings, presented
+(<code>analysis/deep_review.json</code>) — first-class findings, presented
 before the detector baseline. Group by category. For each finding:
 summary, severity/confidence, and the evidence inline — datasheet
 quote with MPN + page, computation result, design anchors.
@@ -198,11 +198,11 @@ was skipped or degraded (no datasheets), state the per-IC gaps here.
 [Shunt values, sense amplifier, measurement range]
 
 ### Simulation Verification
-[**Include when ngspice is available.** Run `simulate_subcircuits.py` on the analyzer JSON output (from the `spice` skill). The output JSON has top-level key `simulation_results` (list). Each entry has `reference` (e.g. "R5/C3"), `components` (list), `subcircuit_type`, `status`, `expected` (dict of metric values like `cutoff_hz`), `simulated` (dict of measured values), and `delta` (dict of error percentages). Use `summary` for totals. Present results as a summary table grouped by status:]
+[**Include when ngspice is available.** Run <code>simulate_subcircuits.py</code> on the analyzer JSON output (from the <code>spice</code> skill). The output JSON has top-level key <code>simulation_results</code> (list). Each entry has <code>reference</code> (e.g. "R5/C3"), <code>components</code> (list), <code>subcircuit_type</code>, <code>status</code>, <code>expected</code> (dict of metric values like <code>cutoff_hz</code>), <code>simulated</code> (dict of measured values), and <code>delta</code> (dict of error percentages). Use <code>summary</code> for totals. Present results as a summary table grouped by status:]
 
 [Summary line: "ngspice verified N subcircuits in X.Xs. N pass, N warn, N fail, N skip."]
 
-[**Pass** — one line each, grouped: "RC filter R5/C3 (fc=15.9kHz): confirmed, <0.3% error." Build this from `result['reference']`, `result['expected']['cutoff_hz']`, and `result['delta']`.]
+[**Pass** — one line each, grouped: "RC filter R5/C3 (fc=15.9kHz): confirmed, <0.3% error." Build this from <code>result['reference']</code>, <code>result['expected']['cutoff_hz']</code>, and <code>result['delta']</code>.]
 
 [**Warn** — explain context: "Opamp U4A (inverting, gain=-10): gain confirmed at 20.0dB. Bandwidth 98.8kHz (ideal model). Note: LM358 GBW is ~1MHz — actual bandwidth ~100kHz." Opamp and transistor results always carry model fidelity caveats.]
 
@@ -242,7 +242,7 @@ was skipped or degraded (no datasheets), state the per-IC gaps here.
 [Enable chains (EN/PG dependencies), startup order, missing PG feedback]
 
 ### Sleep Current Audit
-[Per-rail estimated sleep current, dominant leakage paths (pull-up/pull-down resistors), regulator Iq estimates with EN pin detection. Present both the analyzer's worst-case figure (`total_estimated_sleep_uA`) and realistic estimate (`realistic_total_uA`). Use `realistic_total_uA` for expected battery life; use the worst-case for absolute-maximum calculations. Each current path has `likely_state` explaining whether it's active during sleep (e.g., "can be disabled via EN", "GPIO off during sleep", "rail disabled during sleep") and `realistic_uA` (0 for inactive paths). Explain which paths are inactive and why.]
+[Per-rail estimated sleep current, dominant leakage paths (pull-up/pull-down resistors), regulator Iq estimates with EN pin detection. Present both the analyzer's worst-case figure (<code>total_estimated_sleep_uA</code>) and realistic estimate (<code>realistic_total_uA</code>). Use <code>realistic_total_uA</code> for expected battery life; use the worst-case for absolute-maximum calculations. Each current path has <code>likely_state</code> explaining whether it's active during sleep (e.g., "can be disabled via EN", "GPIO off during sleep", "rail disabled during sleep") and <code>realistic_uA</code> (0 for inactive paths). Explain which paths are inactive and why.]
 
 ### Inrush Analysis
 [Power-on current analysis — not limited to regulators. Consider ALL current paths at power-on:]
@@ -258,7 +258,7 @@ was skipped or degraded (no datasheets), state the per-IC gaps here.
 [Component voltage ratings vs applied voltages, capacitor derating at operating voltage]
 
 ## Standards Compliance
-[Include when applicable — see `references/standards-compliance.md` for auto-trigger conditions and tables. Consider for all boards: even low-voltage designs benefit from a brief conductor spacing and current capacity check. For mains-connected or safety-isolated designs, this section is mandatory.]
+[Include when applicable — see <code>references/standards-compliance.md</code> for auto-trigger conditions and tables. Consider for all boards: even low-voltage designs benefit from a brief conductor spacing and current capacity check. For mains-connected or safety-isolated designs, this section is mandatory.]
 
 ### Product Classification
 [Class 1/2/3 determination with rationale from BOM indicators]
@@ -276,7 +276,7 @@ was skipped or degraded (no datasheets), state the per-IC gaps here.
 [Via annular ring analysis, fab capability vs IPC minimums]
 
 ### Via Protection (IPC-4761)
-[Only for via-in-pad designs: protection type, BGA/QFN thermal pad vias. The `thermal_pad_vias` output uses an `effective_via_count` that weights each via by `(drill/0.3mm)²` — see pcb-layout-analysis.md "Thermal via effective count methodology" for the full formula and thresholds. Designs using 0.2mm vias by intent (module footprints) may show "insufficient" adequacy despite adequate thermal performance — always cross-reference the datasheet before flagging.]
+[Only for via-in-pad designs: protection type, BGA/QFN thermal pad vias. The <code>thermal_pad_vias</code> output uses an <code>effective_via_count</code> that weights each via by <code>(drill/0.3mm)²</code> — see pcb-layout-analysis.md "Thermal via effective count methodology" for the full formula and thresholds. Designs using 0.2mm vias by intent (module footprints) may show "insufficient" adequacy despite adequate thermal performance — always cross-reference the datasheet before flagging.]
 
 ## Design Analysis
 
@@ -333,15 +333,15 @@ Differential pair length matching: For each detected differential pair (USB D+/D
 ### Thermal Analysis
 [Thermal pad detection, via counting and adequacy for QFN/DFN packages, zone stitching density, thermal relief settings, tombstoning risk assessment (0201/0402 thermal asymmetry). Cross-reference thermal via count and pad area against each IC's datasheet thermal management section — check recommended via count, via diameter, and exposed pad connection. Verify θJA assumptions match the datasheet's specified board conditions (e.g., JEDEC 2s2p vs actual layer count).
 
-When `analyze_thermal.py` was run, include its junction temperature estimates (Tj per component, margin to Tj_max, thermal score). Cross-reference against datasheet Tj_max values. When the thermal script was not run, estimate manually from power dissipation and package θJA for components with significant power draw (regulators, drivers, power FETs).]
+When <code>analyze_thermal.py</code> was run, include its junction temperature estimates (Tj per component, margin to Tj_max, thermal score). Cross-reference against datasheet Tj_max values. When the thermal script was not run, estimate manually from power dissipation and package θJA for components with significant power draw (regulators, drivers, power FETs).]
 
 For every IC with an exposed/thermal pad, explicitly report the via count and adequacy in this format: "[Ref] pad [N] ([net]) connected through [count] thermal vias (recommended range: [min]–[max] per datasheet) — [adequate/insufficient]." Example: "U1 pad 41 (GND thermal pad) connected through 12 thermal vias (recommended range: 9–16) — adequate." The thermal via count is one of the most common QFN/DFN layout errors and is always worth calling out with a specific number, even when adequate — it confirms the designer got it right.
 
 ### Copper Presence
-[Zone copper at component pad locations — from `copper_presence` section. Focus on `no_opposite_layer_copper` list: which components lack zone copper on the opposite layer? Verify this is intentional for capacitive touch pads and antennas (need isolation) vs unexpected for other components (might indicate a zone gap). Also note `same_layer_foreign_zones` — pads sitting on zones they're not connected to, which is normal for tightly-packed power island zones but worth flagging if unexpected.]
+[Zone copper at component pad locations — from <code>copper_presence</code> section. Focus on <code>no_opposite_layer_copper</code> list: which components lack zone copper on the opposite layer? Verify this is intentional for capacitive touch pads and antennas (need isolation) vs unexpected for other components (might indicate a zone gap). Also note <code>same_layer_foreign_zones</code> — pads sitting on zones they're not connected to, which is normal for tightly-packed power island zones but worth flagging if unexpected.]
 
 ### Capacitive Touch Pads
-[Include when TP-prefixed components or pad-only footprints appear in `copper_presence.no_opposite_layer_copper`, or when touch controller ICs are detected]
+[Include when TP-prefixed components or pad-only footprints appear in <code>copper_presence.no_opposite_layer_copper</code>, or when touch controller ICs are detected]
 
 | Pad | Diameter/Size | Position | Opposite-Layer Copper | Keepout Zone? | GND Pour Clearance | Trace Width | Trace Length to Controller |
 |-----|--------------|----------|----------------------|---------------|-------------------|-------------|--------------------------|
@@ -351,11 +351,11 @@ Copper absence vs keepout enforcement: Confirming "no copper" under a touch pad 
 
 Trace length asymmetry: Compute the trace length from each touch pad to the controller IC and compare across all pads. Significant asymmetry (>1.5×) means different parasitic capacitance per channel, which shifts baseline readings and may reduce dynamic range even with firmware calibration. Report the ratio: "TOUCH_2 (41.6mm) is 1.75× longer than TOUCH_1 (23.7mm)."
 
-GND pour clearance: Use the `touch_pad_gnd_clearance` section in `copper_presence` for measured clearance values (`gnd_clearance_mm` per touch pad). Compare against the touch controller's recommended minimum (typically 1.0mm for Espressif, check the specific controller's app note). If the clearance is exactly at the minimum, note this: "GND clearance is 1.0mm — exactly the Espressif minimum. Consider increasing to 1.5mm if sensitivity is marginal." If `touch_pad_gnd_clearance` is not present, measure manually from the PCB layout.
+GND pour clearance: Use the <code>touch_pad_gnd_clearance</code> section in <code>copper_presence</code> for measured clearance values (<code>gnd_clearance_mm</code> per touch pad). Compare against the touch controller's recommended minimum (typically 1.0mm for Espressif, check the specific controller's app note). If the clearance is exactly at the minimum, note this: "GND clearance is 1.0mm — exactly the Espressif minimum. Consider increasing to 1.5mm if sensitivity is marginal." If <code>touch_pad_gnd_clearance</code> is not present, measure manually from the PCB layout.
 
 ### Antenna Layout
 [Include when ANT-prefixed footprints, antenna lib_id patterns, or RF antenna footprints are detected, OR when wireless modules (ESP32, nRF, etc.) with integrated/PCB antennas are present]
-- Keepout zone verification: check the `keepout_zones` section in the PCB analyzer output for restriction areas near the antenna footprint. Report the keepout zone coordinates, layer coverage, and restriction types explicitly: "Keepout zone on F.Cu+B.Cu: (x1, y1) to (x2, y2), restrictions: no copper pour, no tracks." The `nearby_components` field shows which components are near each keepout zone. Cross-reference dimensions against the manufacturer's reference layout — many antenna datasheets/app notes specify exact keepout areas.
+- Keepout zone verification: check the <code>keepout_zones</code> section in the PCB analyzer output for restriction areas near the antenna footprint. Report the keepout zone coordinates, layer coverage, and restriction types explicitly: "Keepout zone on F.Cu+B.Cu: (x1, y1) to (x2, y2), restrictions: no copper pour, no tracks." The <code>nearby_components</code> field shows which components are near each keepout zone. Cross-reference dimensions against the manufacturer's reference layout — many antenna datasheets/app notes specify exact keepout areas.
 - Ground plane termination: verify the ground plane ends at the antenna feed point and does not extend under the radiating element
 - Matching network placement: components between antenna and RF IC should be close to the antenna with controlled-impedance traces
 [If no keepout zones are defined around the antenna, flag as WARNING. For wireless modules (ESP32, nRF, etc.), the module vendor's reference design is the authoritative source for keepout dimensions — these are often the single most important layout constraint for RF performance. Always cite the specific antenna/module reference when verifying keepout adequacy: "Correct per Espressif guidelines" or "Matches nRF52840 reference layout."]
@@ -363,7 +363,7 @@ GND pour clearance: Use the `touch_pad_gnd_clearance` section in `copper_presenc
 ### Decoupling Placement
 [Cap-to-IC distances for critical components, flag caps too far from IC power pins. Verify capacitor values and placement distances against each IC's datasheet requirements — many ICs specify maximum distance, minimum capacitance, and ESR limits for input/output decoupling. Flag any deviation from datasheet recommendations.
 
-ESD protection ICs (entries with `category: "esd_bypass"` in the decoupling output) require a low-impedance bypass path for clamping. Their bypass cap should be within 3mm — flag WARNING if >5mm, SUGGESTION if 3-5mm. Common ESD ICs: USBLC6-2SC6, TPD4E05U06, PRTR5V0U2X, IP4220CZ6.]
+ESD protection ICs (entries with <code>category: "esd_bypass"</code> in the decoupling output) require a low-impedance bypass path for clamping. Their bypass cap should be within 3mm — flag WARNING if >5mm, SUGGESTION if 3-5mm. Common ESD ICs: USBLC6-2SC6, TPD4E05U06, PRTR5V0U2X, IP4220CZ6.]
 
 ### Current Capacity
 [Per-net trace/via current capacity vs estimated load, narrow signal net warnings]
@@ -378,7 +378,7 @@ ESD protection ICs (entries with `category: "esd_bypass"` in the decoupling outp
 [Routing completeness, unrouted net count and list]
 
 ## Schematic ↔ PCB Cross-Reference
-[Include when both schematic and PCB were analyzed — this catches the most dangerous bugs. Use `statistics.total_nets` from both analyzers for net count comparison — do not mix net counts from different sections or manual counting methods, as the schematic may include internal unnamed nets that the PCB doesn't.]
+[Include when both schematic and PCB were analyzed — this catches the most dangerous bugs. Use <code>statistics.total_nets</code> from both analyzers for net count comparison — do not mix net counts from different sections or manual counting methods, as the schematic may include internal unnamed nets that the PCB doesn't.]
 ### Component Count Match — [Schematic (excl. power symbols) vs PCB footprint count]
 ### Pin-Net Verification — [ALL components: schematic pin mapping vs PCB pad mapping. Table: Ref | Pins | All Match | Mismatches. Do not sample — verify every component including connectors, transistors, diodes.]
 This verification must happen at the PCB pad level, not just the schematic pin level. The schematic tells you pin 1 connects to net X; the PCB tells you pad 1 connects to net X. If the library footprint has pad numbering that doesn't match the symbol's pin numbering, the schematic and PCB will be internally consistent but the board will be wrong. For each IC, transistor, and connector, verify both directions: schematic pin N → net X, AND PCB pad N → net X, AND the physical pad position matches the datasheet's pin diagram for that specific package. Example format: "Q1: 1=G(MAP_RED), 2=S(GND), 3=D(+5V)." This catches the most dangerous class of bug — a library footprint with wrong pad numbering passes all consistency checks but produces a non-functional board.
@@ -416,7 +416,7 @@ This verification must happen at the PCB pad level, not just the schematic pin l
 [MPN coverage %, missing MPNs list, missing distributor part numbers. Do not recommend or prefer any specific distributor by name — keep sourcing observations neutral.]
 
 ### Component Lifecycle Status
-[**Include when `--lifecycle` flag was used on the schematic analyzer.** Report any NRND (not recommended for new designs), EOL (end of life), or obsolete components from the `lifecycle_audit` output. For each flagged part: MPN, current status, last-buy date if known, and suggested action (find alternate, stock up, redesign). If lifecycle audit was not run, note: "Lifecycle audit not performed — [reason: no API keys / no network / no MPNs]."]
+[**Include when <code>--lifecycle</code> flag was used on the schematic analyzer.** Report any NRND (not recommended for new designs), EOL (end of life), or obsolete components from the <code>lifecycle_audit</code> output. For each flagged part: MPN, current status, last-buy date if known, and suggested action (find alternate, stock up, redesign). If lifecycle audit was not run, note: "Lifecycle audit not performed — [reason: no API keys / no network / no MPNs]."]
 
 ### BOM Optimization
 [Unique passive value counts per type, total unique footprints, single-use passive values, consolidation opportunities]
@@ -431,8 +431,8 @@ This verification must happen at the PCB pad level, not just the schematic pin l
 [Components likely simulatable vs needing SPICE models, coverage percentage]
 
 ### Ordering Notes
-[Practical manufacturing summary for ordering — this section bridges the design review and the fabrication order. Extract surface finish from the PCB stackup (`copper_finish` field in setup section), solder mask color from board setup, and board thickness from the stackup layer sum. Designers use this to configure their PCB order, so always include it when a PCB was analyzed.]
-- Layer count: [N] layers, surface finish: [HASL/ENIG/OSP — from PCB stackup `copper_finish`], solder mask color: [green/black/etc. — from board setup]
+[Practical manufacturing summary for ordering — this section bridges the design review and the fabrication order. Extract surface finish from the PCB stackup (<code>copper_finish</code> field in setup section), solder mask color from board setup, and board thickness from the stackup layer sum. Designers use this to configure their PCB order, so always include it when a PCB was analyzed.]
+- Layer count: [N] layers, surface finish: [HASL/ENIG/OSP — from PCB stackup <code>copper_finish</code>], solder mask color: [green/black/etc. — from board setup]
 - Stencil: [recommend if SMD components present, note if fine-pitch requires frameless stencil]
 - Board thickness: [standard 1.6mm or custom — from stackup total thickness]
 - DFM tier: [standard vs advanced capability requirements based on min trace/space/drill from DFM section]
@@ -461,132 +461,132 @@ This verification must happen at the PCB pad level, not just the schematic pin l
 1. Crystal Y1 (32.768 kHz) load capacitor validation skipped — no CL spec in analyzer output for this crystal
 2. Connector J3 pinout could not be verified — no datasheet found for this custom connector
 3. Analog ground (AGND) to digital ground (DGND) connection point not analyzed — single-point connection must be verified visually
-4. U5 (custom library symbol from `mylib:XYZ123`) — pin mapping not verified against datasheet due to missing MPN
+4. U5 (custom library symbol from <code>mylib:XYZ123</code>) — pin mapping not verified against datasheet due to missing MPN
 ```
 
 ## Analyzer Output Field Reference
 
 Quick reference for what each analyzer produces, to ensure no analysis dimension is missed in the report.
 
-### Schematic Analyzer (`analyze_schematic.py`)
+### Schematic Analyzer (<code>analyze_schematic.py</code>)
 
 | Output Section | Report Section | Key Fields |
 |---|---|---|
-| `statistics` | Component Summary | component_types, power_rails, missing_mpn |
-| `bom` | Component Summary, BOM Optimization | deduplicated parts with quantities |
-| `components` | IC Spot-Check, throughout | full component details with pin_uuids, parsed_value |
-| `nets` | Net Tracing, throughout | per-net pin lists with pin_type |
-| `subcircuits` | Power Tree | auto-detected power/signal subcircuits |
-| `ic_pin_analysis` | MCU pin audit | per-IC pin utilization summary |
-| `findings[] (detector: power_regulators)` | Power Regulators | topology, vref_source, vout_estimate, vout_net_mismatch, inverting |
-| `findings[] (detector: feedback_networks)` | Feedback Networks | R_top, R_bottom, vref, vout, vref_source |
-| `findings[] (detector: voltage_dividers)` | Voltage Dividers | ratio, output_voltage |
-| `findings[] (detector: rc_filters)` | RC/LC Filters | cutoff_hz, filter_type |
-| `findings[] (detector: lc_filters)` | RC/LC Filters | resonant_freq_hz |
-| `findings[] (detector: opamp_circuits)` | Op-Amp Circuits | configuration, gain |
-| `findings[] (detector: protection_devices)` | Protection Devices | type, placement |
-| `findings[] (detector: transistor_circuits)` | Transistor Circuits | load_type (motor/heater/fan/solenoid/etc.), is_pchannel, gate_drive |
-| `findings[] (detector: bridge_circuits)` | Bridge Circuits | topology, half_bridges, driver_ics |
-| `findings[] (detector: crystal_circuits)` | Crystal Circuits | cload, frequency |
-| `findings[] (detector: current_sense)` | Current Sense | shunt_value, gain |
-| `findings[] (detector: decoupling_analysis)` | Decoupling Analysis | per-rail cap inventory |
-| `findings[] (detector: buzzer_speaker_circuits)` | Buzzer/Speaker | driver topology |
-| `findings[] (detector: rf_chains)` | RF Chains | component chain |
-| `findings[] (detector: bms_systems)` | BMS Systems | cell monitoring |
-| `findings[] (detector: ethernet_interfaces)` | Ethernet | magnetics, PHY |
-| `findings[] (detector: memory_interfaces)` | Memory | bus width |
-| `findings[] (detector: key_matrices)` | Key Matrices | row/col count |
-| `findings[] (detector: isolation_barriers)` | Isolation | isolation type |
-| `findings[] (detector: battery_chargers)` | Battery Chargers | charger_type, charge_current |
-| `findings[] (detector: motor_drivers)` | Motor Drivers | driver_type (stepper/dc_brushed) |
-| `findings[] (detector: esd_coverage_audit)` | ESD Coverage | per-connector coverage, risk_level |
-| `findings[] (detector: debug_interfaces)` | Debug Interfaces | SWD/JTAG, target_ic |
-| `findings[] (detector: power_path)` | Power Path | load switches, ideal diodes, USB PD |
-| `findings[] (detector: adc_circuits)` | ADC Circuits | external ADCs, voltage references |
-| `findings[] (detector: reset_supervisors)` | Reset/Supervisor | supervisors, watchdogs, RC reset |
-| `findings[] (detector: clock_distribution)` | Clock Distribution | generators, PLLs, oscillator outputs |
-| `findings[] (detector: display_interfaces)` | Display/Touch | display type, touch controller |
-| `findings[] (detector: sensor_interfaces)` | Sensor Fusion | motion/environmental/magnetic, interrupt pins |
-| `findings[] (detector: level_shifters)` | Level Shifters | IC + discrete, supply domains |
-| `findings[] (detector: audio_circuits)` | Audio Circuits | amplifiers, codecs, I2S |
-| `findings[] (detector: led_driver_ics)` | LED Driver ICs | PWM/matrix/constant-current |
-| `findings[] (detector: rtc_circuits)` | RTC Circuits | battery backup, crystal pairing |
-| `findings[] (detector: led_audit)` | LED Audit | current limiting validation |
-| `findings[] (detector: thermocouple_rtd)` | Thermocouple/RTD | amplifiers, RTD interfaces |
-| `findings[] (detector: power_sequencing_validation)` | Power Sequencing | power tree, enable chains, issues |
-| `findings[] (detector: design_observations)` | Design Observations | automated findings |
-| `design_analysis.net_classification` | Net Classification | per-net class (power/data/analog/output_drive/etc.) |
-| `design_analysis.power_domains` | Power Domains | per-IC rail mapping with IO rails |
-| `design_analysis.cross_domain_signals` | Cross-Domain Signals | voltage equivalence filtering |
-| `design_analysis.bus_analysis` | Bus Topology | I2C/SPI/UART/CAN with COPI/CIPO support |
-| `design_analysis.differential_pairs` | Differential Pairs | suffix-pair matching, protocol guessing |
-| `design_analysis.erc_warnings` | ERC Warnings | type, severity |
-| `design_analysis.passive_warnings` | Passive Warnings | unusual values |
-| `connectivity_issues` | Connectivity Issues | unconnected, single-pin, multi-driver |
-| `pdn_impedance` | PDN Impedance | per-rail impedance with MLCC parasitics |
-| `power_budget` | Power Budget | load vs capacity |
-| `power_sequencing` | Power Sequencing | EN/PG chains |
-| `sleep_current_audit` | Sleep Current | per-rail with regulator Iq, EN detection |
-| `inrush_analysis` | Inrush Analysis | per-regulator inrush (automated); also manually consider IC supply pin abs max ratings and capacitor charging through connectors |
-| `ground_domains` | Power & Ground | AGND/DGND/PGND separation |
-| `sourcing_audit` | Sourcing Audit | MPN and distributor PN coverage (report neutrally, no distributor preference) |
-| `bom_optimization` | BOM Optimization | value consolidation |
-| `test_coverage` | Test Coverage | test points, debug connectors |
-| `assembly_complexity` | Assembly Complexity | score, difficulty breakdown |
-| `usb_compliance` | USB Compliance | connector, ESD, CC |
-| `simulation_readiness` | Simulation Readiness | SPICE model coverage |
-| `label_shape_warnings` | Label Warnings | direction mismatches |
-| `pwr_flag_warnings` | PWR_FLAG | missing flags |
-| `footprint_filter_warnings` | Footprint Filters | library mismatches |
-| `annotation_issues` | Label Warnings | duplicate/missing refs |
-| `property_issues` | Quality | property pattern issues |
-| `placement_analysis` | (spatial context) | component clusters, grid |
-| `alternate_pin_summary` | MCU pin audit | alt function usage |
+| <code>statistics</code> | Component Summary | component_types, power_rails, missing_mpn |
+| <code>bom</code> | Component Summary, BOM Optimization | deduplicated parts with quantities |
+| <code>components</code> | IC Spot-Check, throughout | full component details with pin_uuids, parsed_value |
+| <code>nets</code> | Net Tracing, throughout | per-net pin lists with pin_type |
+| <code>subcircuits</code> | Power Tree | auto-detected power/signal subcircuits |
+| <code>ic_pin_analysis</code> | MCU pin audit | per-IC pin utilization summary |
+| <code>findings[] (detector: power_regulators)</code> | Power Regulators | topology, vref_source, vout_estimate, vout_net_mismatch, inverting |
+| <code>findings[] (detector: feedback_networks)</code> | Feedback Networks | R_top, R_bottom, vref, vout, vref_source |
+| <code>findings[] (detector: voltage_dividers)</code> | Voltage Dividers | ratio, output_voltage |
+| <code>findings[] (detector: rc_filters)</code> | RC/LC Filters | cutoff_hz, filter_type |
+| <code>findings[] (detector: lc_filters)</code> | RC/LC Filters | resonant_freq_hz |
+| <code>findings[] (detector: opamp_circuits)</code> | Op-Amp Circuits | configuration, gain |
+| <code>findings[] (detector: protection_devices)</code> | Protection Devices | type, placement |
+| <code>findings[] (detector: transistor_circuits)</code> | Transistor Circuits | load_type (motor/heater/fan/solenoid/etc.), is_pchannel, gate_drive |
+| <code>findings[] (detector: bridge_circuits)</code> | Bridge Circuits | topology, half_bridges, driver_ics |
+| <code>findings[] (detector: crystal_circuits)</code> | Crystal Circuits | cload, frequency |
+| <code>findings[] (detector: current_sense)</code> | Current Sense | shunt_value, gain |
+| <code>findings[] (detector: decoupling_analysis)</code> | Decoupling Analysis | per-rail cap inventory |
+| <code>findings[] (detector: buzzer_speaker_circuits)</code> | Buzzer/Speaker | driver topology |
+| <code>findings[] (detector: rf_chains)</code> | RF Chains | component chain |
+| <code>findings[] (detector: bms_systems)</code> | BMS Systems | cell monitoring |
+| <code>findings[] (detector: ethernet_interfaces)</code> | Ethernet | magnetics, PHY |
+| <code>findings[] (detector: memory_interfaces)</code> | Memory | bus width |
+| <code>findings[] (detector: key_matrices)</code> | Key Matrices | row/col count |
+| <code>findings[] (detector: isolation_barriers)</code> | Isolation | isolation type |
+| <code>findings[] (detector: battery_chargers)</code> | Battery Chargers | charger_type, charge_current |
+| <code>findings[] (detector: motor_drivers)</code> | Motor Drivers | driver_type (stepper/dc_brushed) |
+| <code>findings[] (detector: esd_coverage_audit)</code> | ESD Coverage | per-connector coverage, risk_level |
+| <code>findings[] (detector: debug_interfaces)</code> | Debug Interfaces | SWD/JTAG, target_ic |
+| <code>findings[] (detector: power_path)</code> | Power Path | load switches, ideal diodes, USB PD |
+| <code>findings[] (detector: adc_circuits)</code> | ADC Circuits | external ADCs, voltage references |
+| <code>findings[] (detector: reset_supervisors)</code> | Reset/Supervisor | supervisors, watchdogs, RC reset |
+| <code>findings[] (detector: clock_distribution)</code> | Clock Distribution | generators, PLLs, oscillator outputs |
+| <code>findings[] (detector: display_interfaces)</code> | Display/Touch | display type, touch controller |
+| <code>findings[] (detector: sensor_interfaces)</code> | Sensor Fusion | motion/environmental/magnetic, interrupt pins |
+| <code>findings[] (detector: level_shifters)</code> | Level Shifters | IC + discrete, supply domains |
+| <code>findings[] (detector: audio_circuits)</code> | Audio Circuits | amplifiers, codecs, I2S |
+| <code>findings[] (detector: led_driver_ics)</code> | LED Driver ICs | PWM/matrix/constant-current |
+| <code>findings[] (detector: rtc_circuits)</code> | RTC Circuits | battery backup, crystal pairing |
+| <code>findings[] (detector: led_audit)</code> | LED Audit | current limiting validation |
+| <code>findings[] (detector: thermocouple_rtd)</code> | Thermocouple/RTD | amplifiers, RTD interfaces |
+| <code>findings[] (detector: power_sequencing_validation)</code> | Power Sequencing | power tree, enable chains, issues |
+| <code>findings[] (detector: design_observations)</code> | Design Observations | automated findings |
+| <code>design_analysis.net_classification</code> | Net Classification | per-net class (power/data/analog/output_drive/etc.) |
+| <code>design_analysis.power_domains</code> | Power Domains | per-IC rail mapping with IO rails |
+| <code>design_analysis.cross_domain_signals</code> | Cross-Domain Signals | voltage equivalence filtering |
+| <code>design_analysis.bus_analysis</code> | Bus Topology | I2C/SPI/UART/CAN with COPI/CIPO support |
+| <code>design_analysis.differential_pairs</code> | Differential Pairs | suffix-pair matching, protocol guessing |
+| <code>design_analysis.erc_warnings</code> | ERC Warnings | type, severity |
+| <code>design_analysis.passive_warnings</code> | Passive Warnings | unusual values |
+| <code>connectivity_issues</code> | Connectivity Issues | unconnected, single-pin, multi-driver |
+| <code>pdn_impedance</code> | PDN Impedance | per-rail impedance with MLCC parasitics |
+| <code>power_budget</code> | Power Budget | load vs capacity |
+| <code>power_sequencing</code> | Power Sequencing | EN/PG chains |
+| <code>sleep_current_audit</code> | Sleep Current | per-rail with regulator Iq, EN detection |
+| <code>inrush_analysis</code> | Inrush Analysis | per-regulator inrush (automated); also manually consider IC supply pin abs max ratings and capacitor charging through connectors |
+| <code>ground_domains</code> | Power & Ground | AGND/DGND/PGND separation |
+| <code>sourcing_audit</code> | Sourcing Audit | MPN and distributor PN coverage (report neutrally, no distributor preference) |
+| <code>bom_optimization</code> | BOM Optimization | value consolidation |
+| <code>test_coverage</code> | Test Coverage | test points, debug connectors |
+| <code>assembly_complexity</code> | Assembly Complexity | score, difficulty breakdown |
+| <code>usb_compliance</code> | USB Compliance | connector, ESD, CC |
+| <code>simulation_readiness</code> | Simulation Readiness | SPICE model coverage |
+| <code>label_shape_warnings</code> | Label Warnings | direction mismatches |
+| <code>pwr_flag_warnings</code> | PWR_FLAG | missing flags |
+| <code>footprint_filter_warnings</code> | Footprint Filters | library mismatches |
+| <code>annotation_issues</code> | Label Warnings | duplicate/missing refs |
+| <code>property_issues</code> | Quality | property pattern issues |
+| <code>placement_analysis</code> | (spatial context) | component clusters, grid |
+| <code>alternate_pin_summary</code> | MCU pin audit | alt function usage |
 
-### PCB Analyzer (`analyze_pcb.py`)
-
-| Output Section | Report Section | Key Fields |
-|---|---|---|
-| `statistics` | Board Overview | copper_layers_used (tracks+vias+zones), layer names, SMD/THT counts |
-| `layers` | Board Overview | full layer stack |
-| `setup` | Board Overview | thickness, mask clearance |
-| `board_outline` | Board Overview | bounding box, edge geometry |
-| `board_metadata` | Board Overview | title block, paper |
-| `footprints` | Footprint Placement | per-footprint pads, nets, schematic cross-ref (sch_path, sch_sheetname) |
-| `component_groups` | Footprint Placement | grouped by reference prefix |
-| `tracks` | Trace Routing | width/layer distribution |
-| `vias` | Via Analysis | size distribution, via_analysis (types, annular ring, via-in-pad, tenting) |
-| `zones` | Power & Ground | per-zone net, layers, outline/filled bbox, fill area, fill_ratio, thermal settings |
-| `connectivity` | Connectivity | routing completeness, unrouted list |
-| `net_lengths` | Signal Integrity | per-net trace length and layer transitions |
-| `power_net_routing` | Power & Ground | power net width/length/current capacity |
-| `ground_domains` | Power & Ground | AGND/DGND domains, multi-domain components |
-| `findings[] (detector: analyze_current_capacity)` | Current Capacity | per-net capacity vs load |
-| `findings[] (detector: analyze_thermal_vias)` | Thermal Analysis | zone stitching density |
-| `findings[] (detector: analyze_thermal_pad_vias)` | Thermal Analysis | per-footprint thermal pad via count and adequacy; `effective_via_count` weights by `(drill/0.3)²` — see pcb-layout-analysis.md for methodology |
-| `decoupling_placement` | Decoupling Placement | cap-to-IC distances |
-| `findings[] (detector: analyze_placement)` | Footprint Placement | courtyard overlaps, edge clearance |
-| `placement_density` | Footprint Placement | density metrics |
-| `layer_transitions` | Signal Integrity | per-net layer change tracking |
-| `silkscreen` | Silkscreen | ref visibility, documentation warnings |
-| `dfm_summary` | DFM Assessment | tier, metrics, violation_count |
-| `findings[] (category: dfm)` | DFM Assessment | individual violations |
-| `findings[] (detector: analyze_tombstoning_risk)` | Manufacturing | at-risk 0201/0402 components, thermal asymmetry reasons |
-| `findings[] (detector: analyze_copper_presence)` | Copper Presence | no_opposite_layer_copper, same_layer_foreign_zones, touch_pad_gnd_clearance |
-| `copper_presence_summary` | Copper Presence | opposite_layer_summary |
-
-### Gerber Analyzer (`analyze_gerbers.py`)
+### PCB Analyzer (<code>analyze_pcb.py</code>)
 
 | Output Section | Report Section | Key Fields |
 |---|---|---|
-| `statistics` | Gerber Analysis | file counts, total holes/flashes/draws |
-| `completeness` | Layer Completeness | found/missing layers, source |
-| `alignment` | Alignment Verification | aligned status, layer extents |
-| `drill_classification` | Drill Classification | vias, component holes, mounting holes |
-| `pad_summary` | Pad Summary | SMD/THT/via/heatsink apertures |
-| `board_dimensions` | Board Dimensions | from gerber extents |
-| `gerbers` | (per-layer detail) | aperture functions, trace widths, X2 attributes |
-| `drills` | (per-file detail) | tool list, hole counts |
+| <code>statistics</code> | Board Overview | copper_layers_used (tracks+vias+zones), layer names, SMD/THT counts |
+| <code>layers</code> | Board Overview | full layer stack |
+| <code>setup</code> | Board Overview | thickness, mask clearance |
+| <code>board_outline</code> | Board Overview | bounding box, edge geometry |
+| <code>board_metadata</code> | Board Overview | title block, paper |
+| <code>footprints</code> | Footprint Placement | per-footprint pads, nets, schematic cross-ref (sch_path, sch_sheetname) |
+| <code>component_groups</code> | Footprint Placement | grouped by reference prefix |
+| <code>tracks</code> | Trace Routing | width/layer distribution |
+| <code>vias</code> | Via Analysis | size distribution, via_analysis (types, annular ring, via-in-pad, tenting) |
+| <code>zones</code> | Power & Ground | per-zone net, layers, outline/filled bbox, fill area, fill_ratio, thermal settings |
+| <code>connectivity</code> | Connectivity | routing completeness, unrouted list |
+| <code>net_lengths</code> | Signal Integrity | per-net trace length and layer transitions |
+| <code>power_net_routing</code> | Power & Ground | power net width/length/current capacity |
+| <code>ground_domains</code> | Power & Ground | AGND/DGND domains, multi-domain components |
+| <code>findings[] (detector: analyze_current_capacity)</code> | Current Capacity | per-net capacity vs load |
+| <code>findings[] (detector: analyze_thermal_vias)</code> | Thermal Analysis | zone stitching density |
+| <code>findings[] (detector: analyze_thermal_pad_vias)</code> | Thermal Analysis | per-footprint thermal pad via count and adequacy; <code>effective_via_count</code> weights by <code>(drill/0.3)²</code> — see pcb-layout-analysis.md for methodology |
+| <code>decoupling_placement</code> | Decoupling Placement | cap-to-IC distances |
+| <code>findings[] (detector: analyze_placement)</code> | Footprint Placement | courtyard overlaps, edge clearance |
+| <code>placement_density</code> | Footprint Placement | density metrics |
+| <code>layer_transitions</code> | Signal Integrity | per-net layer change tracking |
+| <code>silkscreen</code> | Silkscreen | ref visibility, documentation warnings |
+| <code>dfm_summary</code> | DFM Assessment | tier, metrics, violation_count |
+| <code>findings[] (category: dfm)</code> | DFM Assessment | individual violations |
+| <code>findings[] (detector: analyze_tombstoning_risk)</code> | Manufacturing | at-risk 0201/0402 components, thermal asymmetry reasons |
+| <code>findings[] (detector: analyze_copper_presence)</code> | Copper Presence | no_opposite_layer_copper, same_layer_foreign_zones, touch_pad_gnd_clearance |
+| <code>copper_presence_summary</code> | Copper Presence | opposite_layer_summary |
+
+### Gerber Analyzer (<code>analyze_gerbers.py</code>)
+
+| Output Section | Report Section | Key Fields |
+|---|---|---|
+| <code>statistics</code> | Gerber Analysis | file counts, total holes/flashes/draws |
+| <code>completeness</code> | Layer Completeness | found/missing layers, source |
+| <code>alignment</code> | Alignment Verification | aligned status, layer extents |
+| <code>drill_classification</code> | Drill Classification | vias, component holes, mounting holes |
+| <code>pad_summary</code> | Pad Summary | SMD/THT/via/heatsink apertures |
+| <code>board_dimensions</code> | Board Dimensions | from gerber extents |
+| <code>gerbers</code> | (per-layer detail) | aperture functions, trace widths, X2 attributes |
+| <code>drills</code> | (per-file detail) | tool list, hole counts |
 
 ## Severity Definitions
 
@@ -651,22 +651,22 @@ Focus on: power sequencing (EN/PG chains from analyzer), input protection (TVS, 
 
 ## Cross-Referencing with Raw Schematic
 
-The analyzer can silently produce plausible but incorrect results. Cross-reference against the raw `.kicad_sch` AND manufacturer PDF datasheets to catch these. Internal consistency checks (schematic matches PCB matches analyzer) are necessary but not sufficient — they only prove the design agrees with itself, not that it matches the real-world parts. The full verification procedure is in SKILL.md — the key checks are:
+The analyzer can silently produce plausible but incorrect results. Cross-reference against the raw <code>.kicad_sch</code> AND manufacturer PDF datasheets to catch these. Internal consistency checks (schematic matches PCB matches analyzer) are necessary but not sufficient — they only prove the design agrees with itself, not that it matches the real-world parts. The full verification procedure is in SKILL.md — the key checks are:
 
-1. **Component count**: Analyzer total vs `grep -c '(lib_id' file.kicad_sch` (subtract power symbols)
+1. **Component count**: Analyzer total vs <code>grep -c '(lib_id' file.kicad_sch</code> (subtract power symbols)
 2. **Pin-to-net mapping**: Verify against raw schematic for each component. Cross-reference IC pin assignments against **manufacturer PDF datasheets** (not KiCad library symbols — the library is the potential source of error). Cite datasheet page/section numbers.
 3. **Physical correctness**: For components with package-dependent pinouts (transistors in SOT-23 etc.), verify symbol assumptions against the MPN's datasheet — consistency checks alone don't catch wrong pinout assumptions. Custom/community library symbols are highest risk.
 4. **Net connectivity**: Trace power rails and critical signal nets end-to-end.
 5. **Signal analysis**: Confirm detected subcircuit topologies against the raw schematic.
-6. **Hierarchical sheets**: Verify all sub-sheets were parsed (`grep -c '(sheet ' file.kicad_sch`).
+6. **Hierarchical sheets**: Verify all sub-sheets were parsed (<code>grep -c '(sheet ' file.kicad_sch</code>).
 
 ## Known Analyzer Limitations
 
 Document these when they affect the report — it helps the designer understand what the tool can and can't catch:
 
-- **Vref coverage**: Feedback divider Vout calculations use a lookup table (~60 regulator families) with heuristic fallback. When `vref_source` is `"heuristic"`, the assumed Vref may be wrong — always verify against the datasheet. The `vout_net_mismatch` field flags cases where estimated Vout differs >15% from the output rail name voltage.
-- **Legacy format**: KiCad 5 `.sch` files get full analysis when `.lib` files are available in the repo (92–100% typical coverage). Components whose `.lib` files are missing will lack pin data and won't participate in signal analysis or subcircuit detection.
-- **Sleep current model**: Reports both worst-case (`total_estimated_sleep_uA`) and realistic (`realistic_total_uA`) estimates. Worst-case assumes all pull-ups driven low simultaneously; realistic uses topology-aware state estimation (LEDs off, disableable regulators off, rails from EN-equipped regulators disabled). The realistic estimate may still overcount if the design has additional sleep-mode controls not visible in the schematic topology.
+- **Vref coverage**: Feedback divider Vout calculations use a lookup table (~60 regulator families) with heuristic fallback. When <code>vref_source</code> is <code>"heuristic"</code>, the assumed Vref may be wrong — always verify against the datasheet. The <code>vout_net_mismatch</code> field flags cases where estimated Vout differs >15% from the output rail name voltage.
+- **Legacy format**: KiCad 5 <code>.sch</code> files get full analysis when <code>.lib</code> files are available in the repo (92–100% typical coverage). Components whose <code>.lib</code> files are missing will lack pin data and won't participate in signal analysis or subcircuit detection.
+- **Sleep current model**: Reports both worst-case (<code>total_estimated_sleep_uA</code>) and realistic (<code>realistic_total_uA</code>) estimates. Worst-case assumes all pull-ups driven low simultaneously; realistic uses topology-aware state estimation (LEDs off, disableable regulators off, rails from EN-equipped regulators disabled). The realistic estimate may still overcount if the design has additional sleep-mode controls not visible in the schematic topology.
 - **Cross-domain analysis**: Uses voltage equivalence (parsing voltage from rail names) to reduce false positives, but rails without parseable voltages in their names may still trigger false cross-domain warnings.
 - **MOSFET load classification**: Net name keyword detection covers common patterns (motor, heater, fan, solenoid, valve, pump, relay, speaker, buzzer, lamp) but may miss unusual naming conventions.
 - **Bridge circuits**: Cross-sheet detection works through unified hierarchical nets. Topology classification is based on half-bridge count (1=half, 2=H-bridge, 3+=3-phase) which may misclassify independent half-bridges as an H-bridge.
@@ -681,7 +681,7 @@ Document these when they affect the report — it helps the designer understand 
 - **Assembly notes**: Component placement order, reflow considerations, hand-solder items
 - **Specific assembler notes**: JLCPCB basic vs extended parts count, PCBWay turnkey vs consigned
 
-This section bridges the design review into the ordering workflow — the `jlcpcb` and `pcbway` skills handle the ordering specifics, but the report should flag anything the designer needs to address before ordering.
+This section bridges the design review into the ordering workflow — the <code>jlcpcb</code> and <code>pcbway</code> skills handle the ordering specifics, but the report should flag anything the designer needs to address before ordering.
 
 ## Report Length Guidelines
 

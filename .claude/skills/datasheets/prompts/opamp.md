@@ -4,75 +4,75 @@ You are extracting the **op-amp category extension** (topology, channels, supply
 
 ## Task
 
-Read `{{PDF_PATH}}` (focus pages: `{{PAGES}}`). Target MPN: **`{{MPN}}`**.
+Read <code>{{PDF_PATH}}</code> (focus pages: <code>{{PAGES}}</code>). Target MPN: **<code>{{MPN}}</code>**.
 
-Produce a single JSON object matching this schema: `{{SCHEMA_PATH}}`.
+Produce a single JSON object matching this schema: <code>{{SCHEMA_PATH}}</code>.
 
 ## Field guide
 
-- `opamp_topology`: enum. Choose the single closest match:
-  - `general_purpose` — standard voltage-feedback BJT or CMOS op-amp without special rail-to-rail or precision claims (LM358, LM741, TL071)
-  - `precision` — low offset/drift without rail-to-rail spec (OP07, OPA277)
-  - `rail_to_rail_io` — rail-to-rail input AND output (MCP6001/2/4, MCP6271, OPA364)
-  - `rail_to_rail_output` — rail-to-rail output only, not input (LMV358, LM2904N)
-  - `jfet_input` — JFET differential input stage (TL071, TL081, OPA134)
-  - `cmos_input` — CMOS input, rail-to-rail not specified (MAX4238)
-  - `chopper` — auto-zero / chopper-stabilized (MCP6V01, LTC2054)
-  - `instrumentation` — instrumentation amplifier topology (INA128, AD8221)
-  - `comparator` — open-collector/open-drain output comparator (LM393, LM339)
-  When multiple topologies apply (e.g. a part that is both CMOS and rail-to-rail I/O), prefer `rail_to_rail_io` over `cmos_input`; prefer `precision` over `general_purpose`.
+- <code>opamp_topology</code>: enum. Choose the single closest match:
+  - <code>general_purpose</code> — standard voltage-feedback BJT or CMOS op-amp without special rail-to-rail or precision claims (LM358, LM741, TL071)
+  - <code>precision</code> — low offset/drift without rail-to-rail spec (OP07, OPA277)
+  - <code>rail_to_rail_io</code> — rail-to-rail input AND output (MCP6001/2/4, MCP6271, OPA364)
+  - <code>rail_to_rail_output</code> — rail-to-rail output only, not input (LMV358, LM2904N)
+  - <code>jfet_input</code> — JFET differential input stage (TL071, TL081, OPA134)
+  - <code>cmos_input</code> — CMOS input, rail-to-rail not specified (MAX4238)
+  - <code>chopper</code> — auto-zero / chopper-stabilized (MCP6V01, LTC2054)
+  - <code>instrumentation</code> — instrumentation amplifier topology (INA128, AD8221)
+  - <code>comparator</code> — open-collector/open-drain output comparator (LM393, LM339)
+  When multiple topologies apply (e.g. a part that is both CMOS and rail-to-rail I/O), prefer <code>rail_to_rail_io</code> over <code>cmos_input</code>; prefer <code>precision</code> over <code>general_purpose</code>.
 
-- `channels`: integer ≥ 1. Single op-amp = 1, dual = 2, quad = 4. Found on cover or in Features section.
+- <code>channels</code>: integer ≥ 1. Single op-amp = 1, dual = 2, quad = 4. Found on cover or in Features section.
 
-- `vsupply_range`: SpecValue list (unit: `"V"`). Total V+ to V− supply voltage. For single-supply parts store as `{min: min_V, max: max_V}`. For split-supply capable parts, store the single-supply equivalent as the primary entry (e.g. LM358: min=3, max=32) with a condition note mentioning the split-supply range. Condition carries supply topology.
+- <code>vsupply_range</code>: SpecValue list (unit: <code>"V"</code>). Total V+ to V− supply voltage. For single-supply parts store as <code>{min: min_V, max: max_V}</code>. For split-supply capable parts, store the single-supply equivalent as the primary entry (e.g. LM358: min=3, max=32) with a condition note mentioning the split-supply range. Condition carries supply topology.
 
-- `vsupply_split_capable`: boolean or null. True when the datasheet explicitly specifies split (bipolar) supply operation (e.g. ±15V). False when single-supply only.
+- <code>vsupply_split_capable</code>: boolean or null. True when the datasheet explicitly specifies split (bipolar) supply operation (e.g. ±15V). False when single-supply only.
 
-- `iq_per_amp`: SpecValue list (unit: `"A"`). Quiescent current PER OP-AMP CHANNEL. If the datasheet only publishes total supply current (ICC) for the whole package, divide by `channels` before storing. Condition carries VS and IO=0. Store µA as A (e.g. 100µA → `1e-4`).
+- <code>iq_per_amp</code>: SpecValue list (unit: <code>"A"</code>). Quiescent current PER OP-AMP CHANNEL. If the datasheet only publishes total supply current (ICC) for the whole package, divide by <code>channels</code> before storing. Condition carries VS and IO=0. Store µA as A (e.g. 100µA → <code>1e-4</code>).
 
-- `gbw`: SpecValue list (unit: `"Hz"` — NOT MHz; store 1MHz as `1e6`). Gain-bandwidth product: frequency at which open-loop gain is 0dB. Found in AC Characteristics or from open-loop Bode plot. Condition carries supply voltage.
+- <code>gbw</code>: SpecValue list (unit: <code>"Hz"</code> — NOT MHz; store 1MHz as <code>1e6</code>). Gain-bandwidth product: frequency at which open-loop gain is 0dB. Found in AC Characteristics or from open-loop Bode plot. Condition carries supply voltage.
 
-- `slew_rate`: SpecValue list (unit: `"V/s"` — NOT V/µs; store 0.6V/µs as `6e5`). Rate of output voltage change. Found in AC Characteristics table, or from step response graph. Condition carries supply and load.
+- <code>slew_rate</code>: SpecValue list (unit: <code>"V/s"</code> — NOT V/µs; store 0.6V/µs as <code>6e5</code>). Rate of output voltage change. Found in AC Characteristics table, or from step response graph. Condition carries supply and load.
 
-- `vos`: SpecValue list (unit: `"V"`). Input offset voltage. Store mV as V (e.g. 7mV → `7e-3`). Condition carries VCM and temperature.
+- <code>vos</code>: SpecValue list (unit: <code>"V"</code>). Input offset voltage. Store mV as V (e.g. 7mV → <code>7e-3</code>). Condition carries VCM and temperature.
 
-- `ib`: SpecValue list (unit: `"A"`). Input bias current. BJT-input op-amps: typically nA (e.g. 45nA → `4.5e-8`). CMOS/JFET-input: typically pA (e.g. 1pA → `1e-12`). Condition carries temperature.
+- <code>ib</code>: SpecValue list (unit: <code>"A"</code>). Input bias current. BJT-input op-amps: typically nA (e.g. 45nA → <code>4.5e-8</code>). CMOS/JFET-input: typically pA (e.g. 1pA → <code>1e-12</code>). Condition carries temperature.
 
-- `cmrr`: SpecValue list (unit: `"dB"`). Common mode rejection ratio. Higher is better. Condition carries common mode input range and supply.
+- <code>cmrr</code>: SpecValue list (unit: <code>"dB"</code>). Common mode rejection ratio. Higher is better. Condition carries common mode input range and supply.
 
-- `psrr`: SpecValue list (unit: `"dB"`). Power supply rejection ratio. Higher is better. Condition carries supply range.
+- <code>psrr</code>: SpecValue list (unit: <code>"dB"</code>). Power supply rejection ratio. Higher is better. Condition carries supply range.
 
-- `vout_swing_high`: SpecValue list (unit: `"V"`). Positive output headroom — how far the output falls SHORT of V+. Store as a positive number. For rail-to-rail output parts, this is typically 25–50mV. For non-R-R parts, this may be 1.5–2V or more. Condition carries supply voltage and load current.
+- <code>vout_swing_high</code>: SpecValue list (unit: <code>"V"</code>). Positive output headroom — how far the output falls SHORT of V+. Store as a positive number. For rail-to-rail output parts, this is typically 25–50mV. For non-R-R parts, this may be 1.5–2V or more. Condition carries supply voltage and load current.
 
-- `vout_swing_low`: SpecValue list (unit: `"V"`). Negative output headroom — how far the output rises ABOVE V−. Store as a positive number (not negative). For rail-to-rail output parts, typically 25–50mV. For parts with output including ground, this may be 5–20mV at light load. Condition carries supply voltage and load current.
+- <code>vout_swing_low</code>: SpecValue list (unit: <code>"V"</code>). Negative output headroom — how far the output rises ABOVE V−. Store as a positive number (not negative). For rail-to-rail output parts, typically 25–50mV. For parts with output including ground, this may be 5–20mV at light load. Condition carries supply voltage and load current.
 
-- `output_drive_current`: SpecValue list (unit: `"A"`). Output source or sink current capability. May be published as short-circuit current (ISC), output sourcing current (ISOURCE), or output sinking current (ISINK). Multiple SpecValues when different conditions give different limits. Store mA as A (e.g. 30mA → `0.03`).
+- <code>output_drive_current</code>: SpecValue list (unit: <code>"A"</code>). Output source or sink current capability. May be published as short-circuit current (ISC), output sourcing current (ISOURCE), or output sinking current (ISINK). Multiple SpecValues when different conditions give different limits. Store mA as A (e.g. 30mA → <code>0.03</code>).
 
-- `unity_gain_stable`: boolean or null. True when specified stable at gain=1. False when minimum stable gain is specified > 1. Null when not stated in datasheet.
+- <code>unity_gain_stable</code>: boolean or null. True when specified stable at gain=1. False when minimum stable gain is specified > 1. Null when not stated in datasheet.
 
-- `shutdown_pin`: string or null. Pin number string when the part has a shutdown/enable pin (matches `base.pinout[*].numbers`). Null when no shutdown pin — most general-purpose op-amps have no shutdown pin.
+- <code>shutdown_pin</code>: string or null. Pin number string when the part has a shutdown/enable pin (matches <code>base.pinout[*].numbers</code>). Null when no shutdown pin — most general-purpose op-amps have no shutdown pin.
 
-- `thermal_resistance`: nested object with three nullable SpecValue-list sub-fields, all `unit: "°C/W"` or `"K/W"`:
-  - `rtheta_ja` — junction-to-ambient. Present for most packages.
-  - `rtheta_jc` — junction-to-case. Null when not specified.
-  - `rtheta_jl` — junction-to-lead. Null for most op-amp packages.
+- <code>thermal_resistance</code>: nested object with three nullable SpecValue-list sub-fields, all <code>unit: "°C/W"</code> or <code>"K/W"</code>:
+  - <code>rtheta_ja</code> — junction-to-ambient. Present for most packages.
+  - <code>rtheta_jc</code> — junction-to-case. Null when not specified.
+  - <code>rtheta_jl</code> — junction-to-lead. Null for most op-amp packages.
   Found in Thermal Resistance or Package Characteristics section.
 
-- `package`: object with `code` (string), `pin_count` (integer), `pitch_mm` (number or null), `body_mm` (nested object with `length`, `width`, `height` — all numbers in millimeters; aligns with `base.schema.json`'s body_mm shape), `thermal_pad` (boolean or null), `evidence`. Found in Package Dimensions / Mechanical Data section.
+- <code>package</code>: object with <code>code</code> (string), <code>pin_count</code> (integer), <code>pitch_mm</code> (number or null), <code>body_mm</code> (nested object with <code>length</code>, <code>width</code>, <code>height</code> — all numbers in millimeters; aligns with <code>base.schema.json</code>'s body_mm shape), <code>thermal_pad</code> (boolean or null), <code>evidence</code>. Found in Package Dimensions / Mechanical Data section.
 
 ## Hard rules
 
-1. **Canonical SI units.** Voltage in V. Current in A (store µA as A: 100µA → `1e-4`). Frequency in Hz (NOT MHz: 1MHz → `1e6`). Slew rate in V/s (NOT V/µs: 0.6V/µs → `6e5`). CMRR/PSRR in dB. The verifier rejects non-SI prefix strings and non-canonical unit tokens.
-2. **Every SpecValue requires `evidence`** with `page` (1-based integer), `section` (string or null), `confidence` (`"high"`, `"medium"`, or `"low"`), `method` (one of `table`, `prose`, `curve`, `calculated`, `derived`). Use `"table"` for parameter tables; `"curve"` for values read off a graph; `"prose"` for values from descriptive text.
-3. **iq_per_amp is per-channel, not total.** If the datasheet publishes only total ICC (e.g. 1mA for a dual op-amp), divide by `channels` (0.5mA → `5e-4`). Document this in the `notes` field.
+1. **Canonical SI units.** Voltage in V. Current in A (store µA as A: 100µA → <code>1e-4</code>). Frequency in Hz (NOT MHz: 1MHz → <code>1e6</code>). Slew rate in V/s (NOT V/µs: 0.6V/µs → <code>6e5</code>). CMRR/PSRR in dB. The verifier rejects non-SI prefix strings and non-canonical unit tokens.
+2. **Every SpecValue requires <code>evidence</code>** with <code>page</code> (1-based integer), <code>section</code> (string or null), <code>confidence</code> (<code>"high"</code>, <code>"medium"</code>, or <code>"low"</code>), <code>method</code> (one of <code>table</code>, <code>prose</code>, <code>curve</code>, <code>calculated</code>, <code>derived</code>). Use <code>"table"</code> for parameter tables; <code>"curve"</code> for values read off a graph; <code>"prose"</code> for values from descriptive text.
+3. **iq_per_amp is per-channel, not total.** If the datasheet publishes only total ICC (e.g. 1mA for a dual op-amp), divide by <code>channels</code> (0.5mA → <code>5e-4</code>). Document this in the <code>notes</code> field.
 4. **shutdown_pin matches base.pinout[*].numbers.** If the part has a shutdown/enable/standby pin, the pin number string must match the number recorded in the base pinout extraction.
-5. **Deferred fields — omit entirely.** `noise_voltage_density`, `noise_current_density`, and `phase_margin` are NOT in this schema (deferred to v1.5 due to V/√Hz and degrees unit issues). Do not attempt to squeeze them into other fields.
-6. **OMIT fields you cannot find** with null. No guessing. A missing `slew_rate` is better than a hallucinated one.
-7. **vout_swing_high and vout_swing_low are positive headroom numbers.** They represent the gap between the output rail and V+/V−, NOT the absolute output voltage. For a rail-to-rail part with VOH=VDD−25mV, store `vout_swing_high=0.025`.
+5. **Deferred fields — omit entirely.** <code>noise_voltage_density</code>, <code>noise_current_density</code>, and <code>phase_margin</code> are NOT in this schema (deferred to v1.5 due to V/√Hz and degrees unit issues). Do not attempt to squeeze them into other fields.
+6. **OMIT fields you cannot find** with null. No guessing. A missing <code>slew_rate</code> is better than a hallucinated one.
+7. **vout_swing_high and vout_swing_low are positive headroom numbers.** They represent the gap between the output rail and V+/V−, NOT the absolute output voltage. For a rail-to-rail part with VOH=VDD−25mV, store <code>vout_swing_high=0.025</code>.
 
 ## Output format
 
-Return only the JSON object. No prose, no fences. Output must validate against `{{SCHEMA_PATH}}`.
+Return only the JSON object. No prose, no fences. Output must validate against <code>{{SCHEMA_PATH}}</code>.
 
 Example (LM358 — Fairchild/ON Semi BJT general-purpose dual single-supply, SOIC-8/PDIP-8; values from datasheet at VCC=5V, TA=25°C):
 

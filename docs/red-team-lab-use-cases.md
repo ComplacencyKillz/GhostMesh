@@ -19,13 +19,13 @@ a coordination channel over LoRa mesh.
 
 ## 2. Burn-Proof Protocol (Destruct + Stealth)
 
-**Status: destruct built (untested on a spare board); output/GPS/telemetry silencing built via the config layer (`silent`, `screen`/`hbled`/`gpsled`, `gps`/`gpsint`/`telint`); one-press stealth (role→ROUTER in a single toggle) + key-gen still Phase 6**
+**Status: destruct built (untested on a spare board); output/GPS/telemetry silencing built via the config layer (<code>silent</code>, <code>screen</code>/<code>hbled</code>/<code>gpsled</code>, <code>gps</code>/<code>gpsint</code>/<code>telint</code>); one-press stealth (role→ROUTER in a single toggle) + key-gen still Phase 6**
 
 Ensures the device cannot be used against the operator if discovered.
 
 **The destruct:** an armed-gated **complete flash erase** — firmware, config, and channel keys
-wiped, the ESP32-S3 left in USB download mode (`heltec-firmware/GhostMeshWipe.cpp`). Fired three
-ways, each with its own confirm: a one-time mesh token, an IR `ARM → WIPE → CONFIRM` sequence, or
+wiped, the ESP32-S3 left in USB download mode (<code>heltec-firmware/GhostMeshWipe.cpp</code>). Fired three
+ways, each with its own confirm: a one-time mesh token, an IR <code>ARM → WIPE → CONFIRM</code> sequence, or
 a physical double-press. It erases the operator's own device only, and is recoverable by reflash +
 encrypted config backup. See [docs/opsec.md](opsec.md).
 
@@ -48,19 +48,19 @@ Plant a backpack at a dead-drop. It watches its own perimeter and broadcasts ale
 operators miles away — running unattended, no Flipper present.
 
 **Sensors (custom Heltec modules, arm-gated — they report only when armed):**
-- SW-520D tilt: node moved / picked up → broadcasts `TAMPER` (working)
-- Photoresistor: case opened / light rises → broadcasts `TAMPER_LIGHT` (working)
-- RCWL-1601 ultrasonic: someone within threshold → broadcasts `PERSON_DETECTED` (working, at 3.3 V,
+- SW-520D tilt: node moved / picked up → broadcasts <code>TAMPER</code> (working)
+- Photoresistor: case opened / light rises → broadcasts <code>TAMPER_LIGHT</code> (working)
+- RCWL-1601 ultrasonic: someone within threshold → broadcasts <code>PERSON_DETECTED</code> (working, at 3.3 V,
   no divider)
 
 **Arm / disarm — three ways, last action wins:**
 - Toggle switch on the backpack (any flip inverts the state; position isn't tied to a state)
 - IR from ~10 m — any NEC remote, or the Flipper's Control screen
-- A mesh command (`/arm` / `/disarm`)
+- A mesh command (<code>/arm</code> / <code>/disarm</code>)
 
-**Operator notification:** the FAP receives the `TAMPER` / `PERSON_DETECTED` text over the mesh,
+**Operator notification:** the FAP receives the <code>TAMPER</code> / <code>PERSON_DETECTED</code> text over the mesh,
 shows it, and logs it to CSV. The backpack's own buzzer / vibration can be triggered over the mesh
-CLI (`/buzz`, `/vibrate`) or IR — the indicators live on the deployed node, not the Flipper.
+CLI (<code>/buzz</code>, <code>/vibrate</code>) or IR — the indicators live on the deployed node, not the Flipper.
 
 **Denial on discovery:** if the node is compromised, the destruct (armed + confirm) burns it to
 download mode before an adversary can extract the keys. See use case 2.
@@ -77,10 +77,10 @@ a "DUCTING LIKELY" indicator when BME280 data suggests favorable propagation.
 
 **Mesh wardriving (GPS + NodeInfo):** With BN-220 GPS enabled, GhostMesh logs all
 received NodeInfo packets (node ID, user, signal strength) with GPS coordinates to a
-dated CSV. `tools/log_to_kml.py` converts this to a KML heatmap showing every node
+dated CSV. <code>tools/log_to_kml.py</code> converts this to a KML heatmap showing every node
 heard and its signal strength relative to your position.
 
-The wardriving schema: `[timestamp, node_id, user, lat, lon, rssi, snr]`
+The wardriving schema: <code>[timestamp, node_id, user, lat, lon, rssi, snr]</code>
 
 **Use case:** Map the existing Meshtastic mesh density in a target area during pre-op
 reconnaissance. Identify relay nodes and coverage gaps.
@@ -92,20 +92,20 @@ reconnaissance. Identify relay nodes and coverage gaps.
 **Status: BadUSB over mesh working (Phase 13); NFC orchestration and Sub-GHz relay still planned.**
 
 **BadUSB over mesh:** Deploy a Flipper inside a target workspace (as a "charging device"), with a
-DuckyScript pre-staged on its SD card (`/ext/badusb/`, via `/put`+`/get` or a direct copy). When a
-`/run @id <name>` mesh command arrives (private channel, node armed), the GhostMesh FAP hands off to
+DuckyScript pre-staged on its SD card (<code>/ext/badusb/</code>, via <code>/put</code>+<code>/get</code> or a direct copy). When a
+<code>/run @id <name></code> mesh command arrives (private channel, node armed), the GhostMesh FAP hands off to
 Flipper's own Bad USB app, staged and idle. Bad USB's own screen — not GhostMesh — is what actually
 fires the keystrokes, on its own OK press. That's a deliberate second confirmation gate on top of the
 mesh armed-check: a remote trigger can stage a script, but firing it still needs a thumb on the
-device. See `docs/command-cli.md` ("Running a payload") for the full command reference.
+device. See <code>docs/command-cli.md</code> ("Running a payload") for the full command reference.
 
 **Design:** slide switch in ARMED position gates execution. Scripts selected by name from the
 SD card, not injected. Fires only on the private channel.
 
 **NFC orchestration over mesh:** Send a mesh packet to command the Flipper to:
-- Emulate a stored NFC badge (`NFC_EMU:filename.nfc`) — Flipper taped to reader,
+- Emulate a stored NFC badge (<code>NFC_EMU:filename.nfc</code>) — Flipper taped to reader,
   triggered remotely from miles away
-- Harvest a badge UID and broadcast it back over mesh (`NFC_HARVEST`)
+- Harvest a badge UID and broadcast it back over mesh (<code>NFC_HARVEST</code>)
 
 **Sub-GHz relay:** Capture a 433MHz fixed-code signal on Flipper A, relay it over LoRa
 mesh to Flipper B which replays it locally.

@@ -266,7 +266,7 @@ In those cases, use clear, neutral language.
 
 The voice of these projects draws directly from the universe of *Tales from the Afternow*
 by Sean Kennedy (Rant Media, 2002). The full reference document is at
-`ghostmesh.info/docs/afternow-reference.md`. The critical elements for writing copy:
+<code>ghostmesh.info/docs/afternow-reference.md</code>. The critical elements for writing copy:
 
 ### Who ServerMonk Is in This Frame
 
@@ -329,7 +329,7 @@ These are verbatim from the show and can be used directly on either site:
 **The sign-off / blessing:**
 > So light your candles, and may SERVER protect us all.
 
-Use as footer text, section closings, or hidden easter egg copy. `// so light your candles`
+Use as footer text, section closings, or hidden easter egg copy. <code>// so light your candles</code>
 works as a code comment style closing.
 
 **The Server Prayer (full or excerpted):**

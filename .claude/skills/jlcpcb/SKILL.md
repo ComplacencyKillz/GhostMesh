@@ -1,26 +1,26 @@
 ---
 name: jlcpcb
-description: JLCPCB PCB fabrication and assembly — BOM/CPL generation, basic vs extended parts, assembly constraints, design rules, ordering workflow. Use with KiCad for JLCPCB manufacturing. Use this skill when the user mentions JLCPCB, wants to order PCBs or assembled boards, needs prototype bare PCBs and stencils, wants to know JLCPCB design rules and capabilities, or is asking about PCB manufacturing costs or turnaround times. For gerber/CPL export, stencil ordering, and BOM management, see the `bom` skill.
+description: JLCPCB PCB fabrication and assembly — BOM/CPL generation, basic vs extended parts, assembly constraints, design rules, ordering workflow. Use with KiCad for JLCPCB manufacturing. Use this skill when the user mentions JLCPCB, wants to order PCBs or assembled boards, needs prototype bare PCBs and stencils, wants to know JLCPCB design rules and capabilities, or is asking about PCB manufacturing costs or turnaround times. For gerber/CPL export, stencil ordering, and BOM management, see the <code>bom</code> skill.
 ---
 
 # JLCPCB — PCB Fabrication & Assembly
 
 JLCPCB is a PCB fabrication and assembly service based in Shenzhen, China. It is a sister company to LCSC Electronics (common ownership) — they share the same parts library.
 
-**Typical usage**: Order bare prototype PCBs + framed stencil from JLCPCB during prototyping (parts sourced separately from DigiKey/Mouser, hand-assembled in lab). For production runs (100s qty), order fully assembled boards from JLCPCB using LCSC parts. PCBWay is an alternative assembler. For component searching, see the `lcsc` skill. For BOM management, gerber/CPL export, and stencil ordering, see the `bom` skill.
+**Typical usage**: Order bare prototype PCBs + framed stencil from JLCPCB during prototyping (parts sourced separately from DigiKey/Mouser, hand-assembled in lab). For production runs (100s qty), order fully assembled boards from JLCPCB using LCSC parts. PCBWay is an alternative assembler. For component searching, see the <code>lcsc</code> skill. For BOM management, gerber/CPL export, and stencil ordering, see the <code>bom</code> skill.
 
 ## Related Skills
 
 | Skill | Purpose |
 |-------|---------|
-| `kicad` | Read/analyze KiCad project files, DFM scoring against JLCPCB capabilities |
-| `bom` | BOM management, gerber/CPL export, stencil ordering |
-| `digikey` | Search DigiKey (prototype sourcing, primary — also preferred for datasheet downloads via API) |
-| `mouser` | Search Mouser (prototype sourcing, secondary) |
-| `lcsc` | Search LCSC (production sourcing — JLCPCB uses LCSC parts library) |
-| `pcbway` | Alternative PCB fabrication & assembly |
-| `emc` | EMC pre-compliance risk analysis — run before fab to catch EMC issues |
-| `spice` | SPICE simulation — verify analog subcircuits before committing to fab |
+| <code>kicad</code> | Read/analyze KiCad project files, DFM scoring against JLCPCB capabilities |
+| <code>bom</code> | BOM management, gerber/CPL export, stencil ordering |
+| <code>digikey</code> | Search DigiKey (prototype sourcing, primary — also preferred for datasheet downloads via API) |
+| <code>mouser</code> | Search Mouser (prototype sourcing, secondary) |
+| <code>lcsc</code> | Search LCSC (production sourcing — JLCPCB uses LCSC parts library) |
+| <code>pcbway</code> | Alternative PCB fabrication & assembly |
+| <code>emc</code> | EMC pre-compliance risk analysis — run before fab to catch EMC issues |
+| <code>spice</code> | SPICE simulation — verify analog subcircuits before committing to fab |
 
 ## Assembly Parts Library
 
@@ -35,12 +35,12 @@ JLCPCB is a PCB fabrication and assembly service based in Shenzhen, China. It is
 
 ### LCSC Part Numbers
 
-Every assembly component is identified by an **LCSC Part Number** (`Cxxxxx`, e.g., `C14663`). This is the definitive identifier for BOM matching. See the `lcsc` skill for searching parts.
+Every assembly component is identified by an **LCSC Part Number** (<code>Cxxxxx</code>, e.g., <code>C14663</code>). This is the definitive identifier for BOM matching. See the <code>lcsc</code> skill for searching parts.
 
 ### Parts Search (JLCPCB-Specific)
 
-- Parts library: `https://jlcpcb.com/parts/componentSearch?searchTxt=<query>`
-- Basic parts only: `https://jlcpcb.com/parts/basic_parts`
+- Parts library: <code>https://jlcpcb.com/parts/componentSearch?searchTxt=<query></code>
+- Basic parts only: <code>https://jlcpcb.com/parts/basic_parts</code>
 
 ## BOM Format for Assembly
 
@@ -48,28 +48,28 @@ JLCPCB accepts CSV, XLS, or XLSX BOMs with these columns:
 
 | Column | Required | Description |
 |--------|----------|-------------|
-| `Comment` / `Value` | Yes | Component value (e.g., 100nF, 10k) |
-| `Designator` | Yes | Reference designators, comma-separated (e.g., C1,C2,C5) |
-| `Footprint` | Yes | Package/footprint name |
-| `LCSC Part #` | Recommended | LCSC part number (Cxxxxx) — guarantees exact match |
+| <code>Comment</code> / <code>Value</code> | Yes | Component value (e.g., 100nF, 10k) |
+| <code>Designator</code> | Yes | Reference designators, comma-separated (e.g., C1,C2,C5) |
+| <code>Footprint</code> | Yes | Package/footprint name |
+| <code>LCSC Part #</code> | Recommended | LCSC part number (Cxxxxx) — guarantees exact match |
 
 The column header for LCSC numbers must be exactly **"LCSC Part #"** or **"LCSC Part Number"** — typos cause upload failures.
 
 ### KiCad BOM Export for JLCPCB
 
-1. In KiCad schematic editor, add an `LCSC` field to each symbol with the LCSC part number
+1. In KiCad schematic editor, add an <code>LCSC</code> field to each symbol with the LCSC part number
 2. Export BOM as CSV with columns: Reference, Value, Footprint, LCSC
 3. Rename columns to match JLCPCB's expected format:
-   - `Reference` -> `Designator`
-   - `Value` -> `Comment`
-   - `Footprint` -> `Footprint`
-   - `LCSC` -> `LCSC Part #`
+   - <code>Reference</code> -> <code>Designator</code>
+   - <code>Value</code> -> <code>Comment</code>
+   - <code>Footprint</code> -> <code>Footprint</code>
+   - <code>LCSC</code> -> <code>LCSC Part #</code>
 
-For gerber export settings, CPL format, and stencil ordering, see the `bom` skill.
+For gerber export settings, CPL format, and stencil ordering, see the <code>bom</code> skill.
 
 ## JLCPCB Official API (Approval Required)
 
-Apply at `https://api.jlcpcb.com`. Access is gated — requires review based on order history and business profile.
+Apply at <code>https://api.jlcpcb.com</code>. Access is gated — requires review based on order history and business profile.
 
 Available APIs (once approved):
 - **Components API** — real-time pricing, inventory, component specs
@@ -105,7 +105,7 @@ Available APIs (once approved):
 
 ### Importing DRU into KiCad
 
-If you have a JLCPCB `.kicad_dru` design rules file, import it in KiCad Board Editor > Board Setup > Design Rules > Import Settings.
+If you have a JLCPCB <code>.kicad_dru</code> design rules file, import it in KiCad Board Editor > Board Setup > Design Rules > Import Settings.
 
 ## Assembly Constraints
 
@@ -149,17 +149,17 @@ To fix rotation issues:
 
 ### Prototype Order (Bare PCB + Stencil)
 
-1. **Export gerbers** from KiCad (see `bom` skill for export settings)
-2. Upload gerbers to `https://cart.jlcpcb.com/quote` — configure layers, thickness, color, qty
+1. **Export gerbers** from KiCad (see <code>bom</code> skill for export settings)
+2. Upload gerbers to <code>https://cart.jlcpcb.com/quote</code> — configure layers, thickness, color, qty
 3. Add a **framed stencil** to the cart (uses paste layers from your gerbers)
 4. Order — PCBs and stencil typically arrive in ~1 week
 
 ### Production Order (Assembled Boards)
 
-1. **Export gerbers** from KiCad (see `bom` skill for export settings)
+1. **Export gerbers** from KiCad (see <code>bom</code> skill for export settings)
 2. **Export BOM** as CSV with LCSC part numbers (format above)
-3. **Export CPL** (placement file) as CSV (see `bom` skill for format)
-4. Upload gerbers to `https://cart.jlcpcb.com/quote` — configure layers, thickness, color, qty
+3. **Export CPL** (placement file) as CSV (see <code>bom</code> skill for format)
+4. Upload gerbers to <code>https://cart.jlcpcb.com/quote</code> — configure layers, thickness, color, qty
 5. Enable "PCB Assembly", select Economic or Standard
 6. Upload BOM and CPL files
 7. Review part matching — fix any unmatched parts by searching LCSC numbers
@@ -168,8 +168,8 @@ To fix rotation issues:
 ### Translating Altium / KiCad BOM and CPL files
 
 For boards exported from Altium (or other tools) whose BOM/CPL formats
-don't match JLCPCB's expected columns, the `bom` skill ships
-`translate_bom_pnp.py` to convert them. Two subcommands:
+don't match JLCPCB's expected columns, the <code>bom</code> skill ships
+<code>translate_bom_pnp.py</code> to convert them. Two subcommands:
 
 ```bash
 # BOM: KiCad/Altium CSV → JLCPCB BOM CSV (Comment, Designator, Footprint,
@@ -189,7 +189,7 @@ python3 skills/bom/scripts/translate_bom_pnp.py pnp input_cpl.csv -o jlc_cpl.csv
 JLCPCB's PCBA web upload rejects orders when the CPL contains designators
 that aren't in the BOM (mechanical holes, fiducials, test points, etc.
 that appear in the CPL output but aren't assembly components). The
-translator's `--bom` filter mode solves this:
+translator's <code>--bom</code> filter mode solves this:
 
 1. **Translate the BOM first** — produces the JLCPCB-format BOM and
    establishes the authoritative designator set:
@@ -197,12 +197,12 @@ translator's `--bom` filter mode solves this:
    python3 skills/bom/scripts/translate_bom_pnp.py bom input_bom.csv -o jlc_bom.csv
    ```
 
-2. **Translate the CPL with `--bom` filter** — intersects CPL designators
+2. **Translate the CPL with <code>--bom</code> filter** — intersects CPL designators
    with BOM designators, dropping orphans:
    ```bash
    python3 skills/bom/scripts/translate_bom_pnp.py pnp input_cpl.csv -o jlc_cpl.csv --bom jlc_bom.csv
    ```
-   The returned `filtered_orphans` count plus `filtered_orphan_samples`
+   The returned <code>filtered_orphans</code> count plus <code>filtered_orphan_samples</code>
    list lets the operator confirm which CPL rows were dropped — sanity-
    check this list before uploading. Common orphans (mounting holes,
    fiducials, test points) are expected; anything else may indicate a
@@ -217,13 +217,13 @@ translator's `--bom` filter mode solves this:
 
 This workflow is documented because JLCPCB's web upload UX silently
 rejects orphan-designator CPLs with an unhelpful error; the parity
-check via `--bom` is the single highest-value step in shipping a
+check via <code>--bom</code> is the single highest-value step in shipping a
 clean PCBA order.
 
 ## Tips
 
 - **Prefer Basic parts** — no extra fee, always in stock, faster assembly
-- **Check stock before ordering** — extended parts can go out of stock; use the `lcsc` skill to search
+- **Check stock before ordering** — extended parts can go out of stock; use the <code>lcsc</code> skill to search
 - **Panel by JLCPCB** — for small boards, let JLCPCB panelize (cheaper) vs custom panels
 - **Lead-free solder** — default is leaded (HASL); select lead-free HASL or ENIG if needed
 - **Impedance control** — available for multi-layer boards, specify stackup in order notes

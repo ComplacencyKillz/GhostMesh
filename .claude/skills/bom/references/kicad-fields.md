@@ -4,23 +4,23 @@
 
 | Field | Description | Example |
 |-------|-------------|---------|
-| `Reference` | Designator (auto) | `C1`, `U3`, `R5` |
-| `Value` | Component value | `100nF`, `ESP32-S3-WROOM-1` |
-| `Footprint` | Library:footprint | `Capacitor_SMD:C_0402_1005Metric` |
-| `Datasheet` | URL to datasheet | `https://...` |
-| `Description` | Part description | `100nF 16V X7R 0402 MLCC` |
+| <code>Reference</code> | Designator (auto) | <code>C1</code>, <code>U3</code>, <code>R5</code> |
+| <code>Value</code> | Component value | <code>100nF</code>, <code>ESP32-S3-WROOM-1</code> |
+| <code>Footprint</code> | Library:footprint | <code>Capacitor_SMD:C_0402_1005Metric</code> |
+| <code>Datasheet</code> | URL to datasheet | <code>https://...</code> |
+| <code>Description</code> | Part description | <code>100nF 16V X7R 0402 MLCC</code> |
 
 ## Custom BOM Fields
 
 | Field | Purpose | When | Example |
 |-------|---------|------|---------|
-| `MPN` | Manufacturer Part Number | Always | `GRM155R71C104KA88D` |
-| `Manufacturer` | Part manufacturer | Always | `Murata` |
-| `DigiKey` | DigiKey PN — primary prototype source | Prototype | `490-10698-1-ND` |
-| `Mouser` | Mouser PN — secondary prototype source | Prototype | `81-GRM155R71C104KA8D` |
-| `LCSC` | LCSC PN — production assembly source | Production | `C14663` |
-| `AltMPN` | Alternate/second-source MPN | Optional | `CL05B104KO5NNNC` |
-| `BOM Comments` | Freeform per-component ordering/assembly notes (flows into CSV Notes column) | Optional | `Proto only — DNP in production` |
+| <code>MPN</code> | Manufacturer Part Number | Always | <code>GRM155R71C104KA88D</code> |
+| <code>Manufacturer</code> | Part manufacturer | Always | <code>Murata</code> |
+| <code>DigiKey</code> | DigiKey PN — primary prototype source | Prototype | <code>490-10698-1-ND</code> |
+| <code>Mouser</code> | Mouser PN — secondary prototype source | Prototype | <code>81-GRM155R71C104KA8D</code> |
+| <code>LCSC</code> | LCSC PN — production assembly source | Production | <code>C14663</code> |
+| <code>AltMPN</code> | Alternate/second-source MPN | Optional | <code>CL05B104KO5NNNC</code> |
+| <code>BOM Comments</code> | Freeform per-component ordering/assembly notes (flows into CSV Notes column) | Optional | <code>Proto only — DNP in production</code> |
 
 ## Field Name Aliases
 
@@ -28,19 +28,19 @@ Projects use inconsistent field names. The analyzer recognizes all common varian
 
 | Canonical | Also Recognized As |
 |---|---|
-| `MPN` | `Manufacturer Part Number`, `Manufacturer_Part_Number`, `Manufacturer Part #`, `PartNumber`, `Part Number`, `Mfr_No`, `ManufacturerPartNumber` |
-| `Manufacturer` | `Manufacturer_Name`, `Mfr`, `MFR` |
-| `DigiKey` | `Digi-Key Part Number`, `Digi-Key_PN`, `DigiKey Part`, `DigiKey_Part_Number`, `DK` |
-| `Mouser` | `Mouser Part Number`, `Mouser Part`, `Mouser_PN`, `Mouser PN` |
-| `LCSC` | `LCSC Part #`, `LCSC Part Number`, `LCSCStockCode`, `JLCPCB`, `JLCPCB Part`, `JLC` |
-| `element14` | `Newark`, `Newark Part Number`, `Newark_PN`, `Farnell`, `Farnell_PN`, `element14_PN` |
-| `BOM Comments` | `BOM_Comments`, `BOM Comment`, `BOM_Comment`, `BOM Notes`, `BOM_Notes`, `BOM Note`, `Ordering Notes`, `Assembly Notes`, `Notes`, `Remarks`, `Comment` |
+| <code>MPN</code> | <code>Manufacturer Part Number</code>, <code>Manufacturer_Part_Number</code>, <code>Manufacturer Part #</code>, <code>PartNumber</code>, <code>Part Number</code>, <code>Mfr_No</code>, <code>ManufacturerPartNumber</code> |
+| <code>Manufacturer</code> | <code>Manufacturer_Name</code>, <code>Mfr</code>, <code>MFR</code> |
+| <code>DigiKey</code> | <code>Digi-Key Part Number</code>, <code>Digi-Key_PN</code>, <code>DigiKey Part</code>, <code>DigiKey_Part_Number</code>, <code>DK</code> |
+| <code>Mouser</code> | <code>Mouser Part Number</code>, <code>Mouser Part</code>, <code>Mouser_PN</code>, <code>Mouser PN</code> |
+| <code>LCSC</code> | <code>LCSC Part #</code>, <code>LCSC Part Number</code>, <code>LCSCStockCode</code>, <code>JLCPCB</code>, <code>JLCPCB Part</code>, <code>JLC</code> |
+| <code>element14</code> | <code>Newark</code>, <code>Newark Part Number</code>, <code>Newark_PN</code>, <code>Farnell</code>, <code>Farnell_PN</code>, <code>element14_PN</code> |
+| <code>BOM Comments</code> | <code>BOM_Comments</code>, <code>BOM Comment</code>, <code>BOM_Comment</code>, <code>BOM Notes</code>, <code>BOM_Notes</code>, <code>BOM Note</code>, <code>Ordering Notes</code>, <code>Assembly Notes</code>, <code>Notes</code>, <code>Remarks</code>, <code>Comment</code> |
 
-When writing new fields, use the canonical names for consistency. When a project already has a convention (e.g., `Digi-Key_PN`), respect it.
+When writing new fields, use the canonical names for consistency. When a project already has a convention (e.g., <code>Digi-Key_PN</code>), respect it.
 
 ## S-expression Format
 
-Custom fields in `.kicad_sch` files:
+Custom fields in <code>.kicad_sch</code> files:
 
 ```
 (property "MPN" "GRM155R71C104KA88D"
@@ -58,11 +58,11 @@ Custom fields in `.kicad_sch` files:
 ## Part Number Patterns
 
 - **MPN is the universal key** — cross-references across all distributors
-- **DigiKey PNs** end in `-ND` (e.g., `311-10.0KCRCT-ND`)
-- **Mouser PNs** have numeric prefixes (e.g., `81-GRM155R71C104KA8D`)
-- **LCSC PNs** are `Cxxxxx` (e.g., `C14663`)
-- **Newark/Farnell PNs** are alphanumeric SKUs (e.g., `94AK6874`)
+- **DigiKey PNs** end in <code>-ND</code> (e.g., <code>311-10.0KCRCT-ND</code>)
+- **Mouser PNs** have numeric prefixes (e.g., <code>81-GRM155R71C104KA8D</code>)
+- **LCSC PNs** are <code>Cxxxxx</code> (e.g., <code>C14663</code>)
+- **Newark/Farnell PNs** are alphanumeric SKUs (e.g., <code>94AK6874</code>)
 - Any identifier is useful — even a single distributor PN can be used to find the MPN and other PNs
 - Parts with no identifiers need manual enrichment before datasheet sync or ordering
 
-For detailed analysis of part number conventions across 56+ real-world projects, see `part-number-conventions.md`.
+For detailed analysis of part number conventions across 56+ real-world projects, see <code>part-number-conventions.md</code>.

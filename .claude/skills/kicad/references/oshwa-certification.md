@@ -18,8 +18,8 @@ certified until OSHWA has accepted the application and assigned a unique ID
    or firmware, documentation, and branding. Clearly distinguish proprietary
    third-party parts and other excluded material.
 3. Publish the preferred editable source for modification. For KiCad projects,
-   include the applicable `.kicad_pro`, `.kicad_sch`, `.kicad_pcb`, custom
-   `.kicad_sym` libraries, `.pretty/` footprint libraries, and project-specific
+   include the applicable <code>.kicad_pro</code>, <code>.kicad_sch</code>, <code>.kicad_pcb</code>, custom
+   <code>.kicad_sym</code> libraries, <code>.pretty/</code> footprint libraries, and project-specific
    design-rule files. Include mechanical source, FPGA/firmware source, and
    build or programming instructions when needed to reproduce the product.
    Gerbers, PDFs, and rendered images are useful release artifacts but do not
@@ -40,7 +40,7 @@ certified until OSHWA has accepted the application and assigned a unique ID
 7. Run the normal KiCad review and fabrication gates independently. OSHWA
    readiness does not replace ERC, DRC, DFM, EMC, safety, radio, or regulatory
    checks.
-8. Present a readiness report with `ready`, `gap`, or `not applicable` for each
+8. Present a readiness report with <code>ready</code>, <code>gap</code>, or <code>not applicable</code> for each
    checklist item. Separate factual repository findings from licensing
    judgments, and recommend qualified legal advice when ownership or license
    compatibility is unclear.

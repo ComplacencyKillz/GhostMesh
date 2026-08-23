@@ -1,6 +1,6 @@
-# Deep PCB Layout Analysis (`.kicad_pcb`)
+# Deep PCB Layout Analysis (<code>.kicad_pcb</code>)
 
-This reference covers in-depth PCB analysis techniques beyond what the `analyze_pcb.py` script provides automatically. For routine analysis, run the script first — it handles via classification, annular ring checks, connectivity, placement, thermal vias, current capacity, and signal integrity automatically.
+This reference covers in-depth PCB analysis techniques beyond what the <code>analyze_pcb.py</code> script provides automatically. For routine analysis, run the script first — it handles via classification, annular ring checks, connectivity, placement, thermal vias, current capacity, and signal integrity automatically.
 
 Use this reference for:
 - **Impedance calculations** from stackup parameters
@@ -9,7 +9,7 @@ Use this reference for:
 - **Differential pair validation** (impedance, length matching)
 - **Manual script-writing patterns** when building custom analysis tools
 
-For the PCB file format details (S-expression structure, fields, layer definitions), see `file-formats.md`.
+For the PCB file format details (S-expression structure, fields, layer definitions), see <code>file-formats.md</code>.
 
 ## Table of Contents
 
@@ -26,7 +26,7 @@ For the PCB file format details (S-expression structure, fields, layer definitio
 
 ## Setup and Stackup
 
-The `(setup ...)` section contains board-level configuration. The analyzer extracts layer count, thickness, copper finish, and paste ratios automatically. Use this section for **impedance calculations** which require the full stackup detail.
+The <code>(setup ...)</code> section contains board-level configuration. The analyzer extracts layer count, thickness, copper finish, and paste ratios automatically. Use this section for **impedance calculations** which require the full stackup detail.
 
 ### Stackup Structure
 ```
@@ -45,27 +45,27 @@ The `(setup ...)` section contains board-level configuration. The analyzer extra
 
 | Field | Description |
 |-------|-------------|
-| `thickness` | Layer thickness in mm (copper: typically 0.035 = 1oz) |
-| `material` | Dielectric material (FR4, Rogers, etc.) |
-| `epsilon_r` | Relative permittivity (affects impedance calculations) |
-| `loss_tangent` | Dielectric loss (affects high-frequency signal integrity) |
-| `copper_finish` | Surface finish: `None`, `HASL`, `ENIG`, `OSP`, etc. |
+| <code>thickness</code> | Layer thickness in mm (copper: typically 0.035 = 1oz) |
+| <code>material</code> | Dielectric material (FR4, Rogers, etc.) |
+| <code>epsilon_r</code> | Relative permittivity (affects impedance calculations) |
+| <code>loss_tangent</code> | Dielectric loss (affects high-frequency signal integrity) |
+| <code>copper_finish</code> | Surface finish: <code>None</code>, <code>HASL</code>, <code>ENIG</code>, <code>OSP</code>, etc. |
 
 ### Impedance Analysis
 
 - Total board thickness = sum of all layer thicknesses
 - Copper weight: 0.035mm = 1oz, 0.070mm = 2oz
-- For impedance control, you need `epsilon_r` and dielectric thickness between signal and reference layers
+- For impedance control, you need <code>epsilon_r</code> and dielectric thickness between signal and reference layers
 - Compare stackup to manufacturer capabilities (e.g., JLCPCB standard 4-layer stackup)
-- Use an impedance calculator with the board's specific `epsilon_r` and dielectric thickness
+- Use an impedance calculator with the board's specific <code>epsilon_r</code> and dielectric thickness
 
 ---
 
 ## Net Classes and Design Rules
 
-Net classes define per-net routing constraints. They appear in the `.kicad_pro` file (JSON) rather than the `.kicad_pcb` file, but the PCB enforces them.
+Net classes define per-net routing constraints. They appear in the <code>.kicad_pro</code> file (JSON) rather than the <code>.kicad_pcb</code> file, but the PCB enforces them.
 
-In `.kicad_pro`:
+In <code>.kicad_pro</code>:
 ```json
 "net_settings": {
   "classes": [
@@ -95,10 +95,10 @@ In `.kicad_pro`:
 ### Verifying Track Widths Against Net Classes
 
 To check if all tracks comply with their net class:
-1. Read net class definitions from `.kicad_pro`
+1. Read net class definitions from <code>.kicad_pro</code>
 2. Build a mapping: net name -> net class -> min track width
-3. Read all `(net N "name")` declarations in the PCB
-4. For each `(segment ... (width W) ... (net N) ...)`, verify W >= net class minimum
+3. Read all <code>(net N "name")</code> declarations in the PCB
+4. For each <code>(segment ... (width W) ... (net N) ...)</code>, verify W >= net class minimum
 5. Flag violations
 
 ### Netclass Audit for Power Electronics
@@ -109,7 +109,7 @@ Power electronics designs should have multiple netclasses. A single "Default" ne
 
 ## Differential Pairs
 
-Differential pairs in KiCad use a naming convention: nets ending in `+` and `-` (e.g., `USB_D+`/`USB_D-`) or `_P`/`_N`.
+Differential pairs in KiCad use a naming convention: nets ending in <code>+</code> and <code>-</code> (e.g., <code>USB_D+</code>/<code>USB_D-</code>) or <code>_P</code>/<code>_N</code>.
 
 ### Identifying Differential Pairs
 
@@ -131,7 +131,7 @@ Differential pairs in KiCad use a naming convention: nets ending in `+` and `-` 
 | Ethernet | 100 ohm diff | varies by stackup |
 | LVDS | 100 ohm diff | varies by stackup |
 
-Actual dimensions depend on stackup — use an impedance calculator with the board's `epsilon_r` and dielectric thickness.
+Actual dimensions depend on stackup — use an impedance calculator with the board's <code>epsilon_r</code> and dielectric thickness.
 
 ---
 
@@ -151,7 +151,7 @@ For motor controllers, power supplies, and other high-current designs, check the
 
 #### Trace Width vs Current Capacity
 
-The analyzer provides `current_capacity` data with min/max track widths per net. Cross-reference against net function:
+The analyzer provides <code>current_capacity</code> data with min/max track widths per net. Cross-reference against net function:
 
 | Net Function | Minimum Width (1oz Cu, 10°C rise) | Notes |
 |---|---|---|
@@ -180,13 +180,13 @@ For shunt resistor current sensing (common in motor control):
 
 ### Signal Integrity Checks
 
-The analyzer provides trace proximity data (with `--proximity`) and layer transition tracking. For deeper analysis:
+The analyzer provides trace proximity data (with <code>--proximity</code>) and layer transition tracking. For deeper analysis:
 
 1. **Return path continuity**: For high-speed signals, check that the reference plane (usually GND) is continuous under the signal trace. Look for zone splits or cutouts on the GND layer beneath high-speed traces.
 
 2. **Via stubs**: Through-hole vias used for inner-layer connections have stubs that can cause signal reflections above ~3 GHz. Check if any high-speed signals use through vias to inner layers.
 
-3. **Trace length matching**: For parallel buses (DDR, RGMII), traces should be length-matched. Use the analyzer's `net_lengths` data to compare.
+3. **Trace length matching**: For parallel buses (DDR, RGMII), traces should be length-matched. Use the analyzer's <code>net_lengths</code> data to compare.
 
 4. **90-degree corners**: Sharp 90-degree bends are acceptable for most designs but should be avoided for high-speed signals (>1 GHz).
 
@@ -302,7 +302,7 @@ Flag as **Warning** if components violate the minimums above. Flag as **Info** f
 
 ## Writing Analysis Scripts
 
-When the analyzer doesn't cover a specific check, build a custom script. The `analyze_pcb.py` script uses the `sexp_parser.py` shared parser — import it directly rather than writing regex-based parsing.
+When the analyzer doesn't cover a specific check, build a custom script. The <code>analyze_pcb.py</code> script uses the <code>sexp_parser.py</code> shared parser — import it directly rather than writing regex-based parsing.
 
 ### Using the Shared Parser
 
@@ -318,7 +318,7 @@ footprints = extract_footprints(tree)
 tracks = extract_tracks(tree)
 ```
 
-If you can't import the shared parser (e.g., standalone script), see `manual-pcb-parsing.md` for regex-based patterns.
+If you can't import the shared parser (e.g., standalone script), see <code>manual-pcb-parsing.md</code> for regex-based patterns.
 
 ### Coordinate Transforms
 
@@ -385,16 +385,16 @@ def point_in_bbox(x, y, cx, cy, half_w, half_h, angle_deg=0):
 
 ### Common Pitfalls
 
-1. **Confusing pad-relative and absolute coordinates** — pad `(at ...)` inside a footprint is relative; segment/via `(start/at ...)` is absolute. Always transform pads before comparing.
-2. **Ignoring footprint rotation** — a pad at `(at 3 0)` in a footprint rotated 90° is actually at a different absolute position. The transform is not optional.
-3. **Net name vs net ID** — in KiCad ≤9, segments reference nets by numeric ID; build the ID→name map from `(net N "name")` declarations. In KiCad 10, nets are referenced by name string directly (no declarations section). The analyzer handles both formats transparently.
-4. **Zone polygon vs filled polygon** — `(polygon ...)` is the user-drawn boundary; `(filled_polygon ...)` is the actual copper after DRC clearance carving. Always use filled polygons for containment tests. The PCB analyzer extracts both: `outline_bbox`/`outline_area_mm2` for the boundary, `filled_bbox`/`filled_area_mm2`/`fill_ratio` for actual copper. The `copper_presence` section reports which components have zone copper on the opposite layer — use this instead of inferring from zone outlines. Zone fills can go stale if the board was edited after the last Fill All Zones (shortcut `B`).
+1. **Confusing pad-relative and absolute coordinates** — pad <code>(at ...)</code> inside a footprint is relative; segment/via <code>(start/at ...)</code> is absolute. Always transform pads before comparing.
+2. **Ignoring footprint rotation** — a pad at <code>(at 3 0)</code> in a footprint rotated 90° is actually at a different absolute position. The transform is not optional.
+3. **Net name vs net ID** — in KiCad ≤9, segments reference nets by numeric ID; build the ID→name map from <code>(net N "name")</code> declarations. In KiCad 10, nets are referenced by name string directly (no declarations section). The analyzer handles both formats transparently.
+4. **Zone polygon vs filled polygon** — <code>(polygon ...)</code> is the user-drawn boundary; <code>(filled_polygon ...)</code> is the actual copper after DRC clearance carving. Always use filled polygons for containment tests. The PCB analyzer extracts both: <code>outline_bbox</code>/<code>outline_area_mm2</code> for the boundary, <code>filled_bbox</code>/<code>filled_area_mm2</code>/<code>fill_ratio</code> for actual copper. The <code>copper_presence</code> section reports which components have zone copper on the opposite layer — use this instead of inferring from zone outlines. Zone fills can go stale if the board was edited after the last Fill All Zones (shortcut <code>B</code>).
 5. **Assuming net function from name** — net names like VPH*, VSENSE*, etc. can look like power nets but may be sense lines. Always verify by checking connected component types.
 6. **Measuring decoupling distance to IC center** — large modules (ESP32, etc.) can be 18+ mm long with power pins at one edge. Always measure to the IC's actual power pin positions.
 
 ### Copper-Sensitive Components
 
-Some components require careful copper management on both layers. Use the analyzer's `copper_presence` data to verify these — don't infer from zone outlines.
+Some components require careful copper management on both layers. Use the analyzer's <code>copper_presence</code> data to verify these — don't infer from zone outlines.
 
 **Capacitive touch pads** (TP prefix, or pad-only footprints on touch nets):
 - Need NO copper on the opposite layer — ground planes under touch pads drastically reduce sensitivity by adding parasitic capacitance. But confirming copper absence isn't enough: check that **keepout zones** (rule areas) enforce this on the opposite layer. Without a keepout zone, the copper absence is accidental and one zone refill after a routing change could break touch sensitivity. If no keepout zones exist, flag as WARNING.
@@ -412,7 +412,7 @@ Some components require careful copper management on both layers. Use the analyz
 - Controlled impedance traces need consistent ground reference
 - Ground plane voids under matching components can detune the network
 
-In all cases, the `copper_presence.no_opposite_layer_copper` list in the analyzer output identifies components without opposite-layer zone copper — these are the isolation points to verify against the design intent.
+In all cases, the <code>copper_presence.no_opposite_layer_copper</code> list in the analyzer output identifies components without opposite-layer zone copper — these are the isolation points to verify against the design intent.
 
 ---
 
@@ -423,14 +423,14 @@ The schematic analysis methodology already prompts for datasheet cross-referenci
 ### Thermal Management
 
 - **Thermal vias**: Compare the number, size, and pattern of thermal vias under QFN/DFN/PowerPAD packages against the IC datasheet's recommended layout. Many datasheets specify exact via count, diameter, and grid pattern (e.g., TI's PowerPAD guidelines: 4×4 array of 0.3mm vias on 1.2mm pitch).
-- **Thermal via effective count methodology**: The `thermal_pad_vias` analyzer output includes an `effective_via_count` that weights each via by its plated barrel cross-section area relative to a 0.3mm reference drill: `(drill_diameter / 0.3)² per via`. Examples: 0.3mm via = 1.0 effective, 0.2mm = 0.44, 0.5mm = 2.78, 1.0mm = 11.1. The `recommended_min_vias` and `recommended_ideal_vias` thresholds are calibrated for 0.3mm reference vias and scale by pad area (pad <10mm²: min 5/ideal 9; 10-25mm²: min 9/ideal 16; >25mm²: 0.5×area/0.8×area). When interpreting the adequacy rating, note that designs intentionally using smaller vias (e.g., 0.2mm to prevent solder wicking through vias during reflow, common in module footprints like ESP32) may appear "insufficient" despite adequate thermal performance. Always cross-reference the via count and drill size against the component datasheet's specific recommendations before flagging as a concern.
+- **Thermal via effective count methodology**: The <code>thermal_pad_vias</code> analyzer output includes an <code>effective_via_count</code> that weights each via by its plated barrel cross-section area relative to a 0.3mm reference drill: <code>(drill_diameter / 0.3)² per via</code>. Examples: 0.3mm via = 1.0 effective, 0.2mm = 0.44, 0.5mm = 2.78, 1.0mm = 11.1. The <code>recommended_min_vias</code> and <code>recommended_ideal_vias</code> thresholds are calibrated for 0.3mm reference vias and scale by pad area (pad <10mm²: min 5/ideal 9; 10-25mm²: min 9/ideal 16; >25mm²: 0.5×area/0.8×area). When interpreting the adequacy rating, note that designs intentionally using smaller vias (e.g., 0.2mm to prevent solder wicking through vias during reflow, common in module footprints like ESP32) may appear "insufficient" despite adequate thermal performance. Always cross-reference the via count and drill size against the component datasheet's specific recommendations before flagging as a concern.
 - **θJA validation**: The datasheet's θJA is measured on a specific test board (usually JEDEC 2s2p for 4-layer). If the actual design has fewer layers or smaller copper area, θJA will be worse — note this when assessing thermal adequacy.
 - **Power dissipation check**: Calculate actual power dissipation from the circuit operating conditions (Vin, Vout, Iload for regulators; RDS(on) × I² for MOSFETs) and verify the thermal design can handle it. Flag when junction temperature exceeds the datasheet's maximum rating with margin.
 
 ### Decoupling Requirements
 
 - **Capacitor values**: Many ICs specify minimum and maximum input/output capacitance, ESR range, and capacitor type (ceramic vs tantalum). Verify the schematic values match and that the PCB places them within the datasheet's maximum allowed distance.
-- **Placement distance**: Some datasheets specify "place within X mm of pin Y" — check the PCB analyzer's `decoupling_placement` distances against these requirements. LDOs and high-speed switching regulators are particularly sensitive.
+- **Placement distance**: Some datasheets specify "place within X mm of pin Y" — check the PCB analyzer's <code>decoupling_placement</code> distances against these requirements. LDOs and high-speed switching regulators are particularly sensitive.
 - **Capacitor type**: Datasheets that specify "low-ESR ceramic" or "X5R/X7R minimum" should be cross-checked against the schematic's capacitor specifications. Class II ceramics (Y5V/Z5U) lose significant capacitance under DC bias and may not meet minimum requirements.
 
 ### Keepout Zones

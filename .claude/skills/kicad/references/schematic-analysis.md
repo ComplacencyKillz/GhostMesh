@@ -21,9 +21,9 @@ Methodology for validating KiCad schematics against datasheets, common design pa
 15. [Supply Chain Risk Assessment](#supply-chain-risk-assessment) — Sole-source and obsolescence checks
 16. [Report Format](#report-format)
 
-**Fallback methodology**: If `analyze_schematic.py` fails, see [`manual-schematic-parsing.md`](manual-schematic-parsing.md) for direct file parsing instructions.
+**Fallback methodology**: If <code>analyze_schematic.py</code> fails, see [<code>manual-schematic-parsing.md</code>](manual-schematic-parsing.md) for direct file parsing instructions.
 
-**For full design reviews:** read `report-generation.md` before writing conclusions. The report format, evidence-basis labeling, skipped-analysis disclosure, and false-positive triage expectations are part of the review method, not post-processing.
+**For full design reviews:** read <code>report-generation.md</code> before writing conclusions. The report format, evidence-basis labeling, skipped-analysis disclosure, and false-positive triage expectations are part of the review method, not post-processing.
 
 ---
 
@@ -33,23 +33,23 @@ Follow this sequence for a thorough schematic review. Each step builds on the pr
 
 ### Step 1: Run the schematic analyzer
 
-Run `analyze_schematic.py` on the schematic file (see SKILL.md for the command). The JSON output provides:
+Run <code>analyze_schematic.py</code> on the schematic file (see SKILL.md for the command). The JSON output provides:
 - Component inventory grouped by type, with values, footprints, MPNs
 - Full net connectivity map with pin-to-net mapping
-- **Automated subcircuit detection** (in `findings[]`, filtered by `detector` field): power regulators, voltage dividers, RC/LC filters, op-amp circuits, transistor circuits, bridge circuits, protection devices, current sense, crystal circuits, feedback networks, decoupling analysis, plus domain-specific detections (RF chains/matching, BMS, Ethernet, HDMI/DVI, memory interfaces, key matrices, isolation barriers, addressable LEDs, battery chargers, motor drivers, ESD protection audit, debug interfaces, power path/load switches, ADC signal conditioning, reset/supervisor circuits, clock distribution, display/touch interfaces, sensor fusion, level shifters, audio circuits, LED driver ICs, RTC circuits, LED lighting audit, thermocouple/RTD, power sequencing validation)
+- **Automated subcircuit detection** (in <code>findings[]</code>, filtered by <code>detector</code> field): power regulators, voltage dividers, RC/LC filters, op-amp circuits, transistor circuits, bridge circuits, protection devices, current sense, crystal circuits, feedback networks, decoupling analysis, plus domain-specific detections (RF chains/matching, BMS, Ethernet, HDMI/DVI, memory interfaces, key matrices, isolation barriers, addressable LEDs, battery chargers, motor drivers, ESD protection audit, debug interfaces, power path/load switches, ADC signal conditioning, reset/supervisor circuits, clock distribution, display/touch interfaces, sensor fusion, level shifters, audio circuits, LED driver ICs, RTC circuits, LED lighting audit, thermocouple/RTD, power sequencing validation)
 - Design observations (decoupling coverage, I2C pull-ups, crystal load caps, etc.)
 
 Use this structured data as the starting point — it replaces manual component extraction and most subcircuit identification.
 
-**If the script fails or returns unexpected results** (0 components, crash, etc.), fall back to manual parsing. See `manual-schematic-parsing.md` for the complete fallback methodology.
+**If the script fails or returns unexpected results** (0 components, crash, etc.), fall back to manual parsing. See <code>manual-schematic-parsing.md</code> for the complete fallback methodology.
 
-**If the script returns incomplete data** (some components missing pins — typically due to `.lib` files not being available in the repo for legacy KiCad 5 projects), use supplementary project files to recover the missing data. See `supplementary-data-sources.md` for the netlist parsing and PCB cross-reference workflow.
+**If the script returns incomplete data** (some components missing pins — typically due to <code>.lib</code> files not being available in the repo for legacy KiCad 5 projects), use supplementary project files to recover the missing data. See <code>supplementary-data-sources.md</code> for the netlist parsing and PCB cross-reference workflow.
 
 ### Step 2: Verify script output against the raw schematic
 
 Perform thorough verification of the analyzer output against the raw schematic. This is not a quick spot-check — it's the primary defense against silent misparsing that leads to incorrect analysis.
 
-1. **Component count**: Read the raw `.kicad_sch` file and count `(symbol (lib_id ...))` blocks in the placed symbols section (after `(lib_symbols)`). Subtract power symbols (`#PWR`, `#FLG`). Compare against the analyzer's component count — must match exactly.
+1. **Component count**: Read the raw <code>.kicad_sch</code> file and count <code>(symbol (lib_id ...))</code> blocks in the placed symbols section (after <code>(lib_symbols)</code>). Subtract power symbols (<code>#PWR</code>, <code>#FLG</code>). Compare against the analyzer's component count — must match exactly.
 
 2. **Complete pinout verification for ALL components**: For **every** component in the design (ICs, connectors, transistors, diodes, multi-pin passives), verify:
    - Value, lib_id, and footprint match the raw file
@@ -82,7 +82,7 @@ Do not collapse these into a generic "verified" label in the final report.
 
 ### Step 3: Review and augment subcircuit identification
 
-The analyzer's `findings[]` array automatically identifies most subcircuits (filter by `detector` field). Review its output and augment with any subcircuits it may have missed. Spot-check a few detected subcircuits against the raw schematic — verify the components and nets are correct. Common subcircuit boundaries:
+The analyzer's <code>findings[]</code> array automatically identifies most subcircuits (filter by <code>detector</code> field). Review its output and augment with any subcircuits it may have missed. Spot-check a few detected subcircuits against the raw schematic — verify the components and nets are correct. Common subcircuit boundaries:
 - Each voltage regulator + its input/output caps + feedback resistors = one block
 - Each IC + its decoupling caps + supporting passives = one block
 - Each connector + its ESD protection + filtering = one block
@@ -93,21 +93,21 @@ The analyzer's `findings[]` array automatically identifies most subcircuits (fil
 
 **Datasheets are mandatory for verification — not optional reference material.** Without datasheets, you cannot confirm that the schematic's pin assignments match reality. Every IC pinout verification in Step 2 requires the datasheet's pin table as ground truth.
 
-**Automated sync (preferred):** If the `digikey` skill is installed, run `sync_datasheets.py` on the schematic. This should have been done in the workflow's Step 3 (see SKILL.md). If not done yet, run it now:
+**Automated sync (preferred):** If the <code>digikey</code> skill is installed, run <code>sync_datasheets.py</code> on the schematic. This should have been done in the workflow's Step 3 (see SKILL.md). If not done yet, run it now:
 
 ```bash
 python3 <digikey-skill-path>/scripts/sync_datasheets.py <file.kicad_sch>
 ```
 
 **Check for existing datasheets:** Before downloading, look for:
-- `<project>/datasheets/` with `manifest.json` (legacy name `index.json`) from a previous sync
-- `<project>/docs/` or `<project>/documentation/`
+- <code><project>/datasheets/</code> with <code>manifest.json</code> (legacy name <code>index.json</code>) from a previous sync
+- <code><project>/docs/</code> or <code><project>/documentation/</code>
 - PDF files in the project directory whose names contain MPNs
-- `Datasheet` property URLs embedded in the KiCad symbols (the digikey skill names them as `<MPN>_<Description>.pdf`)
+- <code>Datasheet</code> property URLs embedded in the KiCad symbols (the digikey skill names them as <code><MPN>_<Description>.pdf</code>)
 
 **If datasheets are missing for any component:** Use these fallback methods in order:
-1. Use the `Datasheet` property URL from the schematic symbol
-2. Use the `digikey` skill to search by MPN and download
+1. Use the <code>Datasheet</code> property URL from the schematic symbol
+2. Use the <code>digikey</code> skill to search by MPN and download
 3. Use web search to find the manufacturer's datasheet page
 4. **Ask the user** — do not silently skip verification. Tell them: "I need datasheets for [list of parts] to verify the pinout and application circuit. Can you provide them or point me to a datasheets directory?"
 
@@ -142,12 +142,12 @@ For every value that derives from a formula (resistor dividers, RC filters, curr
 
 After subcircuit validation, check system-level issues:
 - Power sequencing across all regulators
-- Signal level compatibility between ICs (3.3V vs 5V logic). Note: the analyzer's `cross_domain_signals` detects these, but `needs_level_shifter: False` when the only cross-domain IC is an ESD protection device (e.g., USBLC6 on USB lines — USB signaling is 3.3V regardless of VBUS rail)
+- Signal level compatibility between ICs (3.3V vs 5V logic). Note: the analyzer's <code>cross_domain_signals</code> detects these, but <code>needs_level_shifter: False</code> when the only cross-domain IC is an ESD protection device (e.g., USBLC6 on USB lines — USB signaling is 3.3V regardless of VBUS rail)
 - Decoupling strategy completeness
 - ESD protection on all external interfaces
 - Thermal budget (total power dissipation vs cooling)
-- Inductive loads driven from GPIOs: buzzers/speakers/relays driven directly from GPIO without a transistor driver or flyback diode. The analyzer's `buzzer_speaker_circuits` flags `direct_gpio_drive: true` for these.
-- LED driver completeness: the analyzer's transistor circuits include `led_driver` when a MOSFET drives an LED through a current-limiting resistor. Verify current levels are within LED and GPIO limits.
+- Inductive loads driven from GPIOs: buzzers/speakers/relays driven directly from GPIO without a transistor driver or flyback diode. The analyzer's <code>buzzer_speaker_circuits</code> flags <code>direct_gpio_drive: true</code> for these.
+- LED driver completeness: the analyzer's transistor circuits include <code>led_driver</code> when a MOSFET drives an LED through a current-limiting resistor. Verify current levels are within LED and GPIO limits.
 - Battery-powered considerations:
   - Verify battery voltage range covers the regulator's input range (including UVLO startup threshold vs minimum battery voltage). Note: the battery component type alone doesn't tell you the cell configuration (single cell vs multi-cell series) — check the footprint and schematic context.
   - Check if USB or external power can operate the device when the battery is dead (look for power-path ORing or a charging circuit)
@@ -158,12 +158,12 @@ After subcircuit validation, check system-level issues:
 
 **Any finding that relies on coordinate math (pin positions, wire tracing, no-connect matching) is error-prone and must be validated before reporting as Critical or Warning.** The most common errors:
 
-1. **Y-axis inversion bug**: Forgetting that `absolute_Y = symbol_Y - pin_Y` (not `+`). This inverts the entire pin map and causes every pin to appear connected to the wrong net. See `net-tracing.md` for the correct transform.
+1. **Y-axis inversion bug**: Forgetting that <code>absolute_Y = symbol_Y - pin_Y</code> (not <code>+</code>). This inverts the entire pin map and causes every pin to appear connected to the wrong net. See <code>net-tracing.md</code> for the correct transform.
 2. **Label offset**: Global labels connect to pins via wires, not at pin endpoints. A label placed 5mm from a pin along a wire stub is still connected — checking only the pin coordinate will miss it.
-3. **Wire extraction bugs**: KiCad 9 spreads `(wire`, `(pts`, and coordinates across multiple lines. A regex that only checks the next line will miss coordinates on line +2 or +3.
+3. **Wire extraction bugs**: KiCad 9 spreads <code>(wire</code>, <code>(pts</code>, and coordinates across multiple lines. A regex that only checks the next line will miss coordinates on line +2 or +3.
 4. **Reference designator reuse**: A reference (e.g., R13) may be reused for a completely different component between schematic revisions. Always check the actual circuit context, not just the designator name.
 
-If your coordinate-based analysis finds "critical" issues (floating pins, wrong connections) but the user says the schematic is correct, **assume your coordinate math is wrong** and re-derive from scratch with the Y-axis formula from `net-tracing.md`.
+If your coordinate-based analysis finds "critical" issues (floating pins, wrong connections) but the user says the schematic is correct, **assume your coordinate math is wrong** and re-derive from scratch with the Y-axis formula from <code>net-tracing.md</code>.
 
 ### Step 8b: Triage analyzer false positives before ranking severity
 
@@ -225,15 +225,15 @@ Trace nets outward from each IC. The IC plus everything directly connected to it
 
 ## Using Pre-Extracted Datasheet Specs
 
-When `datasheets/extracted/<MPN>.json` files are available (produced by the `datasheets` skill — see its `references/extraction-schema.md` for the canonical field layout), use them to accelerate pin-by-pin verification:
+When <code>datasheets/extracted/<MPN>.json</code> files are available (produced by the <code>datasheets</code> skill — see its <code>references/extraction-schema.md</code> for the canonical field layout), use them to accelerate pin-by-pin verification:
 
-1. **Load the extraction** for each IC alongside the analyzer's `ic_pin_analysis` output
-2. **Join on pin number** — the extraction's `pins[].number` matches the analyzer's `pins[].pin_number`
+1. **Load the extraction** for each IC alongside the analyzer's <code>ic_pin_analysis</code> output
+2. **Join on pin number** — the extraction's <code>pins[].number</code> matches the analyzer's <code>pins[].pin_number</code>
 3. **For each pin, check:**
-   - **Voltage compatibility:** Is the net voltage within the pin's `voltage_operating_min`/`voltage_operating_max`?
-   - **Required externals:** Does the extraction's `required_external` field match what's actually connected?
+   - **Voltage compatibility:** Is the net voltage within the pin's <code>voltage_operating_min</code>/<code>voltage_operating_max</code>?
+   - **Required externals:** Does the extraction's <code>required_external</code> field match what's actually connected?
    - **Power pins:** Does every VDD pin have a decoupling cap?
-   - **Digital thresholds:** For digital inputs, are `threshold_high_v`/`threshold_low_v` met?
+   - **Digital thresholds:** For digital inputs, are <code>threshold_high_v</code>/<code>threshold_low_v</code> met?
    - **NC pins:** Are pins marked as no-connect actually unconnected?
 4. **Cite extraction data** in findings
 
@@ -252,7 +252,7 @@ For each component type, here is what to extract from the datasheet and what to 
 - Dropout voltage (LDO) or duty cycle limits (switching)
 - Required input capacitor: value, ESR range, type (ceramic OK? tantalum needed?)
 - Required output capacitor: value, ESR range, stability requirements
-- Feedback divider formula (adjustable types): `VOUT = VREF * (1 + R_TOP/R_BOTTOM)` or similar
+- Feedback divider formula (adjustable types): <code>VOUT = VREF * (1 + R_TOP/R_BOTTOM)</code> or similar
 - Enable pin behavior (active high/low, threshold, internal pull-up/down)
 - Soft-start capacitor (if applicable)
 - Thermal shutdown temperature
@@ -265,7 +265,7 @@ For each component type, here is what to extract from the datasheet and what to 
 - Input cap meets datasheet requirements (value, type, voltage rating >= VIN_max * 1.5)
 - Output cap meets datasheet requirements (value, ESR, voltage rating >= VOUT * 1.5)
 - Enable pin is properly driven or tied (not floating)
-- Power dissipation is within package thermal limits: `P = (VIN - VOUT) * ILOAD` for LDO
+- Power dissipation is within package thermal limits: <code>P = (VIN - VOUT) * ILOAD</code> for LDO
 - For switching regulators: inductor value and saturation current meet requirements
 
 **Common errors:**
@@ -292,7 +292,7 @@ For each component type, here is what to extract from the datasheet and what to 
 - Every VDD/VSS pair has a 100nF ceramic cap placed close to the pins
 - VDDA has its own filtering (ferrite bead + cap, or LC filter)
 - Bulk cap present on main supply (4.7uF-10uF typical)
-- Crystal load caps are correct: `CL_cap = 2 * (CL_crystal - C_stray)` where C_stray ~ 2-5pF
+- Crystal load caps are correct: <code>CL_cap = 2 * (CL_crystal - C_stray)</code> where C_stray ~ 2-5pF
 - Boot pins are configured for the desired boot mode (not floating)
 - Reset pin has proper pull-up (typically 10k) and optional 100nF cap to ground
 - Unused GPIO pins are set to a known state (not floating) — either pulled up/down or marked no-connect
@@ -310,7 +310,7 @@ For each component type, here is what to extract from the datasheet and what to 
 ### Passive Components (Resistors, Capacitors, Inductors)
 
 **Validate for resistors:**
-- Power rating: `P = V^2 / R` or `P = I^2 * R` — must be within component's rated power with 50% derating
+- Power rating: <code>P = V^2 / R</code> or <code>P = I^2 * R</code> — must be within component's rated power with 50% derating
 - Voltage rating: voltage across resistor must not exceed maximum working voltage (relevant for high-value resistors in voltage dividers off high-voltage rails)
 - Tolerance is appropriate for the application (1% for feedback dividers, 5% OK for pull-ups)
 
@@ -401,7 +401,7 @@ VIN ──┬── [Cin 10-22uF] ──┬── GND
 - Cin: low ESR ceramic, voltage rating > VIN, value per datasheet
 - Cout: low ESR ceramic or polymer, value per datasheet
 - Bootstrap cap: typically 100nF ceramic (for integrated FET controllers)
-- Feedback divider: `VOUT = VREF * (1 + RTOP/RBOT)`, 1% resistors
+- Feedback divider: <code>VOUT = VREF * (1 + RTOP/RBOT)</code>, 1% resistors
 
 ### Crystal Oscillator
 
@@ -412,7 +412,7 @@ MCU_XIN ──┬── [Y1 crystal] ──┬── MCU_XOUT
 ```
 
 **Expected values:**
-- Load cap formula: `CL1 = CL2 = 2 * (CL - Cstray)` where:
+- Load cap formula: <code>CL1 = CL2 = 2 * (CL - Cstray)</code> where:
   - CL = crystal's rated load capacitance (from crystal datasheet, typically 8-20pF)
   - Cstray = stray/parasitic capacitance (typically 2-5pF for PCB + MCU pin)
 - Example: crystal CL = 12pF, Cstray = 3pF → CL1 = CL2 = 2 * (12 - 3) = 18pF
@@ -457,7 +457,7 @@ VCC ──┬── [Rp1 2.2-10k] ──── SDA bus
 ```
 
 **Expected values:**
-- Pull-up resistor: `Rp_min = (VCC - VOL) / IOL` and `Rp_max = tr / (0.8473 * Cb)`
+- Pull-up resistor: <code>Rp_min = (VCC - VOL) / IOL</code> and <code>Rp_max = tr / (0.8473 * Cb)</code>
   - VOL = 0.4V, IOL = 3mA (standard), Cb = bus capacitance
 - Typical values: 2.2k (400kHz fast mode), 4.7k (100kHz standard), 10k (low power)
 - Only ONE set of pull-ups per bus (not per device!)
@@ -478,7 +478,7 @@ VCC ──── [R] ──── [LED] ──── GPIO    (active low, sinkin
 ```
 
 **Expected values:**
-- `R = (VSUPPLY - VLED - VOL_or_VOH) / ILED`
+- <code>R = (VSUPPLY - VLED - VOL_or_VOH) / ILED</code>
 - Typical: VLED ≈ 2.0V (red), 2.1V (yellow), 3.0V (green/blue/white)
 - Typical: ILED = 2-5mA for indicators (not full 20mA unless brightness needed)
 - Check GPIO source/sink current limit
@@ -488,9 +488,9 @@ When the supply comes from a switching regulator with tolerance, you must check 
 
 1. Compute worst-case high supply: use VREF_max and resistor tolerances (see "Tolerance Stacking" below)
 2. Get Vf_min from the LED datasheet (often significantly lower than typical — e.g., 2.7V min vs 3.3V typ for blue/green)
-3. `I_worst = (Vsupply_max - Vf_min) / R`
+3. <code>I_worst = (Vsupply_max - Vf_min) / R</code>
 4. This must be below the LED's absolute maximum current rating
-5. If not, increase R until `R >= (Vsupply_max - Vf_min) / I_abs_max`, then round up to next E24 value
+5. If not, increase R until <code>R >= (Vsupply_max - Vf_min) / I_abs_max</code>, then round up to next E24 value
 6. Re-verify typical current is still acceptable for desired brightness
 
 ### Reset Circuit
@@ -520,21 +520,21 @@ VIN ──── [R_TOP] ──┬── ADC_INPUT
 ```
 
 **Expected values:**
-- `V_ADC = VIN * R_BOT / (R_TOP + R_BOT)`
+- <code>V_ADC = VIN * R_BOT / (R_TOP + R_BOT)</code>
 - V_ADC must be <= ADC reference voltage (usually VDDA)
 - Total impedance (R_TOP + R_BOT) should be reasonable:
   - Too low (< 1k): wastes power, loads the source
   - Too high (> 1M): ADC sampling capacitor can't charge fast enough
   - Typical: 10k-100k total
-- Filter cap: `f_cutoff = 1 / (2 * pi * R_parallel * C)` where R_parallel = R_TOP * R_BOT / (R_TOP + R_BOT)
+- Filter cap: <code>f_cutoff = 1 / (2 * pi * R_parallel * C)</code> where R_parallel = R_TOP * R_BOT / (R_TOP + R_BOT)
 
 **Source impedance and ADC accuracy:**
 MCU ADCs have a sample-and-hold capacitor (typically a few pF) that must charge through the source impedance during the sampling window. If source impedance is too high, the capacitor doesn't fully settle and readings are inaccurate.
 
-- Source impedance = `R_TOP × R_BOT / (R_TOP + R_BOT)` (parallel combination)
+- Source impedance = <code>R_TOP × R_BOT / (R_TOP + R_BOT)</code> (parallel combination)
 - Check the MCU datasheet for maximum recommended source impedance (ESP32-S3: ~13kΩ)
 - If source impedance exceeds the limit, a filter capacitor (e.g., 100nF) at the ADC input helps: the cap pre-charges to the correct voltage, and the ADC samples from the cap instead of through the resistors
-- Verify the RC settling time (`τ = R_parallel × C_filter`) allows sufficient settling between readings
+- Verify the RC settling time (<code>τ = R_parallel × C_filter</code>) allows sufficient settling between readings
 - For battery-powered designs, balance accuracy vs sleep current: 100K/100K (50kΩ source, 15µA at 3V) is a reasonable compromise with a 100nF filter cap providing ~5ms settling
 
 ### Power Input with Reverse Polarity Protection
@@ -570,17 +570,17 @@ For every computed value in the schematic, verify the math. Show your work so th
 ```
 VOUT = VIN * R_BOTTOM / (R_TOP + R_BOTTOM)
 ```
-Or equivalently: `R_TOP / R_BOTTOM = (VIN / VOUT) - 1`
+Or equivalently: <code>R_TOP / R_BOTTOM = (VIN / VOUT) - 1</code>
 
 ### Regulator Feedback Divider
 
 Different ICs use different formulas. Common patterns:
-- `VOUT = VREF * (1 + R1/R2)` — R1 from VOUT to FB, R2 from FB to GND
-- `VOUT = VREF * (R1 + R2) / R2` — same thing, different notation
+- <code>VOUT = VREF * (1 + R1/R2)</code> — R1 from VOUT to FB, R2 from FB to GND
+- <code>VOUT = VREF * (R1 + R2) / R2</code> — same thing, different notation
 - Always check which resistor is "top" (VOUT to FB) and which is "bottom" (FB to GND)
 - VREF is from the regulator datasheet (commonly 0.6V, 0.8V, or 1.25V)
 
-**Feedforward capacitor** (boost/buck converters): Some switching regulators recommend a small capacitor across the upper feedback resistor to add a zero that improves transient response. Formula: `C_FF = 1 / (2π × f_FFZ × R_upper)`, where f_FFZ is the target zero frequency (typically ~1kHz, per datasheet). Always verify this against the specific regulator's datasheet — not all converters benefit from feedforward.
+**Feedforward capacitor** (boost/buck converters): Some switching regulators recommend a small capacitor across the upper feedback resistor to add a zero that improves transient response. Formula: <code>C_FF = 1 / (2π × f_FFZ × R_upper)</code>, where f_FFZ is the target zero frequency (typically ~1kHz, per datasheet). Always verify this against the specific regulator's datasheet — not all converters benefit from feedforward.
 
 ### Tolerance Stacking for Regulator Output
 
@@ -591,7 +591,7 @@ Vout_max = VREF_max × (1 + R_upper×(1+tol) / (R_lower×(1-tol)))
 Vout_min = VREF_min × (1 + R_upper×(1-tol) / (R_lower×(1+tol)))
 ```
 
-Where `tol` is the resistor tolerance (0.01 for 1%). This matters because:
+Where <code>tol</code> is the resistor tolerance (0.01 for 1%). This matters because:
 - Downstream components (LEDs, ICs) must tolerate the full Vout range
 - The high-side voltage determines worst-case overcurrent through current-limited loads
 - The low-side voltage determines whether downstream regulators have enough headroom
@@ -740,7 +740,7 @@ For battery-powered designs, check these additional concerns beyond basic electr
 
 Enumerate all current draws during deep sleep / low-power mode:
 - MCU sleep current (from datasheet, at actual voltage and temperature)
-- Voltage dividers (always-on resistive paths): `I = Vbatt / (R_top + R_bot)`
+- Voltage dividers (always-on resistive paths): <code>I = Vbatt / (R_top + R_bot)</code>
 - Regulator quiescent current (if always enabled)
 - Pull-up/pull-down resistors that create current paths
 - Leakage through protection diodes, FETs, ESD devices
@@ -760,7 +760,7 @@ Compute the minimum battery voltage at which the system can still function under
 
 1. Identify peak current events (WiFi TX, motor drive, LED animation)
 2. Look up battery internal resistance at end-of-life (AA alkaline: ~1-2Ω per cell at 1.0V)
-3. Calculate voltage sag: `V_sag = I_peak × R_internal_total`
+3. Calculate voltage sag: <code>V_sag = I_peak × R_internal_total</code>
 4. Check regulator minimum input voltage at peak output current (from efficiency curves, not just Vin_min spec — boost converters lose regulation when input current exceeds capability)
 5. Minimum battery voltage = regulator Vin_min + V_sag + margin
 
@@ -772,7 +772,7 @@ Battery-powered designs often power-gate subsystems to save energy:
 - Verify enable pins have pull-downs to keep regulators off during boot
 - Check for inrush current when multiple regulators enable simultaneously
 - Verify USB host power sequencing (if applicable — host must install before VBUS powers the device)
-- Check that GPIO states during deep sleep don't create parasitic current paths (unused GPIOs should be parked as outputs driven low, with `gpio_deep_sleep_hold_en()` or equivalent)
+- Check that GPIO states during deep sleep don't create parasitic current paths (unused GPIOs should be parked as outputs driven low, with <code>gpio_deep_sleep_hold_en()</code> or equivalent)
 
 ---
 
@@ -843,7 +843,7 @@ MCU pins serve multiple functions (alternate function muxing). A pin assigned to
 
 1. **Get the MCU's pin mux table** from the datasheet (usually titled "Alternate Function Mapping" or "Pin Multiplexing"). This table lists which alternate function (AF0-AF15 on STM32, IO_MUX on ESP32, etc.) maps each peripheral signal to each pin.
 
-2. **Extract all used pins from the schematic**: From the analyzer output, list every net connected to the MCU. Map each net name to its peripheral function (e.g., `SPI1_MOSI`, `UART2_TX`, `I2C1_SDA`, `ADC1_CH3`).
+2. **Extract all used pins from the schematic**: From the analyzer output, list every net connected to the MCU. Map each net name to its peripheral function (e.g., <code>SPI1_MOSI</code>, <code>UART2_TX</code>, <code>I2C1_SDA</code>, <code>ADC1_CH3</code>).
 
 3. **Check for conflicts**: For each pin, verify the assigned peripheral signal is available on that pin's alternate function list. Flag:
    - Two peripherals that require the same pin (e.g., SPI1_SCK and TIM2_CH1 both need PA5)
@@ -870,7 +870,7 @@ Connector pinout errors are among the most common schematic mistakes and often a
 
 ### Procedure
 
-1. **Identify connector type** from the footprint or symbol library name (e.g., `USB_C_Receptacle`, `Conn_ARM_JTAG_SWD_10`, `Conn_01x06_FTDI`)
+1. **Identify connector type** from the footprint or symbol library name (e.g., <code>USB_C_Receptacle</code>, <code>Conn_ARM_JTAG_SWD_10</code>, <code>Conn_01x06_FTDI</code>)
 2. **Extract pin-to-net mapping** from the analyzer output for that connector's reference designator
 3. **Compare against the standard pinout** (see table below)
 4. **Check orientation**: KiCad symbols may show the pinout from the connector side or the PCB side — verify which convention the library uses
@@ -954,8 +954,8 @@ Motor control circuits combine high-current power switching with precision analo
 
 Shoot-through (both high-side and low-side FETs on simultaneously) destroys the bridge. Dead-time must exceed the slower FET's turn-off time:
 
-1. Get turn-off delay (`td(off)`) and fall time (`tf`) from the MOSFET datasheet
-2. Total turn-off time = `td(off) + tf` (at the actual gate drive voltage and load current)
+1. Get turn-off delay (<code>td(off)</code>) and fall time (<code>tf</code>) from the MOSFET datasheet
+2. Total turn-off time = <code>td(off) + tf</code> (at the actual gate drive voltage and load current)
 3. Dead-time (from gate driver datasheet or PWM controller config) must exceed total turn-off time with margin
 4. **Check at worst case**: turn-off time increases at higher temperature and higher load current
 
@@ -965,7 +965,7 @@ Flag as **Critical** if the dead-time is less than the worst-case turn-off time.
 
 For high-side N-channel MOSFET gate drive with a bootstrap circuit:
 
-1. **Bootstrap capacitor sizing**: `C_boot >= Q_gate / ΔV_boot`, where ΔV_boot is the acceptable voltage droop (typically 0.5-1V). Use 10× minimum as a rule of thumb.
+1. **Bootstrap capacitor sizing**: <code>C_boot >= Q_gate / ΔV_boot</code>, where ΔV_boot is the acceptable voltage droop (typically 0.5-1V). Use 10× minimum as a rule of thumb.
 2. **Bootstrap diode**: reverse recovery time must be fast enough that the diode doesn't conduct during the switch node transition. Use Schottky or ultrafast recovery.
 3. **Startup**: the bootstrap cap charges during low-side on-time. If the first PWM cycle starts with high-side on, the cap is uncharged — verify the controller forces a low-side pulse at startup.
 4. **100% duty cycle limitation**: bootstrap circuits cannot sustain 100% high-side on-time (cap voltage decays). Check if the application requires this.
@@ -974,10 +974,10 @@ For high-side N-channel MOSFET gate drive with a bootstrap circuit:
 
 For shunt-resistor current sensing:
 
-1. **Shunt power rating**: `P = I_peak² × R_shunt`. Derate to 50% of rated power for reliability. A 10mΩ shunt at 10A dissipates 1W — needs ≥2W rating.
+1. **Shunt power rating**: <code>P = I_peak² × R_shunt</code>. Derate to 50% of rated power for reliability. A 10mΩ shunt at 10A dissipates 1W — needs ≥2W rating.
 2. **Sense amplifier CMRR**: the common-mode voltage on the shunt equals the motor voltage (potentially tens of volts). Verify the sense amp's CMRR is adequate and its common-mode input range covers the full swing.
 3. **Kelvin routing**: sense traces must connect directly to the shunt resistor pads, not tap off the power trace. This is a PCB layout concern but should be noted in schematic review as a requirement.
-4. **Sense voltage at full scale**: `V_sense = I_max × R_shunt`. This should match the sense amplifier's input range and the ADC's resolution requirements.
+4. **Sense voltage at full scale**: <code>V_sense = I_max × R_shunt</code>. This should match the sense amplifier's input range and the ADC's resolution requirements.
 
 ### Gate Drive Verification
 
@@ -1015,7 +1015,7 @@ For battery-powered designs, estimate operational lifetime to validate the desig
    - MCU at operating frequency (e.g., ESP32-S3 at 240MHz: ~40-80mA)
    - Radio (WiFi TX: 180-380mA peak for ESP32; BLE TX: 20-30mA)
    - Sensors, ADCs, displays, LEDs
-   - Regulator efficiency losses: `I_battery = I_load / η_regulator`
+   - Regulator efficiency losses: <code>I_battery = I_load / η_regulator</code>
 
 2. **Enumerate sleep mode current**: Use the sleep current audit from the analyzer output, plus datasheet sleep/shutdown currents for each IC. Don't forget:
    - Voltage divider quiescent current (always-on resistive paths)
@@ -1054,7 +1054,7 @@ Even if average current is low, peak current events can cause problems:
 - **WiFi TX bursts**: 180-380mA for 100-500ms. Battery internal resistance causes voltage sag. Verify the regulator input voltage stays above minimum during peaks (see [Minimum Battery Voltage](#minimum-battery-voltage-low-battery-threshold)).
 - **Motor start**: inrush current can be 5-10× running current. May need a bulk capacitor to supply the peak.
 - **LED animations**: WS2812B strips draw 60mA/LED at full white. 10 LEDs = 600mA peak.
-- **Bulk capacitor sizing**: for short peaks, `C = I_peak × t_peak / ΔV_allowed`. A 100µF cap supplies 200mA for 1ms with 2V droop.
+- **Bulk capacitor sizing**: for short peaks, <code>C = I_peak × t_peak / ΔV_allowed</code>. A 100µF cap supplies 200mA for 1ms with 2V droop.
 
 ### Report Format for Battery Life
 

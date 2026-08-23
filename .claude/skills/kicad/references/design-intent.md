@@ -1,19 +1,19 @@
 # Design Intent Interpretation Guide
 
-When presenting schematic or PCB analysis results, check the `design_intent`
+When presenting schematic or PCB analysis results, check the <code>design_intent</code>
 object in the analysis JSON to understand the design context and calibrate
 your review accordingly.
 
 ## Reading Auto-Detected Intent
 
-The `design_intent` object contains:
+The <code>design_intent</code> object contains:
 
-- `product_class`: "prototype" or "production"
-- `ipc_class`: 1, 2, or 3
-- `target_market`: "hobby", "consumer", "industrial", "medical", "automotive", "aerospace"
-- `confidence`: 0.0-1.0 (how confident the auto-detection is)
-- `detection_signals`: list of strings explaining what was detected
-- `source`: per-field dict showing where each value came from ("config", "pcb_fab_notes", "schematic_title", "auto")
+- <code>product_class</code>: "prototype" or "production"
+- <code>ipc_class</code>: 1, 2, or 3
+- <code>target_market</code>: "hobby", "consumer", "industrial", "medical", "automotive", "aerospace"
+- <code>confidence</code>: 0.0-1.0 (how confident the auto-detection is)
+- <code>detection_signals</code>: list of strings explaining what was detected
+- <code>source</code>: per-field dict showing where each value came from ("config", "pcb_fab_notes", "schematic_title", "auto")
 
 **When confidence < 0.5**, ask the user to confirm before applying professional-grade
 criteria:
@@ -59,7 +59,7 @@ not need to re-run the analyzers.
 
 ## Market-Specific Review Priorities
 
-Adjust what you emphasize based on `target_market`:
+Adjust what you emphasize based on <code>target_market</code>:
 
 ### hobby
 - Focus on: basic correctness, learning opportunities, cost optimization
@@ -98,7 +98,7 @@ Adjust what you emphasize based on `target_market`:
 
 ## Severity Adjustment Table
 
-Adjust finding severity based on `product_class` and `target_market`:
+Adjust finding severity based on <code>product_class</code> and <code>target_market</code>:
 
 | Finding | prototype/hobby | production/consumer | production/industrial+ |
 |---------|----------------|--------------------|-----------------------|

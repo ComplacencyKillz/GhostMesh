@@ -1,6 +1,6 @@
 # Schematic Analyzer — Methodology
 
-This document describes the analysis methodology used by `analyze_schematic.py` and its supporting modules. It covers the parsing pipeline, net-building algorithm, component classification heuristics, signal path detection, and design analysis checks in enough detail to understand what the analyzer does, why, and where it makes trade-offs.
+This document describes the analysis methodology used by <code>analyze_schematic.py</code> and its supporting modules. It covers the parsing pipeline, net-building algorithm, component classification heuristics, signal path detection, and design analysis checks in enough detail to understand what the analyzer does, why, and where it makes trade-offs.
 
 ## Design Philosophy
 
@@ -37,11 +37,11 @@ kicad_utils.py  kicad_types.py  signal_detectors.py
 
 | Module | Role |
 |--------|------|
-| `sexp_parser.py` | Generic S-expression tokenizer and parser. No KiCad-specific knowledge. |
-| `kicad_utils.py` | Component classification, engineering value parsing, power/ground net name detection. Stateless utility functions. |
-| `kicad_types.py` | `AnalysisContext` dataclass — shared state built once and passed to all analysis functions. Holds components, nets, pin-net map, pre-computed lookups. |
-| `signal_detectors.py` | 21 detector functions + 2 shared helpers. Each identifies a specific circuit pattern (voltage dividers, RC filters, regulators, etc.) from the connectivity graph. |
-| `analyze_schematic.py` | Orchestrator. Handles file parsing, multi-sheet traversal, net building, BOM generation, and all analysis functions not in signal_detectors. Assembles the final JSON output. |
+| <code>sexp_parser.py</code> | Generic S-expression tokenizer and parser. No KiCad-specific knowledge. |
+| <code>kicad_utils.py</code> | Component classification, engineering value parsing, power/ground net name detection. Stateless utility functions. |
+| <code>kicad_types.py</code> | <code>AnalysisContext</code> dataclass — shared state built once and passed to all analysis functions. Holds components, nets, pin-net map, pre-computed lookups. |
+| <code>signal_detectors.py</code> | 21 detector functions + 2 shared helpers. Each identifies a specific circuit pattern (voltage dividers, RC filters, regulators, etc.) from the connectivity graph. |
+| <code>analyze_schematic.py</code> | Orchestrator. Handles file parsing, multi-sheet traversal, net building, BOM generation, and all analysis functions not in signal_detectors. Assembles the final JSON output. |
 
 ---
 
@@ -58,7 +58,7 @@ KiCad stores schematics in a Lisp-like S-expression format:
     (pin "2" (at 0 1.27) ...)))
 ```
 
-The parser (`sexp_parser.py`) converts this to nested Python lists:
+The parser (<code>sexp_parser.py</code>) converts this to nested Python lists:
 
 ```python
 ["kicad_sch", ["version", "20231120"], ["generator", "eeschema"],
@@ -67,24 +67,24 @@ The parser (`sexp_parser.py`) converts this to nested Python lists:
     ["property", "Value", "10k", ...], ...]]
 ```
 
-**Key design decision**: All values are strings. The parser performs no type coercion, no schema validation, and no KiCad version-specific handling. This makes it robust across KiCad 5–10 format changes. Callers convert to `float`/`int` as needed.
+**Key design decision**: All values are strings. The parser performs no type coercion, no schema validation, and no KiCad version-specific handling. This makes it robust across KiCad 5–10 format changes. Callers convert to <code>float</code>/<code>int</code> as needed.
 
-Helper functions (`find_all`, `find_first`, `find_deep`, `get_value`, `get_property`) provide structured traversal of the parse tree without requiring callers to write index-based list access.
+Helper functions (<code>find_all</code>, <code>find_first</code>, <code>find_deep</code>, <code>get_value</code>, <code>get_property</code>) provide structured traversal of the parse tree without requiring callers to write index-based list access.
 
 ---
 
 ## 2. Multi-Sheet Parsing
 
-KiCad schematics can span multiple `.kicad_sch` files in a hierarchy. The root sheet references sub-sheets via `(sheet ...)` blocks, each with a UUID.
+KiCad schematics can span multiple <code>.kicad_sch</code> files in a hierarchy. The root sheet references sub-sheets via <code>(sheet ...)</code> blocks, each with a UUID.
 
 ### Traversal
 
 The analyzer uses breadth-first traversal starting from the root sheet:
 
-1. Parse the root file. Extract `(sheet ...)` blocks to find sub-sheet file paths and instance UUIDs.
-2. For each sub-sheet, queue `(file_path, instance_path)` pairs.
-3. Parse each sheet file once per instance. A single `.kicad_sch` file may be instantiated multiple times (e.g., three identical half-bridge phases) — each gets its own instance UUID and reference remapping.
-4. Track `(file_path, instance_path)` pairs to prevent re-parsing the same instance.
+1. Parse the root file. Extract <code>(sheet ...)</code> blocks to find sub-sheet file paths and instance UUIDs.
+2. For each sub-sheet, queue <code>(file_path, instance_path)</code> pairs.
+3. Parse each sheet file once per instance. A single <code>.kicad_sch</code> file may be instantiated multiple times (e.g., three identical half-bridge phases) — each gets its own instance UUID and reference remapping.
+4. Track <code>(file_path, instance_path)</code> pairs to prevent re-parsing the same instance.
 
 ### Multi-Instance Support
 
@@ -97,17 +97,17 @@ When a sub-sheet is instantiated multiple times, each symbol in it has per-insta
     (path "/root_uuid/instance2_uuid" (reference "Q3") (unit 1))))
 ```
 
-The analyzer matches the current instance path to extract the correct reference designator. Some KiCad projects (especially migrated ones) store these mappings only in the root schematic's centralized `(symbol_instances)` section rather than inline — both locations are checked as fallback.
+The analyzer matches the current instance path to extract the correct reference designator. Some KiCad projects (especially migrated ones) store these mappings only in the root schematic's centralized <code>(symbol_instances)</code> section rather than inline — both locations are checked as fallback.
 
 ### Sheet Isolation
 
-Every extracted element (component, wire, label, junction) is tagged with a `_sheet` index. This prevents coordinate-based net building from merging unrelated elements that happen to share the same (x, y) position on different sheets.
+Every extracted element (component, wire, label, junction) is tagged with a <code>_sheet</code> index. This prevents coordinate-based net building from merging unrelated elements that happen to share the same (x, y) position on different sheets.
 
 ---
 
 ## 3. Component Extraction
 
-Each `(symbol ...)` block in the parse tree becomes a component dict:
+Each <code>(symbol ...)</code> block in the parse tree becomes a component dict:
 
 ```python
 {
@@ -128,27 +128,27 @@ Each `(symbol ...)` block in the parse tree becomes a component dict:
 
 Library symbols define pin positions relative to the symbol origin. The analyzer transforms these to absolute schematic coordinates:
 
-1. Look up the component's `lib_id` in the library symbol table.
+1. Look up the component's <code>lib_id</code> in the library symbol table.
 2. For multi-unit symbols, merge unit-specific pins with unit 0 (shared pins — typically power/ground).
-3. Apply mirror transforms (KiCad's `(mirror x)` or `(mirror y)`).
+3. Apply mirror transforms (KiCad's <code>(mirror x)</code> or <code>(mirror y)</code>).
 4. Apply rotation (symbol placement angle).
 5. Apply Y-axis inversion (symbol coordinates use math-up convention; schematic coordinates use screen-down).
-6. Add the component's placement offset `(at x y)`.
+6. Add the component's placement offset <code>(at x y)</code>.
 
-This gives each pin an absolute `(x, y)` in schematic space, which is how pins connect to wires in the net-building step.
+This gives each pin an absolute <code>(x, y)</code> in schematic space, which is how pins connect to wires in the net-building step.
 
 ### Legacy Format Support
 
-KiCad 4/5 `.sch` files use a line-based format with `$Comp`/`$EndComp` blocks, `Wire Wire Line` entries, and `Text Label`/`Text GLabel` markers. The analyzer has a separate parser for this format that:
+KiCad 4/5 <code>.sch</code> files use a line-based format with <code>$Comp</code>/<code>$EndComp</code> blocks, <code>Wire Wire Line</code> entries, and <code>Text Label</code>/<code>Text GLabel</code> markers. The analyzer has a separate parser for this format that:
 
 - Converts coordinates from mils (1/1000 inch) to mm
 - Parses the 2x2 orientation matrix to extract rotation angle and mirror flags
 - Extracts labels, wires, junctions, and no-connects with their own syntax
-- Parses `.lib` files (cache libraries and project libs) to populate pin positions and types
-- Computes absolute pin positions using `compute_pin_positions()` (same transform as KiCad 6+)
-- Performs subcircuit detection via `identify_subcircuits()`
+- Parses <code>.lib</code> files (cache libraries and project libs) to populate pin positions and types
+- Computes absolute pin positions using <code>compute_pin_positions()</code> (same transform as KiCad 6+)
+- Performs subcircuit detection via <code>identify_subcircuits()</code>
 
-The `.lib` resolution strategy: (1) prefer `*-cache.lib` alongside the root `.sch` (self-contained), (2) fall back to individual `LIBS:` directives searching the project directory tree, (3) use built-in defaults for common standard library symbols (R, C, L, D, LED, transistors). Coverage is typically 92–100% depending on which `.lib` files are available in the repo.
+The <code>.lib</code> resolution strategy: (1) prefer <code>*-cache.lib</code> alongside the root <code>.sch</code> (self-contained), (2) fall back to individual <code>LIBS:</code> directives searching the project directory tree, (3) use built-in defaults for common standard library symbols (R, C, L, D, LED, transistors). Coverage is typically 92–100% depending on which <code>.lib</code> files are available in the repo.
 
 ---
 
@@ -164,7 +164,7 @@ Every electrical point in the schematic is assigned a coordinate key:
 key = (sheet_index, round(x / EPSILON) * EPSILON, round(y / EPSILON) * EPSILON)
 ```
 
-where `EPSILON = 0.01 mm`. The sheet index prevents cross-sheet merges; the rounding absorbs floating-point noise in coordinates.
+where <code>EPSILON = 0.01 mm</code>. The sheet index prevents cross-sheet merges; the rounding absorbs floating-point noise in coordinates.
 
 A standard union-find (disjoint set) data structure with path compression groups connected points into equivalence classes:
 
@@ -177,12 +177,12 @@ union(a, b):  merge two sets
 
 1. **Component pins** — Each pin's absolute position becomes a point. PWR_FLAG symbols are excluded (they are ERC-only markers with no real electrical connection).
 
-2. **Wire endpoints** — Each wire's `(x1, y1)` and `(x2, y2)` are added as points and unioned together. Wires are also indexed in a spatial grid (5mm cells) for fast mid-wire point lookup.
+2. **Wire endpoints** — Each wire's <code>(x1, y1)</code> and <code>(x2, y2)</code> are added as points and unioned together. Wires are also indexed in a spatial grid (5mm cells) for fast mid-wire point lookup.
 
-3. **Labels** — Added at their placement position. If a label sits mid-wire (not at an endpoint), the `point_on_segment()` function detects this and unions the label with the wire.
-   - **Local labels**: Only connect within the same sheet. Keyed by `(name, sheet)`.
-   - **Global labels**: Connect across all sheets. Keyed by `(name,)`.
-   - **Hierarchical labels**: Connect across sheets (parent ↔ child). Keyed by `(name,)`.
+3. **Labels** — Added at their placement position. If a label sits mid-wire (not at an endpoint), the <code>point_on_segment()</code> function detects this and unions the label with the wire.
+   - **Local labels**: Only connect within the same sheet. Keyed by <code>(name, sheet)</code>.
+   - **Global labels**: Connect across all sheets. Keyed by <code>(name,)</code>.
+   - **Hierarchical labels**: Connect across sheets (parent ↔ child). Keyed by <code>(name,)</code>.
 
 4. **Power symbols** — Always cross-sheet. The symbol's pin position (not its center) is used as the connection point. PWR_FLAG symbols are excluded.
 
@@ -202,11 +202,11 @@ A spatial grid index (5mm cells) makes this efficient — only wire segments in 
 ### Net Naming Priority
 
 After union-find, connected groups are named by priority:
-1. **Power symbol name** (e.g., `+3V3`, `GND`) — highest priority
+1. **Power symbol name** (e.g., <code>+3V3</code>, <code>GND</code>) — highest priority
 2. **Label name** (global, hierarchical, or local)
-3. **`__unnamed_N`** — auto-generated for nets with pins but no labels
+3. **<code>__unnamed_N</code>** — auto-generated for nets with pins but no labels
 
-When multiple disconnected wire groups share the same name (e.g., two separate `GND` networks), their pins are merged into a single net entry. This matches KiCad's behavior where same-named labels create global connectivity.
+When multiple disconnected wire groups share the same name (e.g., two separate <code>GND</code> networks), their pins are merged into a single net entry. This matches KiCad's behavior where same-named labels create global connectivity.
 
 ### Output
 
@@ -227,56 +227,56 @@ nets = {
 
 ## 5. Component Classification
 
-`classify_component()` in `kicad_utils.py` assigns a type string to each component based on its reference designator, library ID, and value field.
+<code>classify_component()</code> in <code>kicad_utils.py</code> assigns a type string to each component based on its reference designator, library ID, and value field.
 
 ### Classification Hierarchy
 
 The classifier applies rules in priority order — first match wins:
 
-1. **Power flag check**: `is_power` flag set, or `lib_id` starts with `"power:"` → `"power_symbol"`
+1. **Power flag check**: <code>is_power</code> flag set, or <code>lib_id</code> starts with <code>"power:"</code> → <code>"power_symbol"</code>
 
 2. **Reference prefix lookup**: The reference designator prefix (letters before digits) is matched against a type map:
 
    | Prefix | Type | Notes |
    |--------|------|-------|
-   | `R`, `RS` | `resistor` | Standard resistors, shunts |
-   | `RN`, `RM`, `RA` | `resistor_network` | Arrays and networks |
-   | `C` | `capacitor` | |
-   | `L` | `inductor` | |
-   | `D` | `diode` | Unless overridden by LED check |
-   | `Q`, `FET` | `transistor` | BJTs and FETs |
-   | `U`, `IC` | `ic` | Integrated circuits |
-   | `J`, `P` | `connector` | Jacks, plugs, headers |
-   | `SW`, `S`, `BUT` | `switch` | |
-   | `Y` | `crystal` | IEC standard prefix |
-   | `F`, `FUSE` | `fuse` | |
-   | `K` | `relay` | |
-   | `OK`, `OC` | `optocoupler` | |
-   | `LED` | `led` | |
-   | `FB` | `ferrite_bead` | |
-   | `TP` | `test_point` | |
-   | `MH`, `H` | `mounting_hole` | |
-   | `JP`, `SJ` | `jumper` | Solder jumpers |
-   | `#PWR` | `power_flag` | |
-   | `#FLG` | `flag` | |
+   | <code>R</code>, <code>RS</code> | <code>resistor</code> | Standard resistors, shunts |
+   | <code>RN</code>, <code>RM</code>, <code>RA</code> | <code>resistor_network</code> | Arrays and networks |
+   | <code>C</code> | <code>capacitor</code> | |
+   | <code>L</code> | <code>inductor</code> | |
+   | <code>D</code> | <code>diode</code> | Unless overridden by LED check |
+   | <code>Q</code>, <code>FET</code> | <code>transistor</code> | BJTs and FETs |
+   | <code>U</code>, <code>IC</code> | <code>ic</code> | Integrated circuits |
+   | <code>J</code>, <code>P</code> | <code>connector</code> | Jacks, plugs, headers |
+   | <code>SW</code>, <code>S</code>, <code>BUT</code> | <code>switch</code> | |
+   | <code>Y</code> | <code>crystal</code> | IEC standard prefix |
+   | <code>F</code>, <code>FUSE</code> | <code>fuse</code> | |
+   | <code>K</code> | <code>relay</code> | |
+   | <code>OK</code>, <code>OC</code> | <code>optocoupler</code> | |
+   | <code>LED</code> | <code>led</code> | |
+   | <code>FB</code> | <code>ferrite_bead</code> | |
+   | <code>TP</code> | <code>test_point</code> | |
+   | <code>MH</code>, <code>H</code> | <code>mounting_hole</code> | |
+   | <code>JP</code>, <code>SJ</code> | <code>jumper</code> | Solder jumpers |
+   | <code>#PWR</code> | <code>power_flag</code> | |
+   | <code>#FLG</code> | <code>flag</code> | |
 
 3. **Library/value keyword overrides**: Certain combinations override the prefix-based type:
-   - `D` prefix + `"led"` in lib → `"led"` (not diode)
-   - `R` prefix + `"potentiometer"` in lib → `"resistor"` (not varistor)
-   - `T` prefix + `"mosfet"`/`"transistor"` in lib → `"transistor"` (not transformer)
-   - Thermistor + `"fuse"`/`"polyfuse"` in lib → `"fuse"`
+   - <code>D</code> prefix + <code>"led"</code> in lib → <code>"led"</code> (not diode)
+   - <code>R</code> prefix + <code>"potentiometer"</code> in lib → <code>"resistor"</code> (not varistor)
+   - <code>T</code> prefix + <code>"mosfet"</code>/<code>"transistor"</code> in lib → <code>"transistor"</code> (not transformer)
+   - Thermistor + <code>"fuse"</code>/<code>"polyfuse"</code> in lib → <code>"fuse"</code>
 
 4. **X prefix special handling** (crystal vs. oscillator vs. connector):
-   - Contains `"oscillator"` but NOT `"crystal"`/`"xtal"` → `"oscillator"` (active IC)
-   - Contains known active oscillator part numbers (DSC6, Si5, SiT8, etc.) → `"oscillator"`
-   - Contains `"xtal"`/`"crystal"`/`"mhz"`/`"khz"` → `"crystal"` (passive)
-   - Otherwise → `"connector"`
+   - Contains <code>"oscillator"</code> but NOT <code>"crystal"</code>/<code>"xtal"</code> → <code>"oscillator"</code> (active IC)
+   - Contains known active oscillator part numbers (DSC6, Si5, SiT8, etc.) → <code>"oscillator"</code>
+   - Contains <code>"xtal"</code>/<code>"crystal"</code>/<code>"mhz"</code>/<code>"khz"</code> → <code>"crystal"</code> (passive)
+   - Otherwise → <code>"connector"</code>
 
-5. **Library-based fallback**: For non-standard prefixes, keyword search through `lib_id` and `value` for terms like `thermistor`, `varistor`, `optocoupler`, `jumper`, `connector`, `switch`, `relay`, `net_tie`, `transistor`, `diode`, `fuse`, `inductor`, `capacitor`, `resistor`.
+5. **Library-based fallback**: For non-standard prefixes, keyword search through <code>lib_id</code> and <code>value</code> for terms like <code>thermistor</code>, <code>varistor</code>, <code>optocoupler</code>, <code>jumper</code>, <code>connector</code>, <code>switch</code>, <code>relay</code>, <code>net_tie</code>, <code>transistor</code>, <code>diode</code>, <code>fuse</code>, <code>inductor</code>, <code>capacitor</code>, <code>resistor</code>.
 
-6. **Non-standard connector prefixes**: `CON`, `USB`, `MICROSD`, `UEXT`, `LAN`, `HDMI`, `EXT`, `GPIO`, `CAN`, `SWD`, `JTAG`, `ANT`, `RJ`, `SUPPLY` → `"connector"`
+6. **Non-standard connector prefixes**: <code>CON</code>, <code>USB</code>, <code>MICROSD</code>, <code>UEXT</code>, <code>LAN</code>, <code>HDMI</code>, <code>EXT</code>, <code>GPIO</code>, <code>CAN</code>, <code>SWD</code>, <code>JTAG</code>, <code>ANT</code>, <code>RJ</code>, <code>SUPPLY</code> → <code>"connector"</code>
 
-7. **Default**: `"other"`
+7. **Default**: <code>"other"</code>
 
 ### Type Taxonomy
 
@@ -294,29 +294,29 @@ flag, other
 
 ## 6. Value Parsing
 
-`parse_value()` converts component values in engineering notation to numeric floats.
+<code>parse_value()</code> converts component values in engineering notation to numeric floats.
 
 ### Supported Formats
 
 | Input | Output | Rule |
 |-------|--------|------|
-| `10k` | 10000.0 | SI suffix: k = ×10³ |
-| `4K7` | 4700.0 | Embedded multiplier (K as decimal point): 4.7 × 10³ |
-| `0R1` | 0.1 | R as decimal point: 0.1 Ω |
-| `100n` | 1e-7 | SI suffix: n = ×10⁻⁹ |
-| `4.7u` | 4.7e-6 | SI suffix: u/µ = ×10⁻⁶ |
-| `2.2pF` | 2.2e-12 | SI suffix: p = ×10⁻¹² (unit stripped) |
-| `100` | 100.0 | Plain number |
-| `1M` | 1e6 | SI suffix: M = ×10⁶ |
-| `22G` | 2.2e10 | SI suffix: G = ×10⁹ |
+| <code>10k</code> | 10000.0 | SI suffix: k = ×10³ |
+| <code>4K7</code> | 4700.0 | Embedded multiplier (K as decimal point): 4.7 × 10³ |
+| <code>0R1</code> | 0.1 | R as decimal point: 0.1 Ω |
+| <code>100n</code> | 1e-7 | SI suffix: n = ×10⁻⁹ |
+| <code>4.7u</code> | 4.7e-6 | SI suffix: u/µ = ×10⁻⁶ |
+| <code>2.2pF</code> | 2.2e-12 | SI suffix: p = ×10⁻¹² (unit stripped) |
+| <code>100</code> | 100.0 | Plain number |
+| <code>1M</code> | 1e6 | SI suffix: M = ×10⁶ |
+| <code>22G</code> | 2.2e10 | SI suffix: G = ×10⁹ |
 
 ### Pre-Processing
 
 Before parsing, the function:
 - Strips leading/trailing whitespace
-- Removes unit suffixes: `Ω`, `ohm`, `F`, `H`, `Hz` (case-insensitive)
-- Removes tolerance specs: `1%`, `5%`
-- Removes package descriptors: `/R0402`, `/0603`
+- Removes unit suffixes: <code>Ω</code>, <code>ohm</code>, <code>F</code>, <code>H</code>, <code>Hz</code> (case-insensitive)
+- Removes tolerance specs: <code>1%</code>, <code>5%</code>
+- Removes package descriptors: <code>/R0402</code>, <code>/0603</code>
 - Removes voltage ratings embedded after separators
 
 ### SI Prefix Map
@@ -328,13 +328,13 @@ k/K = 1e3    M = 1e6      G = 1e9
 
 ### Unparseable Values
 
-Returns `None` for:
-- Part numbers: `"FDMT80080DC"`, `"STM32F407VGT6"`
-- DNP markers: `"DNP"`, `"do not place"`
-- Non-numeric strings: `"NTC"`, `"PTC"`, `"ANTENNA"`
+Returns <code>None</code> for:
+- Part numbers: <code>"FDMT80080DC"</code>, <code>"STM32F407VGT6"</code>
+- DNP markers: <code>"DNP"</code>, <code>"do not place"</code>
+- Non-numeric strings: <code>"NTC"</code>, <code>"PTC"</code>, <code>"ANTENNA"</code>
 - Empty strings
 
-**Important caveat**: The parser is generous — it extracts the first numeric-looking substring. Always check component type before using the parsed value (e.g., a transistor's `"2N3904"` might parse as `2.0` if not guarded).
+**Important caveat**: The parser is generous — it extracts the first numeric-looking substring. Always check component type before using the parsed value (e.g., a transistor's <code>"2N3904"</code> might parse as <code>2.0</code> if not guarded).
 
 ---
 
@@ -344,27 +344,27 @@ Returns `None` for:
 
 A net is classified as a power rail by two complementary methods:
 
-**Method 1 — Power symbol registration**: Any net that has a pin from a `#PWR` or `#FLG` component is added to the `known_power_rails` set. This is authoritative — it captures whatever the designer connected via power symbols.
+**Method 1 — Power symbol registration**: Any net that has a pin from a <code>#PWR</code> or <code>#FLG</code> component is added to the <code>known_power_rails</code> set. This is authoritative — it captures whatever the designer connected via power symbols.
 
-**Method 2 — Name heuristics** (`is_power_net_name()`): Checks the net name against common power naming conventions:
+**Method 2 — Name heuristics** (<code>is_power_net_name()</code>): Checks the net name against common power naming conventions:
 
-- **Exact matches**: `VCC`, `VDD`, `AVCC`, `AVDD`, `DVCC`, `DVDD`, `VBUS`, `VIO`, `VMAIN`, `VPWR`, `VSYS`, `VBAT`, `VCORE`, `VIN`, `VOUT`, `VREG`
-- **Patterns**: Names starting with `+` (e.g., `+3V3`, `+5V`, `+12V`), `V` followed by digits (e.g., `V3V3`, `V1V8`)
-- **Prefixes**: `VDD_*`, `VCC_*`, `VBAT_*`, `VSYS_*`, `VBUS_*`, etc.
+- **Exact matches**: <code>VCC</code>, <code>VDD</code>, <code>AVCC</code>, <code>AVDD</code>, <code>DVCC</code>, <code>DVDD</code>, <code>VBUS</code>, <code>VIO</code>, <code>VMAIN</code>, <code>VPWR</code>, <code>VSYS</code>, <code>VBAT</code>, <code>VCORE</code>, <code>VIN</code>, <code>VOUT</code>, <code>VREG</code>
+- **Patterns**: Names starting with <code>+</code> (e.g., <code>+3V3</code>, <code>+5V</code>, <code>+12V</code>), <code>V</code> followed by digits (e.g., <code>V3V3</code>, <code>V1V8</code>)
+- **Prefixes**: <code>VDD_*</code>, <code>VCC_*</code>, <code>VBAT_*</code>, <code>VSYS_*</code>, <code>VBUS_*</code>, etc.
 
 A net is considered a power net if **either** method matches.
 
 ### Ground Net Identification
 
-`is_ground_name()` checks:
-- **Exact matches**: `GND`, `VSS`, `AGND`, `DGND`, `PGND`, `GNDPWR`, `GNDA`, `GNDD`
-- **Patterns**: Starts or ends with `GND`, starts with `VSS`
+<code>is_ground_name()</code> checks:
+- **Exact matches**: <code>GND</code>, <code>VSS</code>, <code>AGND</code>, <code>DGND</code>, <code>PGND</code>, <code>GNDPWR</code>, <code>GNDA</code>, <code>GNDD</code>
+- **Patterns**: Starts or ends with <code>GND</code>, starts with <code>VSS</code>
 
 ---
 
 ## 8. AnalysisContext
 
-`AnalysisContext` (in `kicad_types.py`) is a dataclass that holds shared state built once and passed to all analysis functions:
+<code>AnalysisContext</code> (in <code>kicad_types.py</code>) is a dataclass that holds shared state built once and passed to all analysis functions:
 
 ```python
 @dataclass
@@ -379,13 +379,13 @@ class AnalysisContext:
     generator_version: str          # KiCad generator version string
 ```
 
-The three auto-built fields (`comp_lookup`, `parsed_values`, `known_power_rails`) replace what was previously ~10 duplicate rebuild operations scattered across analysis functions.
+The three auto-built fields (<code>comp_lookup</code>, <code>parsed_values</code>, <code>known_power_rails</code>) replace what was previously ~10 duplicate rebuild operations scattered across analysis functions.
 
 ---
 
 ## 9. Signal Path Detection
 
-The `analyze_signal_paths()` function orchestrates 21 detector functions that identify common analog and mixed-signal circuit patterns from the connectivity graph. Each detector is a pure function that takes `AnalysisContext` (and optionally prior detector results) and returns structured detection results.
+The <code>analyze_signal_paths()</code> function orchestrates 21 detector functions that identify common analog and mixed-signal circuit patterns from the connectivity graph. Each detector is a pure function that takes <code>AnalysisContext</code> (and optionally prior detector results) and returns structured detection results.
 
 ### Execution Order and Dependencies
 
@@ -419,8 +419,8 @@ Detectors run in a specific order because some consume results from earlier dete
 
 Two helper functions are used by multiple detectors:
 
-- `_get_net_components(ctx, net_name, exclude_ref)` — Returns all components connected to a net, optionally excluding one reference. Used to find what else connects to a node.
-- `_classify_load(ctx, net_name, exclude_ref)` — Classifies the load on a net by examining connected component types and net name keywords. Returns labels like `"motor"`, `"relay"`, `"led"`, `"speaker"`, `"resistive"`, `"capacitive"`, etc.
+- <code>_get_net_components(ctx, net_name, exclude_ref)</code> — Returns all components connected to a net, optionally excluding one reference. Used to find what else connects to a node.
+- <code>_classify_load(ctx, net_name, exclude_ref)</code> — Classifies the load on a net by examining connected component types and net name keywords. Returns labels like <code>"motor"</code>, <code>"relay"</code>, <code>"led"</code>, <code>"speaker"</code>, <code>"resistive"</code>, <code>"capacitive"</code>, etc.
 
 ### Detector Details
 
@@ -429,17 +429,17 @@ Two helper functions are used by multiple detectors:
 **Pattern**: Two resistors sharing a mid-point net, with the other ends on power/ground.
 
 **Algorithm**:
-1. Index all resistors by their two nets (from `get_two_pin_nets()`).
+1. Index all resistors by their two nets (from <code>get_two_pin_nets()</code>).
 2. For each net, find resistor pairs that share it as a common node.
 3. For each pair, check if the non-shared nets are power-on-one-end and ground-or-power-on-the-other.
-4. Calculate voltage divider ratio: `R_bottom / (R_top + R_bottom)`.
+4. Calculate voltage divider ratio: <code>R_bottom / (R_top + R_bottom)</code>.
 
 **Rejection filters**:
 - Mid-point net has >4 pins and is a named power rail → bus, not divider output
 - Either resistor is 0Ω → wire jumper, not divider
 - Both non-shared nets are ground → not meaningful
 
-**Feedback network separation**: If the mid-point net connects to an IC pin named `"FB"`, `"ADJ"`, or `"COMP"`, the divider is tagged as a feedback network and separated from generic voltage dividers.
+**Feedback network separation**: If the mid-point net connects to an IC pin named <code>"FB"</code>, <code>"ADJ"</code>, or <code>"COMP"</code>, the divider is tagged as a feedback network and separated from generic voltage dividers.
 
 #### 9.2 RC Filters
 
@@ -460,7 +460,7 @@ Two helper functions are used by multiple detectors:
 - Shared net has >6 pins → bus, not filter node
 - R < 10Ω → likely series termination, not filter
 
-**Cutoff frequency**: `f = 1 / (2π × R × C)`
+**Cutoff frequency**: <code>f = 1 / (2π × R × C)</code>
 
 **Parallel cap merging**: When the same resistor pairs with multiple capacitors on the same shared net, they are combined into one entry with summed capacitance.
 
@@ -468,16 +468,16 @@ Two helper functions are used by multiple detectors:
 
 **Pattern**: Inductor and capacitor sharing one non-power net.
 
-Same approach as RC filters but for L-C pairs. Computes resonant frequency: `f = 1 / (2π × √(L × C))` and characteristic impedance: `Z = √(L / C)`.
+Same approach as RC filters but for L-C pairs. Computes resonant frequency: <code>f = 1 / (2π × √(L × C))</code> and characteristic impedance: <code>Z = √(L / C)</code>.
 
 #### 9.4 Crystal Circuits
 
 **Pattern**: Crystal with load capacitors.
 
-1. Find all crystals (type `"crystal"`).
+1. Find all crystals (type <code>"crystal"</code>).
 2. For each crystal, identify its two signal nets (non-power).
 3. On each signal net, find capacitors with their other end to ground — these are load caps.
-4. Compute effective load capacitance: `CL_eff = (C1 × C2) / (C1 + C2) + C_stray` where `C_stray ≈ 3pF`.
+4. Compute effective load capacitance: <code>CL_eff = (C1 × C2) / (C1 + C2) + C_stray</code> where <code>C_stray ≈ 3pF</code>.
 
 #### 9.5 Decoupling Analysis
 
@@ -486,7 +486,7 @@ Same approach as RC filters but for L-C pairs. Computes resonant frequency: `f =
 1. Iterate all nets classified as power rails (not ground, not unnamed).
 2. For each rail, find capacitors with one pin on the rail and the other on ground.
 3. Group by rail. Sum total capacitance per rail.
-4. Estimate self-resonant frequency per cap: `f_SRF = 1 / (2π × √(ESL × C))` where `ESL ≈ 1nH` (typical for SMD caps).
+4. Estimate self-resonant frequency per cap: <code>f_SRF = 1 / (2π × √(ESL × C))</code> where <code>ESL ≈ 1nH</code> (typical for SMD caps).
 
 #### 9.6 Current Sense
 
@@ -500,21 +500,21 @@ Same approach as RC filters but for L-C pairs. Computes resonant frequency: `f =
 4. Accept only if an IC connects to both sides of the shunt (directly or through a 1-hop filter resistor).
 5. Reject if both nets are ground (bulk decoupling, not current sense).
 
-**Calculated values**: Max current at 50mV and 100mV drop: `I = V / R_shunt`.
+**Calculated values**: Max current at 50mV and 100mV drop: <code>I = V / R_shunt</code>.
 
 #### 9.7 Power Regulators
 
 **Pattern**: IC with power conversion pins identified by name.
 
 **Pin name scanning**: Each IC's pins are checked for keywords indicating a regulator:
-- `FB`, `ADJ`, `COMP` — feedback/compensation
-- `SW`, `BOOT`, `BST` — switching node / bootstrap
-- `VIN`, `VOUT` — input/output power
-- `EN`, `ENABLE`, `SHDN` — enable/shutdown
-- `PG`, `PGOOD` — power good output
-- `SS`, `SOFTSTART` — soft-start
+- <code>FB</code>, <code>ADJ</code>, <code>COMP</code> — feedback/compensation
+- <code>SW</code>, <code>BOOT</code>, <code>BST</code> — switching node / bootstrap
+- <code>VIN</code>, <code>VOUT</code> — input/output power
+- <code>EN</code>, <code>ENABLE</code>, <code>SHDN</code> — enable/shutdown
+- <code>PG</code>, <code>PGOOD</code> — power good output
+- <code>SS</code>, <code>SOFTSTART</code> — soft-start
 
-Pin names are normalized (trailing digits stripped: `FB1` → `FB`, `SW2` → `SW`).
+Pin names are normalized (trailing digits stripped: <code>FB1</code> → <code>FB</code>, <code>SW2</code> → <code>SW</code>).
 
 **Regulator type classification**:
 - **LDO**: Has FB pin + ≥2 power pins, no SW/BOOT pins
@@ -522,21 +522,21 @@ Pin names are normalized (trailing digits stripped: `FB1` → `FB`, `SW2` → `S
 - **Charge pump**: Has BOOST pin, no FB
 - **Generic**: Has regulation pins but doesn't match a specific topology
 
-**False positive prevention**: An IC with `SW` but no inductor on the switch net and no regulator keywords in its lib_id/value is NOT classified as a switching regulator. This prevents motor driver ICs or other switchers from being misidentified.
+**False positive prevention**: An IC with <code>SW</code> but no inductor on the switch net and no regulator keywords in its lib_id/value is NOT classified as a switching regulator. This prevents motor driver ICs or other switchers from being misidentified.
 
 **Output voltage estimation**:
-1. Look up the part number in `_REGULATOR_VREF` — a 150+ entry table of known regulators and their reference voltages.
-2. If a feedback divider connects to the IC's FB pin, compute: `Vout = Vref × (1 + R_top / R_bottom)`.
-3. If no feedback divider, check if the net name encodes a voltage (e.g., `+3V3` → 3.3V).
+1. Look up the part number in <code>_REGULATOR_VREF</code> — a 150+ entry table of known regulators and their reference voltages.
+2. If a feedback divider connects to the IC's FB pin, compute: <code>Vout = Vref × (1 + R_top / R_bottom)</code>.
+3. If no feedback divider, check if the net name encodes a voltage (e.g., <code>+3V3</code> → 3.3V).
 
 #### 9.8 Protection Devices
 
 **Pattern**: Components providing ESD, overvoltage, overcurrent, or surge protection.
 
 Identifies:
-- **TVS diodes**: Diode type with `"tvs"`, `"esd"`, `"transient"` in lib_id/value
-- **Varistors/MOVs**: Varistor type or `V` prefix
-- **Polyfuses/PTCs**: Thermistor type with `"fuse"`, `"polyfuse"`, `"pptc"` keywords
+- **TVS diodes**: Diode type with <code>"tvs"</code>, <code>"esd"</code>, <code>"transient"</code> in lib_id/value
+- **Varistors/MOVs**: Varistor type or <code>V</code> prefix
+- **Polyfuses/PTCs**: Thermistor type with <code>"fuse"</code>, <code>"polyfuse"</code>, <code>"pptc"</code> keywords
 - **ESD protection ICs**: IC type with ESD-related keywords (TI TPD series, ON Semi, etc.)
 - **Series termination resistors**: R ≤ 100Ω on high-speed nets (USB, CAN, Ethernet)
 
@@ -544,14 +544,14 @@ Identifies:
 
 **Pattern**: IC identified as op-amp/comparator with feedback network.
 
-1. Identify op-amps by keywords in lib_id: `"opamp"`, `"op-amp"`, `"comparator"`, `"OPA"`, `"LM358"`, `"TL07"`, etc.
+1. Identify op-amps by keywords in lib_id: <code>"opamp"</code>, <code>"op-amp"</code>, <code>"comparator"</code>, <code>"OPA"</code>, <code>"LM358"</code>, <code>"TL07"</code>, etc.
 2. Find inverting and non-inverting input pins.
 3. Trace feedback path from output to input.
 4. Classify configuration:
    - Resistive feedback from output to inverting input → **inverting amplifier** or **non-inverting amplifier**
    - Capacitor in feedback → **integrator** or **differentiator**
    - No feedback → **comparator**
-5. Calculate gain from feedback resistor ratio: `G = -Rf/Rin` (inverting) or `G = 1 + Rf/Rin` (non-inverting).
+5. Calculate gain from feedback resistor ratio: <code>G = -Rf/Rin</code> (inverting) or <code>G = 1 + Rf/Rin</code> (non-inverting).
 
 #### 9.10 Bridge Circuits
 
@@ -581,7 +581,7 @@ Cleans up voltage divider and feedback network results:
 
 #### 9.13 LED Drivers
 
-Post-processes transistor circuits to add LED-specific information when `load_type == "led"`:
+Post-processes transistor circuits to add LED-specific information when <code>load_type == "led"</code>:
 - PWM control signal identification
 - Multi-LED configurations
 - Current limiting resistor value
@@ -589,7 +589,7 @@ Post-processes transistor circuits to add LED-specific information when `load_ty
 #### 9.14 Buzzer/Speaker Circuits
 
 Identifies transistors driving buzzers or speakers:
-- Net name keywords: `BUZZ`, `SPK`, `SPEAK`, `BEEP`
+- Net name keywords: <code>BUZZ</code>, <code>SPK</code>, <code>SPEAK</code>, <code>BEEP</code>
 - Connected component type matching
 - Identifies frequency generation and power supply
 
@@ -604,13 +604,13 @@ Detects keyboard matrix input arrangements:
 Identifies galvanic isolation components:
 - **Optocouplers**: OK/OC reference prefix or keywords
 - **Transformers**: TR reference or transformer type
-- **Digital isolators**: IC with `"isolator"`, `"galvanic"`, `"iso"` keywords
+- **Digital isolators**: IC with <code>"isolator"</code>, <code>"galvanic"</code>, <code>"iso"</code> keywords
 - Verifies that the component connects to different power domains (not single-domain)
 
 #### 9.17 Ethernet Interfaces
 
 Detects Ethernet interface chains:
-- RJ45 connector (J prefix with `"RJ45"`/`"LAN"` in value)
+- RJ45 connector (J prefix with <code>"RJ45"</code>/<code>"LAN"</code> in value)
 - Magnetics (transformer or inductor on data pins)
 - PHY IC identification by known part numbers
 - Differential pair and termination checks
@@ -625,14 +625,14 @@ Identifies memory ICs and their bus connections:
 #### 9.19 RF Chains
 
 Detects RF amplifier chains:
-- RF amplifier keywords: `"rf_amp"`, `"mmic"`, `"lna"`, `"pa"`
+- RF amplifier keywords: <code>"rf_amp"</code>, <code>"mmic"</code>, <code>"lna"</code>, <code>"pa"</code>
 - Input/output matching networks (L-C combinations)
 - Bias networks and stability compensation
 
 #### 9.20 BMS (Battery Management Systems)
 
 Identifies battery management circuits:
-- BMS IC keywords: `"bq76"`, `"MAX17"`, etc.
+- BMS IC keywords: <code>"bq76"</code>, <code>"MAX17"</code>, etc.
 - Cross-references current sense results (shunt resistors)
 - Cell tap voltage divider networks
 - Balancing topology detection (active vs. passive)
@@ -663,20 +663,20 @@ Beyond signal path detection, the analyzer performs several categories of design
 
 | Class | Keywords/Patterns |
 |-------|-------------------|
-| `ground` | GND, VSS, AGND, DGND |
-| `power` | VCC, VDD, +3V3, VBUS, etc. |
-| `clock` | SCL, SCK, CLK, MCLK, XTAL, OSC |
-| `data` | SDA, MOSI, MISO, UART, TX, RX |
-| `high_speed` | USB, CAN, LVDS, ETH |
-| `analog` | ADC, AIN, VREF, VSENSE |
-| `control` | RESET, NRST, EN, ENABLE |
-| `chip_select` | CS, SS, NSS, CE, SEL |
-| `interrupt` | INT, IRQ, ALERT, DRDY |
-| `debug` | SWD, SWCLK, JTAG, TCK, TMS |
-| `config` | BOOT, TEST |
-| `signal` | Everything else |
+| <code>ground</code> | GND, VSS, AGND, DGND |
+| <code>power</code> | VCC, VDD, +3V3, VBUS, etc. |
+| <code>clock</code> | SCL, SCK, CLK, MCLK, XTAL, OSC |
+| <code>data</code> | SDA, MOSI, MISO, UART, TX, RX |
+| <code>high_speed</code> | USB, CAN, LVDS, ETH |
+| <code>analog</code> | ADC, AIN, VREF, VSENSE |
+| <code>control</code> | RESET, NRST, EN, ENABLE |
+| <code>chip_select</code> | CS, SS, NSS, CE, SEL |
+| <code>interrupt</code> | INT, IRQ, ALERT, DRDY |
+| <code>debug</code> | SWD, SWCLK, JTAG, TCK, TMS |
+| <code>config</code> | BOOT, TEST |
+| <code>signal</code> | Everything else |
 
-**Power Domain Mapping**: For each IC, determines which power rails it connects to. Distinguishes IO-level pins (`VDDIO`, `VIO`, `VCCA`, `VCCB`) from internal supplies (`VCC`, `VDD`) — the IO rail determines signal levels for cross-domain analysis.
+**Power Domain Mapping**: For each IC, determines which power rails it connects to. Distinguishes IO-level pins (<code>VDDIO</code>, <code>VIO</code>, <code>VCCA</code>, <code>VCCB</code>) from internal supplies (<code>VCC</code>, <code>VDD</code>) — the IO rail determines signal levels for cross-domain analysis.
 
 **Cross-Domain Signal Detection**: Identifies signals that cross between ICs powered by different voltage rails. Filters out signals that pass through level translators.
 
@@ -695,7 +695,7 @@ Beyond signal path detection, the analyzer performs several categories of design
 ### 10.3 Annotation Completeness
 
 - Duplicate reference designators
-- Unannotated references (containing `?`)
+- Unannotated references (containing <code>?</code>)
 - Missing reference designators
 
 ### 10.4 Label Shape Validation
@@ -710,7 +710,7 @@ Identifies power nets that lack a PWR_FLAG symbol. KiCad's ERC requires PWR_FLAG
 
 ### 10.6 Footprint Filter Validation
 
-Checks whether assigned footprints match the library symbol's `ki_fp_filters` patterns. Reports mismatches that may indicate wrong footprint selection.
+Checks whether assigned footprints match the library symbol's <code>ki_fp_filters</code> patterns. Reports mismatches that may indicate wrong footprint selection.
 
 ### 10.7 Sourcing Audit
 
@@ -740,7 +740,7 @@ Analyzes physical wire routing in the schematic:
 
 ### 10.11 Property Pattern Audit
 
-- Components where `value == reference` (often indicates unset value)
+- Components where <code>value == reference</code> (often indicates unset value)
 - Missing or suspicious property values
 - Inconsistent property naming
 
@@ -767,7 +767,7 @@ Estimates power distribution network impedance for each rail:
 
 Estimates quiescent/sleep current by examining:
 - IC leakage on each rail (using typical values by IC type)
-- Pull-up/pull-down resistor current: `I = V / R`
+- Pull-up/pull-down resistor current: <code>I = V / R</code>
 - Voltage divider bias current
 - LED indicator current
 - Reports per-rail and total estimated sleep current
@@ -834,7 +834,7 @@ Estimates inrush current at power-on:
 
 ## 12. BOM Generation
 
-Components are grouped by `(value, footprint, lib_id)` tuple. Each BOM entry contains:
+Components are grouped by <code>(value, footprint, lib_id)</code> tuple. Each BOM entry contains:
 
 ```python
 {
@@ -849,29 +849,29 @@ Components are grouped by `(value, footprint, lib_id)` tuple. Each BOM entry con
 }
 ```
 
-Power symbols (`#PWR`, `#FLG`) and DNP components are excluded from the BOM count but DNP components are listed separately.
+Power symbols (<code>#PWR</code>, <code>#FLG</code>) and DNP components are excluded from the BOM count but DNP components are listed separately.
 
 ---
 
 ## 13. Known Limitations
 
-1. **Legacy `.sch` format**: No pin-level net connectivity. Would require parsing the companion `.lib` file for pin geometry, which is not implemented. Legacy schematics get component lists and label-based net names only.
+1. **Legacy <code>.sch</code> format**: No pin-level net connectivity. Would require parsing the companion <code>.lib</code> file for pin geometry, which is not implemented. Legacy schematics get component lists and label-based net names only.
 
-2. **Value parsing generosity**: `parse_value()` extracts the first numeric-looking substring. A transistor's `"2N3904"` could be parsed as `2.0` if the caller doesn't check component type first. All signal detectors guard against this by checking type before using parsed values.
+2. **Value parsing generosity**: <code>parse_value()</code> extracts the first numeric-looking substring. A transistor's <code>"2N3904"</code> could be parsed as <code>2.0</code> if the caller doesn't check component type first. All signal detectors guard against this by checking type before using parsed values.
 
-3. **Coordinate tolerance**: `EPSILON = 0.01mm`. Points closer than this are treated as the same location. Extremely dense layouts could theoretically have false coordinate merges, though this hasn't been observed in practice across 1,053 tested schematics.
+3. **Coordinate tolerance**: <code>EPSILON = 0.01mm</code>. Points closer than this are treated as the same location. Extremely dense layouts could theoretically have false coordinate merges, though this hasn't been observed in practice across 1,053 tested schematics.
 
 4. **High-fanout filter rejection**: RC/LC filters on nets with >6 connections are rejected as likely buses. This may miss legitimate filters on high-fanout nets (e.g., a filter feeding multiple ICs).
 
 5. **Regulator Vout estimation**: Uses a lookup table + heuristic sweep, not actual SPICE simulation. Accuracy depends on the part being in the lookup table or the feedback divider being properly detected.
 
-6. **Set iteration order**: Some analyses iterate over Python sets, which have non-deterministic ordering. This can cause output field order to vary between runs for certain sections (e.g., `protection_devices`, `pwr_flag_warnings`). The data is identical when sorted.
+6. **Set iteration order**: Some analyses iterate over Python sets, which have non-deterministic ordering. This can cause output field order to vary between runs for certain sections (e.g., <code>protection_devices</code>, <code>pwr_flag_warnings</code>). The data is identical when sorted.
 
-7. **No `.lib` parsing**: The analyzer reads only `.kicad_sch` files and their embedded `(lib_symbols)` sections. External library files (`.kicad_sym`, `.lib`) are not parsed. This means all symbol information must be embedded in the schematic — which KiCad does by default when saving.
+7. **No <code>.lib</code> parsing**: The analyzer reads only <code>.kicad_sch</code> files and their embedded <code>(lib_symbols)</code> sections. External library files (<code>.kicad_sym</code>, <code>.lib</code>) are not parsed. This means all symbol information must be embedded in the schematic — which KiCad does by default when saving.
 
 8. **Solder jumper gates**: Voltage dividers gated by solder jumpers (where opening/closing a jumper changes the divider ratio) are not detected as conditional configurations.
 
-9. **find_deep() false positives**: The `find_deep()` S-expression search function matches at any depth, which can return nodes from unrelated subtrees. Analysis code uses `find_all()` (direct children only) where possible and validates context when `find_deep()` is necessary.
+9. **find_deep() false positives**: The <code>find_deep()</code> S-expression search function matches at any depth, which can return nodes from unrelated subtrees. Analysis code uses <code>find_all()</code> (direct children only) where possible and validates context when <code>find_deep()</code> is necessary.
 
 ---
 
@@ -881,7 +881,7 @@ The analyzer is tested against a corpus of 1,053 open-source KiCad schematics sp
 - Simple single-sheet designs (< 10 components)
 - Complex multi-sheet hierarchical designs (> 500 components)
 - Multi-instance designs (repeated sub-sheets)
-- Legacy `.sch` format files (KiCad 4/5)
+- Legacy <code>.sch</code> format files (KiCad 4/5)
 - Migrated designs (KiCad 5 → 9 format)
 
 All 1,053 schematics parse and analyze successfully (100% pass rate). A structural validation suite checks:

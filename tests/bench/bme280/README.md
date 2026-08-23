@@ -14,10 +14,10 @@ Power from the always-on **3V3** pin so you don't have to drive GPIO26 in firmwa
 
 | Signal | Heltec V3 header | STEMMA QT hub | BME280 |
 |--------|------------------|---------------|--------|
-| 3.3 V  | `3V3`            | hub V (any port) | VIN |
-| GND    | `GND`            | hub G            | GND |
-| SDA    | `GPIO41`         | hub SDA          | SDA |
-| SCL    | `GPIO42`         | hub SCL          | SCL |
+| 3.3 V  | <code>3V3</code>            | hub V (any port) | VIN |
+| GND    | <code>GND</code>            | hub G            | GND |
+| SDA    | <code>GPIO41</code>         | hub SDA          | SDA |
+| SCL    | <code>GPIO42</code>         | hub SCL          | SCL |
 
 ```
 Heltec 3V3 ─┐
@@ -45,7 +45,7 @@ pio device monitor -b 115200   # watch output
 
 ## Pass criteria
 
-1. Scan prints `found 0x76   <- BME280 (expected)`.
+1. Scan prints <code>found 0x76   <- BME280 (expected)</code>.
 2. Readings stream every 2 s with plausible values:
    - **T** within a few °C of room temperature
    - **RH** roughly 30–60 % indoors (breathe on it — humidity should jump)
@@ -59,13 +59,13 @@ the real device, not a stuck value.
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | Scan finds nothing | SDA/SCL swapped, no 3V3/GND, bad pigtail | Verify all 4 wires; confirm 3V3 not Vext |
-| Found at `0x77` not `0x76` | SDO pin floating or tied high | Tie SDO→GND, or set `BME280_ADDR = 0x77` |
-| Found `0x76` but begin() fails | Marginal connection / counterfeit chip | Reseat Qwiic; shorten cable |
-| Readings are `nan` | Intermittent I2C | Shorten cable; reseat; check solder |
-| Nothing on serial at all | Wrong port / CDC setting | Confirm CP2102 port; `ARDUINO_USB_CDC_ON_BOOT=0` is set |
+| Found at <code>0x77</code> not <code>0x76</code> | SDO pin floating or tied high | Tie SDO→GND, or set <code>BME280_ADDR = 0x77</code> |
+| Found <code>0x76</code> but begin() fails | Marginal connection / counterfeit chip | Reseat Qwiic; shorten cable |
+| Readings are <code>nan</code> | Intermittent I2C | Shorten cable; reseat; check solder |
+| Nothing on serial at all | Wrong port / CDC setting | Confirm CP2102 port; <code>ARDUINO_USB_CDC_ON_BOOT=0</code> is set |
 
 ## Next step after this passes
 
 Reflash Meshtastic, then enable **Environment Telemetry** in Module Config (no
 custom firmware needed — BME280 is built into Meshtastic 2.7.x). Then teach the
-FAP to decode the `Telemetry` packet (Phase 7 roadmap items).
+FAP to decode the <code>Telemetry</code> packet (Phase 7 roadmap items).

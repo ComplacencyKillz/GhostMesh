@@ -4,7 +4,7 @@ Configuration file for kicad-happy. Placed in the project directory (or any pare
 
 ## File Format
 
-JSONC — JSON with `//` and `/* */` comments, and trailing commas allowed. The parser is purely stdlib; no external dependencies.
+JSONC — JSON with <code>//</code> and <code>/* */</code> comments, and trailing commas allowed. The parser is purely stdlib; no external dependencies.
 
 ```jsonc
 // Comments are allowed anywhere
@@ -18,7 +18,7 @@ JSONC — JSON with `//` and `/* */` comments, and trailing commas allowed. The 
 
 ## Discovery and Merge Order
 
-The loader walks upward from the project directory, collecting every `.kicad-happy.json` it finds, then includes `~/.kicad-happy.json` as the base layer (lowest precedence). Files are merged closest-wins:
+The loader walks upward from the project directory, collecting every <code>.kicad-happy.json</code> it finds, then includes <code>~/.kicad-happy.json</code> as the base layer (lowest precedence). Files are merged closest-wins:
 
 ```
 ~/.kicad-happy.json          ← base layer (user-wide defaults)
@@ -28,38 +28,38 @@ The loader walks upward from the project directory, collecting every `.kicad-hap
 
 **Merge rules:**
 - Dict values: deep-merged recursively; closer keys win on conflict.
-- `suppressions`: **concatenated** across all layers (additive — all suppressions apply).
+- <code>suppressions</code>: **concatenated** across all layers (additive — all suppressions apply).
 - All other lists: closer layer wins entirely (replaces the farther layer's list).
 
 **Error handling:** Parse errors print a warning to stderr and skip that layer. The loader never crashes. Invalid field values are warned and skipped individually.
 
 ## Schema
 
-### `version` (integer)
+### <code>version</code> (integer)
 
-Always `1`. Reserved for future schema evolution.
+Always <code>1</code>. Reserved for future schema evolution.
 
 ---
 
-### `project` (object)
+### <code>project</code> (object)
 
 Document metadata. Consumed by analyzers for report context.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `name` | string | Product or project name |
-| `number` | string | Model or part number |
-| `revision` | string | Document revision (e.g., "A", "1.2") |
-| `company` | string | Manufacturer or organization name |
-| `author` | string | Document author |
-| `market` | string | Compliance market: `"us"`, `"eu"`, `"automotive"`, `"medical"`, `"military"` |
-| `ambient_temperature_c` | number | Ambient temperature for thermal analysis (default: `25`) |
-| `emc_standard` | string | EMC standard: `"fcc-class-b"`, `"fcc-class-a"`, `"cispr-class-a"`, `"cispr-class-b"` |
-| `compliance_market` | string | Same as `market`; used by the EMC analyzer |
+| <code>name</code> | string | Product or project name |
+| <code>number</code> | string | Model or part number |
+| <code>revision</code> | string | Document revision (e.g., "A", "1.2") |
+| <code>company</code> | string | Manufacturer or organization name |
+| <code>author</code> | string | Document author |
+| <code>market</code> | string | Compliance market: <code>"us"</code>, <code>"eu"</code>, <code>"automotive"</code>, <code>"medical"</code>, <code>"military"</code> |
+| <code>ambient_temperature_c</code> | number | Ambient temperature for thermal analysis (default: <code>25</code>) |
+| <code>emc_standard</code> | string | EMC standard: <code>"fcc-class-b"</code>, <code>"fcc-class-a"</code>, <code>"cispr-class-a"</code>, <code>"cispr-class-b"</code> |
+| <code>compliance_market</code> | string | Same as <code>market</code>; used by the EMC analyzer |
 
 ---
 
-### `suppressions` (array of objects)
+### <code>suppressions</code> (array of objects)
 
 Suppress specific analyzer findings. **Additive across config layers** — suppressions from all discovered config files are combined. Findings are marked suppressed, never removed; suppressed findings still appear in reports with a note.
 
@@ -67,14 +67,14 @@ Each entry:
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `rule_id` | string | **Yes** | Exact rule ID to suppress (e.g., `"DC-001"`, `"SW-002"`) |
-| `components` | array of strings | No | fnmatch glob patterns for component refs. At least one finding component must match at least one pattern. |
-| `nets` | array of strings | No | fnmatch glob patterns for net names. At least one finding net must match at least one pattern. |
-| `reason` | string | No | Human-readable explanation; shown in reports |
+| <code>rule_id</code> | string | **Yes** | Exact rule ID to suppress (e.g., <code>"DC-001"</code>, <code>"SW-002"</code>) |
+| <code>components</code> | array of strings | No | fnmatch glob patterns for component refs. At least one finding component must match at least one pattern. |
+| <code>nets</code> | array of strings | No | fnmatch glob patterns for net names. At least one finding net must match at least one pattern. |
+| <code>reason</code> | string | No | Human-readable explanation; shown in reports |
 
-**Matching:** `rule_id` must match exactly. If `components` is present, the finding must reference at least one matching component. If `nets` is present, the finding must reference at least one matching net. All present filters must match (AND logic). Patterns use Python `fnmatch` syntax (`*`, `?`, `[seq]`).
+**Matching:** <code>rule_id</code> must match exactly. If <code>components</code> is present, the finding must reference at least one matching component. If <code>nets</code> is present, the finding must reference at least one matching net. All present filters must match (AND logic). Patterns use Python <code>fnmatch</code> syntax (<code>*</code>, <code>?</code>, <code>[seq]</code>).
 
-**Entries missing `rule_id` are silently skipped** with a stderr warning.
+**Entries missing <code>rule_id</code> are silently skipped** with a stderr warning.
 
 ```jsonc
 "suppressions": [
@@ -100,13 +100,13 @@ Each entry:
 
 ---
 
-### `preferred_suppliers` (array of strings) — v1.2
+### <code>preferred_suppliers</code> (array of strings) — v1.2
 
 Ordered list of preferred suppliers for BOM sourcing. The BOM manager uses this to select the primary distributor instead of auto-detecting. First entry is primary.
 
-Valid values: `"digikey"`, `"mouser"`, `"lcsc"`, `"element14"`.
+Valid values: <code>"digikey"</code>, <code>"mouser"</code>, <code>"lcsc"</code>, <code>"element14"</code>.
 
-Unknown values are warned and dropped. Default: `[]` (BOM manager auto-selects).
+Unknown values are warned and dropped. Default: <code>[]</code> (BOM manager auto-selects).
 
 ```jsonc
 "preferred_suppliers": ["lcsc", "digikey"]
@@ -114,16 +114,16 @@ Unknown values are warned and dropped. Default: `[]` (BOM manager auto-selects).
 
 ---
 
-### `bom` (object) — v1.2
+### <code>bom</code> (object) — v1.2
 
 BOM conventions for this project.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `field_priority` | array of strings | Ordered list of schematic field names to search for part numbers (e.g., `["MPN", "Digi-Key_PN"]`). Informational — guides the AI agent; no code enforcement. |
-| `group_by` | string | How to group BOM lines: `"value"`, `"mpn"`, or `"value+footprint"` (default: `"value+footprint"`) |
+| <code>field_priority</code> | array of strings | Ordered list of schematic field names to search for part numbers (e.g., <code>["MPN", "Digi-Key_PN"]</code>). Informational — guides the AI agent; no code enforcement. |
+| <code>group_by</code> | string | How to group BOM lines: <code>"value"</code>, <code>"mpn"</code>, or <code>"value+footprint"</code> (default: <code>"value+footprint"</code>) |
 
-Invalid `group_by` values are warned and the field is ignored (default behavior applies).
+Invalid <code>group_by</code> values are warned and the field is ignored (default behavior applies).
 
 ```jsonc
 "bom": {
@@ -134,30 +134,30 @@ Invalid `group_by` values are warned and the field is ignored (default behavior 
 
 ---
 
-### `analysis` (object)
+### <code>analysis</code> (object)
 
 Controls analysis script behavior and output.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `output_dir` | string | `"analysis"` | Directory for analysis JSON output |
-| `retention` | integer | `5` | Number of past analysis runs to keep |
-| `auto_diff` | boolean | `true` | Automatically diff against the previous run |
-| `track_in_git` | boolean | `false` | Include analysis output in git tracking |
-| `diff_threshold` | string | `"major"` | Minimum change level to report: `"major"`, `"minor"`, or `"all"` |
-| `power_rails` | object | `{}` | Power rail filtering and annotation (see below) |
+| <code>output_dir</code> | string | <code>"analysis"</code> | Directory for analysis JSON output |
+| <code>retention</code> | integer | <code>5</code> | Number of past analysis runs to keep |
+| <code>auto_diff</code> | boolean | <code>true</code> | Automatically diff against the previous run |
+| <code>track_in_git</code> | boolean | <code>false</code> | Include analysis output in git tracking |
+| <code>diff_threshold</code> | string | <code>"major"</code> | Minimum change level to report: <code>"major"</code>, <code>"minor"</code>, or <code>"all"</code> |
+| <code>power_rails</code> | object | <code>{}</code> | Power rail filtering and annotation (see below) |
 
-#### `analysis.power_rails` (object) — v1.2
+#### <code>analysis.power_rails</code> (object) — v1.2
 
 Filter and annotate power rails in analysis output. All patterns use fnmatch glob syntax.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `ignore` | array of strings | Net name patterns to exclude from analysis. Ignored rails are removed from `rail_voltages`, `power_rails`, sleep current audit, and power tree figures. |
-| `flag` | array of strings | Net name patterns to highlight for extra scrutiny. Flagged rails appear in top-level `flagged_rails`. |
-| `voltage_overrides` | object | Manual voltage assignments: `{net_name: voltage_float}`. Overrides auto-detected voltages from regulator outputs and power symbol name inference. |
+| <code>ignore</code> | array of strings | Net name patterns to exclude from analysis. Ignored rails are removed from <code>rail_voltages</code>, <code>power_rails</code>, sleep current audit, and power tree figures. |
+| <code>flag</code> | array of strings | Net name patterns to highlight for extra scrutiny. Flagged rails appear in top-level <code>flagged_rails</code>. |
+| <code>voltage_overrides</code> | object | Manual voltage assignments: <code>{net_name: voltage_float}</code>. Overrides auto-detected voltages from regulator outputs and power symbol name inference. |
 
-`ignore` and `flag` must be arrays; `voltage_overrides` values must be numeric. Invalid entries are warned and skipped.
+<code>ignore</code> and <code>flag</code> must be arrays; <code>voltage_overrides</code> values must be numeric. Invalid entries are warned and skipped.
 
 ```jsonc
 "analysis": {
@@ -179,26 +179,26 @@ Filter and annotate power rails in analysis output. All patterns use fnmatch glo
 
 ---
 
-### `design_intent` (object)
+### <code>design_intent</code> (object)
 
-Explicit design intent overrides. When absent, each field is **auto-detected** from PCB fab notes, schematic title blocks, component MPNs, and board characteristics. See `design-intent.md` for the full auto-detection logic and per-market review priorities.
+Explicit design intent overrides. When absent, each field is **auto-detected** from PCB fab notes, schematic title blocks, component MPNs, and board characteristics. See <code>design-intent.md</code> for the full auto-detection logic and per-market review priorities.
 
 | Field | Type | Auto-detected when absent | Description |
 |-------|------|--------------------------|-------------|
-| `product_class` | string | Yes | `"prototype"` or `"production"` |
-| `ipc_class` | integer | Yes (from fab notes / title block) | `1`, `2`, or `3` (default: `2`) |
-| `target_market` | string | Yes (from component MPNs) | `"hobby"`, `"consumer"`, `"industrial"`, `"medical"`, `"automotive"`, `"aerospace"` |
-| `expected_lifetime_years` | integer | Yes (market-adjusted) | Product expected lifetime in years |
-| `operating_temp_range` | array of 2 numbers | Yes (market-adjusted) | `[min_C, max_C]` |
-| `operating_temp_min` | number | — | Alternative to `operating_temp_range`; can be combined with `operating_temp_max` |
-| `operating_temp_max` | number | — | Alternative to `operating_temp_range`; can be combined with `operating_temp_min` |
-| `preferred_passive_size` | string | Yes (default `"0603"`) | `"0201"`, `"0402"`, `"0603"`, `"0805"`, `"1206"` |
-| `test_coverage_target` | number | Yes (market-adjusted) | `0.0` to `1.0` |
-| `approved_manufacturers` | array of strings | No | Restrict to approved manufacturers; empty means no restriction |
+| <code>product_class</code> | string | Yes | <code>"prototype"</code> or <code>"production"</code> |
+| <code>ipc_class</code> | integer | Yes (from fab notes / title block) | <code>1</code>, <code>2</code>, or <code>3</code> (default: <code>2</code>) |
+| <code>target_market</code> | string | Yes (from component MPNs) | <code>"hobby"</code>, <code>"consumer"</code>, <code>"industrial"</code>, <code>"medical"</code>, <code>"automotive"</code>, <code>"aerospace"</code> |
+| <code>expected_lifetime_years</code> | integer | Yes (market-adjusted) | Product expected lifetime in years |
+| <code>operating_temp_range</code> | array of 2 numbers | Yes (market-adjusted) | <code>[min_C, max_C]</code> |
+| <code>operating_temp_min</code> | number | — | Alternative to <code>operating_temp_range</code>; can be combined with <code>operating_temp_max</code> |
+| <code>operating_temp_max</code> | number | — | Alternative to <code>operating_temp_range</code>; can be combined with <code>operating_temp_min</code> |
+| <code>preferred_passive_size</code> | string | Yes (default <code>"0603"</code>) | <code>"0201"</code>, <code>"0402"</code>, <code>"0603"</code>, <code>"0805"</code>, <code>"1206"</code> |
+| <code>test_coverage_target</code> | number | Yes (market-adjusted) | <code>0.0</code> to <code>1.0</code> |
+| <code>approved_manufacturers</code> | array of strings | No | Restrict to approved manufacturers; empty means no restriction |
 
 **Market-adjusted defaults for auto-detected fields:**
 
-| Market | `operating_temp_range` | `test_coverage_target` | `expected_lifetime_years` |
+| Market | <code>operating_temp_range</code> | <code>test_coverage_target</code> | <code>expected_lifetime_years</code> |
 |--------|----------------------|----------------------|--------------------------|
 | hobby / consumer | [-10, 70] | 0.85 | 5 |
 | industrial / medical | [-40, 85] | 0.90 | 10 |
@@ -206,11 +206,11 @@ Explicit design intent overrides. When absent, each field is **auto-detected** f
 | aerospace | [-55, 125] | 0.98 | 20 |
 
 **IPC class auto-detection priority:**
-1. Explicit config (`"ipc_class"` key)
+1. Explicit config (<code>"ipc_class"</code> key)
 2. PCB fab/user/comments layer text (looks for "IPC-6012 Class N", "IPC Class N", "IPC-6012EM/ES")
 3. PCB title block fields
 4. Schematic title block fields
-5. Inferred from `target_market` (medical/aerospace → Class 3)
+5. Inferred from <code>target_market</code> (medical/aerospace → Class 3)
 6. Default: Class 2
 
 ```jsonc
@@ -320,35 +320,35 @@ Production consumer electronics board targeting the EU market. LCSC primary supp
 
 | Field path | Type | v1.2 | Default | Auto-detected |
 |------------|------|-------|---------|---------------|
-| `version` | int | — | 1 | — |
-| `project.name` | string | — | — | — |
-| `project.number` | string | — | — | — |
-| `project.revision` | string | — | — | — |
-| `project.company` | string | — | — | — |
-| `project.author` | string | — | — | — |
-| `project.market` | string | — | — | — |
-| `project.ambient_temperature_c` | number | — | 25 | — |
-| `project.emc_standard` | string | — | — | — |
-| `project.compliance_market` | string | — | — | — |
-| `suppressions` | array | — | [] | — |
-| `preferred_suppliers` | array | Yes | [] | — |
-| `bom.field_priority` | array | Yes | — | — |
-| `bom.group_by` | string | Yes | `"value+footprint"` | — |
-| `analysis.output_dir` | string | — | `"analysis"` | — |
-| `analysis.retention` | int | — | 5 | — |
-| `analysis.auto_diff` | bool | — | true | — |
-| `analysis.track_in_git` | bool | — | false | — |
-| `analysis.diff_threshold` | string | — | `"major"` | — |
-| `analysis.power_rails.ignore` | array | Yes | [] | — |
-| `analysis.power_rails.flag` | array | Yes | [] | — |
-| `analysis.power_rails.voltage_overrides` | object | Yes | {} | — |
-| `design_intent.product_class` | string | — | `"prototype"` | Yes |
-| `design_intent.ipc_class` | int | — | 2 | Yes |
-| `design_intent.target_market` | string | — | `"hobby"` | Yes |
-| `design_intent.expected_lifetime_years` | int | — | market-adj. | Yes |
-| `design_intent.operating_temp_range` | array[2] | — | market-adj. | Yes |
-| `design_intent.operating_temp_min` | number | — | — | — |
-| `design_intent.operating_temp_max` | number | — | — | — |
-| `design_intent.preferred_passive_size` | string | — | `"0603"` | Yes |
-| `design_intent.test_coverage_target` | number | — | market-adj. | Yes |
-| `design_intent.approved_manufacturers` | array | — | [] | — |
+| <code>version</code> | int | — | 1 | — |
+| <code>project.name</code> | string | — | — | — |
+| <code>project.number</code> | string | — | — | — |
+| <code>project.revision</code> | string | — | — | — |
+| <code>project.company</code> | string | — | — | — |
+| <code>project.author</code> | string | — | — | — |
+| <code>project.market</code> | string | — | — | — |
+| <code>project.ambient_temperature_c</code> | number | — | 25 | — |
+| <code>project.emc_standard</code> | string | — | — | — |
+| <code>project.compliance_market</code> | string | — | — | — |
+| <code>suppressions</code> | array | — | [] | — |
+| <code>preferred_suppliers</code> | array | Yes | [] | — |
+| <code>bom.field_priority</code> | array | Yes | — | — |
+| <code>bom.group_by</code> | string | Yes | <code>"value+footprint"</code> | — |
+| <code>analysis.output_dir</code> | string | — | <code>"analysis"</code> | — |
+| <code>analysis.retention</code> | int | — | 5 | — |
+| <code>analysis.auto_diff</code> | bool | — | true | — |
+| <code>analysis.track_in_git</code> | bool | — | false | — |
+| <code>analysis.diff_threshold</code> | string | — | <code>"major"</code> | — |
+| <code>analysis.power_rails.ignore</code> | array | Yes | [] | — |
+| <code>analysis.power_rails.flag</code> | array | Yes | [] | — |
+| <code>analysis.power_rails.voltage_overrides</code> | object | Yes | {} | — |
+| <code>design_intent.product_class</code> | string | — | <code>"prototype"</code> | Yes |
+| <code>design_intent.ipc_class</code> | int | — | 2 | Yes |
+| <code>design_intent.target_market</code> | string | — | <code>"hobby"</code> | Yes |
+| <code>design_intent.expected_lifetime_years</code> | int | — | market-adj. | Yes |
+| <code>design_intent.operating_temp_range</code> | array[2] | — | market-adj. | Yes |
+| <code>design_intent.operating_temp_min</code> | number | — | — | — |
+| <code>design_intent.operating_temp_max</code> | number | — | — | — |
+| <code>design_intent.preferred_passive_size</code> | string | — | <code>"0603"</code> | Yes |
+| <code>design_intent.test_coverage_target</code> | number | — | market-adj. | Yes |
+| <code>design_intent.approved_manufacturers</code> | array | — | [] | — |

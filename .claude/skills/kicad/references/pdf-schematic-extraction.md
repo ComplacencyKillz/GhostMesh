@@ -109,14 +109,14 @@ Different manufacturers use different shorthand:
 
 | PDF Notation | Meaning |
 |-------------|---------|
-| `100n`, `0.1u`, `100nF` | 100 nanofarads |
-| `4R7`, `4.7R` | 4.7 ohms (R marks decimal point) |
-| `10K`, `10k` | 10 kilohms |
-| `2M2` | 2.2 megohms |
-| `4u7`, `4.7u` | 4.7 microfarads |
-| `22p` | 22 picofarads |
-| `NF`, `NP`, `NC` | Not fitted / Not populated / No connect |
-| `DNP`, `DNS` | Do Not Populate / Do Not Stuff |
+| <code>100n</code>, <code>0.1u</code>, <code>100nF</code> | 100 nanofarads |
+| <code>4R7</code>, <code>4.7R</code> | 4.7 ohms (R marks decimal point) |
+| <code>10K</code>, <code>10k</code> | 10 kilohms |
+| <code>2M2</code> | 2.2 megohms |
+| <code>4u7</code>, <code>4.7u</code> | 4.7 microfarads |
+| <code>22p</code> | 22 picofarads |
+| <code>NF</code>, <code>NP</code>, <code>NC</code> | Not fitted / Not populated / No connect |
+| <code>DNP</code>, <code>DNS</code> | Do Not Populate / Do Not Stuff |
 
 ### Handling missing information
 
@@ -215,19 +215,19 @@ Rarely can you copy a subcircuit verbatim. Common adaptations:
 
 | PDF Symbol | KiCad Library | Notes |
 |-----------|--------------|-------|
-| Resistor (rectangle or zigzag) | `Device:R` | Add MPN, value, footprint |
-| Capacitor (two lines) | `Device:C` or `Device:C_Polarized` | Polarized for electrolytic/tantalum |
-| Inductor (coil) | `Device:L` | Check if shielded version needed |
-| Diode (triangle) | `Device:D` or `Device:D_Schottky` or `Device:D_Zener` | Match type to function |
-| LED | `Device:LED` | Note color for correct VF |
-| N-FET | `Device:Q_NMOS_GDS` | Check pin order matches |
-| P-FET | `Device:Q_PMOS_GDS` | Check pin order matches |
-| NPN/PNP | `Device:Q_NPN_BCE` / `Device:Q_PNP_BCE` | Check pin order |
+| Resistor (rectangle or zigzag) | <code>Device:R</code> | Add MPN, value, footprint |
+| Capacitor (two lines) | <code>Device:C</code> or <code>Device:C_Polarized</code> | Polarized for electrolytic/tantalum |
+| Inductor (coil) | <code>Device:L</code> | Check if shielded version needed |
+| Diode (triangle) | <code>Device:D</code> or <code>Device:D_Schottky</code> or <code>Device:D_Zener</code> | Match type to function |
+| LED | <code>Device:LED</code> | Note color for correct VF |
+| N-FET | <code>Device:Q_NMOS_GDS</code> | Check pin order matches |
+| P-FET | <code>Device:Q_PMOS_GDS</code> | Check pin order matches |
+| NPN/PNP | <code>Device:Q_NPN_BCE</code> / <code>Device:Q_PNP_BCE</code> | Check pin order |
 | Generic IC | Search KiCad library by MPN | If not in library, create custom symbol |
-| Connector | `Connector_Generic:Conn_01xNN` or specific | Match pin count and type |
-| Crystal | `Device:Crystal` | Two-pin or four-pin (with ground) |
-| TVS diode | `Device:D_TVS` or `Device:D_TVS_bidir` | Uni vs bidirectional |
-| Ferrite bead | `Device:FerriteBead` | Value in ohms at 100MHz |
+| Connector | <code>Connector_Generic:Conn_01xNN</code> or specific | Match pin count and type |
+| Crystal | <code>Device:Crystal</code> | Two-pin or four-pin (with ground) |
+| TVS diode | <code>Device:D_TVS</code> or <code>Device:D_TVS_bidir</code> | Uni vs bidirectional |
+| Ferrite bead | <code>Device:FerriteBead</code> | Value in ohms at 100MHz |
 
 ### Symbol not in KiCad library?
 
@@ -273,7 +273,7 @@ Never blindly trust a PDF schematic. Always cross-reference against datasheets.
 1. **Get the current datasheet** for every IC — don't rely on the PDF's embedded info
 2. **Compare pin connections** — verify every pin in the PDF matches the datasheet's pin table
 3. **Check the "Typical Application" circuit** in the datasheet — compare against the PDF
-4. **Verify component values** against datasheet recommendations (use `schematic-analysis.md` methodology)
+4. **Verify component values** against datasheet recommendations (use <code>schematic-analysis.md</code> methodology)
 5. **Check for errata** — look for errata documents or app notes that supersede the reference design
 6. **Verify footprints** — the PDF's component packages may not match what's currently available
 

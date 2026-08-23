@@ -21,7 +21,7 @@
 
 ## Serial Module — Required Configuration
 
-GhostMesh connects over the Meshtastic **Serial module in PROTO mode** on free GPIO pins. This is **required** — set it under **Module Config → Serial**. (Do this over the Meshtastic **web client over USB** — `client.meshtastic.org` → Serial — it's far more reliable than Bluetooth, which times out on config screens.)
+GhostMesh connects over the Meshtastic **Serial module in PROTO mode** on free GPIO pins. This is **required** — set it under **Module Config → Serial**. (Do this over the Meshtastic **web client over USB** — <code>client.meshtastic.org</code> → Serial — it's far more reliable than Bluetooth, which times out on config screens.)
 
 | Field | Value |
 |-------|-------|
@@ -55,16 +55,16 @@ Using the wrong region with a mismatched antenna risks poor RF performance.
 
 ### Channel
 
-The default **LongFast** channel uses a publicly known key (`AQ==`) — any Meshtastic
+The default **LongFast** channel uses a publicly known key (<code>AQ==</code>) — any Meshtastic
 node can read your traffic. For operational use, create a private channel (custom name +
 random key). See [docs/opsec.md](opsec.md) for the full setup procedure.
 
 > **Two gotchas when moving off the default channel:**
 > 1. **The Detection Sensor module will not broadcast on the default/public channel** —
->    Meshtastic blocks it by design (`isDefaultChannel` gate). Tamper alerts only send on a
+>    Meshtastic blocks it by design (<code>isDefaultChannel</code> gate). Tamper alerts only send on a
 >    non-default primary channel. Renaming off "LongFast" is enough to unblock it; a random
 >    key adds actual privacy.
-> 2. **After renaming a channel, both nodes must share a Frequency Slot.** Slot `0` =
+> 2. **After renaming a channel, both nodes must share a Frequency Slot.** Slot <code>0</code> =
 >    auto-derived from the channel *name*, so a rename can move one node to a new slot (e.g.
 >    slot 20 → 64, i.e. 906.875 → 917.875 MHz). Two nodes on different slots can't hear each
 >    other — messages show "undelivered" even with identical name + key. Fix: set **Frequency
@@ -82,15 +82,15 @@ For basic testing, the default channel is fine — but note the Detection Sensor
 - Heltec OLED shows node name, battery %, and ChUtil
 
 When GhostMesh connects:
-1. The Flipper title bar shows `...` for a few seconds (config handshake in progress; the request self-retries every ~2 s until the node answers)
-2. It changes to `RDY` when the ~47-frame config exchange completes, then to the node's battery `%` (or `PWR` when on external power) once the battery level is read from the config
+1. The Flipper title bar shows <code>...</code> for a few seconds (config handshake in progress; the request self-retries every ~2 s until the node answers)
+2. It changes to <code>RDY</code> when the ~47-frame config exchange completes, then to the node's battery <code>%</code> (or <code>PWR</code> when on external power) once the battery level is read from the config
 3. The OK button becomes active
 
 ---
 
 ## Uploading Custom Profiles
 
-Place a `profiles.yaml` file at:
+Place a <code>profiles.yaml</code> file at:
 <pre><code>
 SD:/apps_data/ghostmesh/profiles.yaml
 </code></pre>
@@ -111,7 +111,7 @@ name: Grid Down Custom
 - MOVING
 ~~~
 
-See `examples/profiles.yaml` in the GhostMesh repo for a fully commented template.
+See <code>examples/profiles.yaml</code> in the GhostMesh repo for a fully commented template.
 
 Up to 5 custom profiles are loaded alongside the 3 built-ins (8 total). Profiles with no messages are silently discarded.
 
@@ -132,8 +132,8 @@ See [docs/hardware.md](hardware.md) for full sensor wiring and GPIO assignments.
 
 ### Detection Sensor — Digital Tamper Switch (tilt / slide)
 
-> **Note:** GhostMesh's deployed Heltec firmware now uses the custom `TiltModule`
-> (`heltec-firmware/`) for the tilt, so the built-in Detection Sensor should be **disabled**
+> **Note:** GhostMesh's deployed Heltec firmware now uses the custom <code>TiltModule</code>
+> (<code>heltec-firmware/</code>) for the tilt, so the built-in Detection Sensor should be **disabled**
 > (it can't be arm-gated). This section is kept as reference — the built-in module still works
 > for a standalone digital switch, and the **channel requirements above apply to the custom
 > modules too.**
@@ -145,13 +145,13 @@ A single digital switch (tilt, reed, slide) can broadcast a tamper alert over Lo
 |-------|-------|-------|
 | Detection Sensor enabled | ON | |
 | Monitor Pin | 2 | GPIO the switch is wired to (tilt = GPIO2) |
-| Use INPUT_PULLUP | OFF | the board has an external 10kΩ pull-down (see `kicad/`) |
+| Use INPUT_PULLUP | OFF | the board has an external 10kΩ pull-down (see <code>kicad/</code>) |
 | Detection trigger type | EITHER_EDGE_ACTIVE_HIGH | switch-closed pulls the pin HIGH with the external pull-down |
 | Minimum broadcast (seconds) | 30 | anti-spam rate limit (see below) |
-| Friendly name | TAMPER | used in the alert text (`TAMPER detected`) |
+| Friendly name | TAMPER | used in the alert text (<code>TAMPER detected</code>) |
 
-On a state change it broadcasts a text mesh packet — `TAMPER detected` on the active edge, and
-`TAMPER state: 0` on the return edge (with EITHER_EDGE). The GhostMesh FAP receives these as
+On a state change it broadcasts a text mesh packet — <code>TAMPER detected</code> on the active edge, and
+<code>TAMPER state: 0</code> on the return edge (with EITHER_EDGE). The GhostMesh FAP receives these as
 ordinary mesh text; treat any message from the sensor as "disturbed."
 
 **Requires a private channel** — see the two Channel gotchas above; it will not send on the
@@ -175,7 +175,7 @@ waiting the full interval, then a deliberate tilt-and-hold. Lower the interval f
 | 7 | ✓ Used by GhostMesh (Serial module RX) | connect Flipper TX (pin 13) here |
 | 6 | ✓ Used by GhostMesh (Serial module TX) | connect Flipper RX (pin 14) here |
 | 43/44 | Avoid for the Flipper link | UART0 / CP2102 USB console — clamps on battery (USB debug only) |
-| 41/42 | Unavailable | Claimed by I2C bus 2 (`sda=41 scl=42`) at Meshtastic boot |
+| 41/42 | Unavailable | Claimed by I2C bus 2 (<code>sda=41 scl=42</code>) at Meshtastic boot |
 | 19/20 | Unavailable | ESP32-S3 USB D-/D+ |
 | 8–14 | Unavailable | SX1262 LoRa SPI + IRQ/RST/BUSY |
 | 1 | Unavailable | Battery ADC |

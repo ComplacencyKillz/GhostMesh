@@ -36,9 +36,9 @@ A script used to embed malware in the shortcut on your target's desktop.
 
 This payload will run a PowerShell script in the background of any shortcut used on the target's desktop.
 
-This is done by taking advantage of the `Target` field where PowerShell commands can be stored or run. 
+This is done by taking advantage of the <code>Target</code> field where PowerShell commands can be stored or run. 
 
-This field can store a max of 259 VISIBLE characters in that bar however after some testing I found you can store 924 characters int the `$code` variable and it will still run. 
+This field can store a max of 259 VISIBLE characters in that bar however after some testing I found you can store 924 characters int the <code>$code</code> variable and it will still run. 
 
 So if your command exceeds that, consider using an IWR function to download and execute a longer script. 
 
@@ -46,7 +46,7 @@ I have an Invoke WebRequest tutorial for that [HERE](https://www.youtube.com/wat
 
 <img src="https://github.com/I-Am-Jakoby/hak5-submissions/raw/main/Assets/Shortcut-Jacker/properties.jpg" width="300">
 
-Inside the .ps1 file you will find a line at the beginning with a ```$code``` variable. This is where the PowerShell code you want executed is stored.
+Inside the .ps1 file you will find a line at the beginning with a ``<code>$code</code>`` variable. This is where the PowerShell code you want executed is stored.
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -54,13 +54,13 @@ Inside the .ps1 file you will find a line at the beginning with a ```$code``` va
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------
 
-Using the `Get-Shortcut` function we will get the following information we can then use to maintain the integrity of the appearance of the shortcut after manipulating the `Target` field.
+Using the <code>Get-Shortcut</code> function we will get the following information we can then use to maintain the integrity of the appearance of the shortcut after manipulating the <code>Target</code> field.
 
 <img src="https://github.com/I-Am-Jakoby/hak5-submissions/raw/main/Assets/Shortcut-Jacker/shortcut.jpg" width="900">
 
 ## Getting Started
 
-Once the script is executed, all of the shortcuts on your target's desktop will be infected with the PowerShell code you have stored in the `$code` variable in the .ps1 file
+Once the script is executed, all of the shortcuts on your target's desktop will be infected with the PowerShell code you have stored in the <code>$code</code> variable in the .ps1 file
 
 ### Dependencies
 

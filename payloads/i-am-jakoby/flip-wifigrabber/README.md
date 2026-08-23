@@ -30,9 +30,9 @@ This payload grabs your target's wifi passwords and uploads them to either Dropb
 * Plug in your device
 * Invoke-WebRequest will be entered in the Run Box to download and execute the script from memory
 
-`$dc` is the variable that stores your Discord webhook 
+<code>$dc</code> is the variable that stores your Discord webhook 
 
-`$db` is the variable that stores your Dropbox token 
+<code>$db</code> is the variable that stores your Dropbox token 
 
 Fill in either or both of these to methods to exfil your collected data
 

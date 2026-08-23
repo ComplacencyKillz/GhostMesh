@@ -1,6 +1,6 @@
 # Consumer API Reference
 
-How to consume structured datasheet extractions in analyzer code. Covers the `datasheet_features.py` helper, the raw cache access functions from `datasheet_extract_cache.py`, and the skip-with-INFO pattern for detectors that require extraction data.
+How to consume structured datasheet extractions in analyzer code. Covers the <code>datasheet_features.py</code> helper, the raw cache access functions from <code>datasheet_extract_cache.py</code>, and the skip-with-INFO pattern for detectors that require extraction data.
 
 ---
 
@@ -8,15 +8,15 @@ How to consume structured datasheet extractions in analyzer code. Covers the `da
 
 This module provides typed accessors that abstract cache lookup, null safety, and field path traversal.
 
-### `get_regulator_features(mpn, *, extract_dir=None, analysis_json=None, project_dir=None) -> dict | None`
+### <code>get_regulator_features(mpn, *, extract_dir=None, analysis_json=None, project_dir=None) -> dict | None</code>
 
-Returns a dict of regulator-relevant fields from the extraction, or `None` if no extraction is available.
+Returns a dict of regulator-relevant fields from the extraction, or <code>None</code> if no extraction is available.
 
-Returns `None` when:
+Returns <code>None</code> when:
 - No extraction is cached for the MPN
-- Extraction is stale (below `EXTRACTION_VERSION`)
-- Extraction score is below `MIN_SCORE` (6.0)
-- Extraction topology is not one of: `'boost'`, `'buck'`, `'ldo'`
+- Extraction is stale (below <code>EXTRACTION_VERSION</code>)
+- Extraction score is below <code>MIN_SCORE</code> (6.0)
+- Extraction topology is not one of: <code>'boost'</code>, <code>'buck'</code>, <code>'ldo'</code>
 
 ```python
 from datasheet_features import get_regulator_features
@@ -42,25 +42,25 @@ Returned dict fields:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `topology` | `'boost' \| 'buck' \| 'ldo'` | Circuit topology |
-| `has_pg` | `bool \| None` | Part has a power-good output pin |
-| `has_soft_start` | `bool \| None` | Integrated soft-start circuit |
-| `iss_time_us` | `float \| None` | Soft-start time in microseconds |
-| `en_v_ih_max` | `float \| None` | EN pin logic-high threshold (V) |
-| `en_v_il_min` | `float \| None` | EN pin logic-low threshold (V) |
-| `vin_pin` | `str \| None` | Pin number of VIN pin |
-| `vout_pin` | `str \| None` | Pin number of VOUT pin |
-| `en_pin` | `str \| None` | Pin number of EN pin |
-| `pg_pin` | `str \| None` | Pin number of PG pin |
+| <code>topology</code> | <code>'boost' \| 'buck' \| 'ldo'</code> | Circuit topology |
+| <code>has_pg</code> | <code>bool \| None</code> | Part has a power-good output pin |
+| <code>has_soft_start</code> | <code>bool \| None</code> | Integrated soft-start circuit |
+| <code>iss_time_us</code> | <code>float \| None</code> | Soft-start time in microseconds |
+| <code>en_v_ih_max</code> | <code>float \| None</code> | EN pin logic-high threshold (V) |
+| <code>en_v_il_min</code> | <code>float \| None</code> | EN pin logic-low threshold (V) |
+| <code>vin_pin</code> | <code>str \| None</code> | Pin number of VIN pin |
+| <code>vout_pin</code> | <code>str \| None</code> | Pin number of VOUT pin |
+| <code>en_pin</code> | <code>str \| None</code> | Pin number of EN pin |
+| <code>pg_pin</code> | <code>str \| None</code> | Pin number of PG pin |
 
-### `get_mcu_features(mpn, *, extract_dir=None, analysis_json=None, project_dir=None) -> dict | None`
+### <code>get_mcu_features(mpn, *, extract_dir=None, analysis_json=None, project_dir=None) -> dict | None</code>
 
-Returns MCU-relevant fields, or `None` if no extraction is available.
+Returns MCU-relevant fields, or <code>None</code> if no extraction is available.
 
-Returns `None` when:
+Returns <code>None</code> when:
 - No extraction is cached for the MPN
-- Extraction is stale or below `MIN_SCORE`
-- Extraction topology is not `'mcu'`
+- Extraction is stale or below <code>MIN_SCORE</code>
+- Extraction topology is not <code>'mcu'</code>
 
 ```python
 from datasheet_features import get_mcu_features
@@ -79,15 +79,15 @@ Returned dict fields:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `usb_speed` | `'FS' \| 'HS' \| 'SS' \| None` | USB device speed |
-| `has_native_usb_phy` | `bool \| None` | Native USB PHY present |
-| `usb_series_r_required` | `bool \| None` | Series termination resistors required |
+| <code>usb_speed</code> | <code>'FS' \| 'HS' \| 'SS' \| None</code> | USB device speed |
+| <code>has_native_usb_phy</code> | <code>bool \| None</code> | Native USB PHY present |
+| <code>usb_series_r_required</code> | <code>bool \| None</code> | Series termination resistors required |
 
-### `get_pin_function(mpn, pin_identifier, *, extract_dir=None, analysis_json=None, project_dir=None) -> str | None`
+### <code>get_pin_function(mpn, pin_identifier, *, extract_dir=None, analysis_json=None, project_dir=None) -> str | None</code>
 
-Returns the functional category of a pin, or `None` if not found or extraction unavailable.
+Returns the functional category of a pin, or <code>None</code> if not found or extraction unavailable.
 
-`pin_identifier` matches against `pins[].number` (exact match, string) or `pins[].name` (case-insensitive).
+<code>pin_identifier</code> matches against <code>pins[].number</code> (exact match, string) or <code>pins[].name</code> (case-insensitive).
 
 ```python
 from datasheet_features import get_pin_function
@@ -97,11 +97,11 @@ fn = get_pin_function('TPS61023DRLR', 'EN')
 # or None if extraction missing or pin not found
 ```
 
-Possible return values: `'VIN'`, `'VOUT'`, `'EN'`, `'PG'`, `'SW'`, `'FB'`, `'GND'`, `'IO'`, `'CLK'`, `'RESET'`, `'OTHER'`, or `None`.
+Possible return values: <code>'VIN'</code>, <code>'VOUT'</code>, <code>'EN'</code>, <code>'PG'</code>, <code>'SW'</code>, <code>'FB'</code>, <code>'GND'</code>, <code>'IO'</code>, <code>'CLK'</code>, <code>'RESET'</code>, <code>'OTHER'</code>, or <code>None</code>.
 
-### `is_extraction_available(mpn, *, extract_dir=None, analysis_json=None, project_dir=None) -> bool`
+### <code>is_extraction_available(mpn, *, extract_dir=None, analysis_json=None, project_dir=None) -> bool</code>
 
-Returns `True` iff a v2+, sufficiently-scored extraction exists for the MPN.
+Returns <code>True</code> iff a v2+, sufficiently-scored extraction exists for the MPN.
 
 ```python
 from datasheet_features import is_extraction_available
@@ -115,22 +115,22 @@ if is_extraction_available('TPS61023DRLR'):
 
 ## None Contract
 
-The contract for all helper functions: individual fields within a returned dict may be `None`, distinct from `False` or `0`.
+The contract for all helper functions: individual fields within a returned dict may be <code>None</code>, distinct from <code>False</code> or <code>0</code>.
 
 | Value | Meaning | Detector action |
 |-------|---------|----------------|
-| `None` (whole return) | No extraction cached, stale, or low score | Skip the check; emit INFO |
-| `None` (field within dict) | Datasheet didn't specify this field | Treat as unknown; do not fire checks based on this field |
-| `False` | Datasheet explicitly says feature is absent | Fire relevant checks if configured |
-| `0` / `0.0` | Datasheet specifies zero | Treat as numeric zero |
+| <code>None</code> (whole return) | No extraction cached, stale, or low score | Skip the check; emit INFO |
+| <code>None</code> (field within dict) | Datasheet didn't specify this field | Treat as unknown; do not fire checks based on this field |
+| <code>False</code> | Datasheet explicitly says feature is absent | Fire relevant checks if configured |
+| <code>0</code> / <code>0.0</code> | Datasheet specifies zero | Treat as numeric zero |
 
-Detectors must distinguish `None` (unknown) from `False` (explicitly no). Example: `has_pg=None` means unknown; `has_pg=False` means confirmed absent.
+Detectors must distinguish <code>None</code> (unknown) from <code>False</code> (explicitly no). Example: <code>has_pg=None</code> means unknown; <code>has_pg=False</code> means confirmed absent.
 
 ---
 
 ## Skip Pattern for Detectors
 
-When a detector needs extraction data and the helper function returns `None` (whole function return), emit an INFO-level finding and return — do not fire the rule.
+When a detector needs extraction data and the helper function returns <code>None</code> (whole function return), emit an INFO-level finding and return — do not fire the rule.
 
 ```python
 feat = get_regulator_features(mpn)
@@ -168,9 +168,9 @@ Do not emit a warning or error for a missing extraction — INFO is the correct 
 
 For cases where the helper functions do not cover the needed field, use the cache functions directly.
 
-### `get_cached_extraction(extract_dir, mpn) -> dict | None`
+### <code>get_cached_extraction(extract_dir, mpn) -> dict | None</code>
 
-Returns the full extraction dict, or `None` if not cached.
+Returns the full extraction dict, or <code>None</code> if not cached.
 
 ```python
 from datasheet_extract_cache import get_cached_extraction, resolve_extract_dir
@@ -182,13 +182,13 @@ if extraction is None:
     pass
 ```
 
-### `resolve_extract_dir(analysis_json=None, project_dir=None, override_dir=None) -> Path`
+### <code>resolve_extract_dir(analysis_json=None, project_dir=None, override_dir=None) -> Path</code>
 
-Resolves the `datasheets/extracted/` directory for a project:
+Resolves the <code>datasheets/extracted/</code> directory for a project:
 
-1. If `override_dir` is set, use it directly.
-2. If `project_dir` is set, use `<project_dir>/datasheets/extracted/`.
-3. If `analysis_json` is provided, use the `"file"` field to find the project root.
+1. If <code>override_dir</code> is set, use it directly.
+2. If <code>project_dir</code> is set, use <code><project_dir>/datasheets/extracted/</code>.
+3. If <code>analysis_json</code> is provided, use the <code>"file"</code> field to find the project root.
 4. Fallback: system temp directory.
 
 ```python
@@ -199,7 +199,7 @@ extract_dir = resolve_extract_dir(project_dir="/path/to/project")
 
 ## Resolving extract_dir in Detectors
 
-Detectors called from `analyze_schematic.py` receive an `AnalysisContext` object. The extraction directory is resolved once at the top of the analysis run and passed through context.
+Detectors called from <code>analyze_schematic.py</code> receive an <code>AnalysisContext</code> object. The extraction directory is resolved once at the top of the analysis run and passed through context.
 
 ```python
 # In analyze_schematic.py (caller side)
@@ -212,17 +212,17 @@ if not extract_dir or not extract_dir.exists():
     return []  # skip silently — no extraction infrastructure set up
 ```
 
-If `extract_dir` does not exist, skip silently (no INFO finding) — this is the normal state for projects that have not run the extraction pipeline.
+If <code>extract_dir</code> does not exist, skip silently (no INFO finding) — this is the normal state for projects that have not run the extraction pipeline.
 
 ---
 
 ## Quality Gate
 
-The helper functions (`get_regulator_features()`, `get_mcu_features()`, etc.) apply a quality gate transparently:
-- Extractions with `extraction_metadata.extraction_score < MIN_SCORE` (6.0) are treated as unavailable.
-- Extractions with `extraction_metadata.extraction_version < EXTRACTION_VERSION` are stale and treated as unavailable.
+The helper functions (<code>get_regulator_features()</code>, <code>get_mcu_features()</code>, etc.) apply a quality gate transparently:
+- Extractions with <code>extraction_metadata.extraction_score < MIN_SCORE</code> (6.0) are treated as unavailable.
+- Extractions with <code>extraction_metadata.extraction_version < EXTRACTION_VERSION</code> are stale and treated as unavailable.
 
-This means a `None` return from a helper does not require the detector to check the score separately. For direct cache access, apply the same gate:
+This means a <code>None</code> return from a helper does not require the detector to check the score separately. For direct cache access, apply the same gate:
 
 ```python
 from datasheet_extract_cache import get_cached_extraction, EXTRACTION_VERSION, MIN_SCORE

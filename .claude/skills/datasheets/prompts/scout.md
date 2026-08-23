@@ -4,44 +4,44 @@ You are extracting orchestration metadata from an electronics component datashee
 
 ## Task
 
-Read `{{PDF_PATH}}` (a PDF datasheet, possibly a family datasheet). Target MPN: **`{{MPN}}`**.
+Read <code>{{PDF_PATH}}</code> (a PDF datasheet, possibly a family datasheet). Target MPN: **<code>{{MPN}}</code>**.
 
-Produce a single JSON object matching this schema: `{{SCHEMA_PATH}}`.
+Produce a single JSON object matching this schema: <code>{{SCHEMA_PATH}}</code>.
 
 ## What to identify
 
-1. **`metadata`** — manufacturer, datasheet revision (string from cover/footer), datasheet date, page count, source URL if printed on the PDF, whether this is a family PDF (multiple MPNs share it), and the family member MPN list if applicable.
+1. **<code>metadata</code>** — manufacturer, datasheet revision (string from cover/footer), datasheet date, page count, source URL if printed on the PDF, whether this is a family PDF (multiple MPNs share it), and the family member MPN list if applicable.
 
-2. **`categories`** — the category extension(s) applicable to this MPN. Known categories: `regulator`, `diode`, `transistor`, `opamp`, `mcu`, `crystal`.
+2. **<code>categories</code>** — the category extension(s) applicable to this MPN. Known categories: <code>regulator</code>, <code>diode</code>, <code>transistor</code>, <code>opamp</code>, <code>mcu</code>, <code>crystal</code>.
 
-   - `regulator` — linear LDOs, switching converters (buck/boost/buck-boost/SEPIC/flyback), charge pumps, isolated converters.
-   - `diode` — signal, switching, Schottky, zener, TVS, rectifier, bridge, varicap diodes.
-   - `transistor` — BJT (NPN/PNP), MOSFET (N/P-channel), JFET, IGBT discrete transistors.
-   - `opamp` — operational amplifiers, comparators, instrumentation amplifiers.
-   - `mcu` — microcontrollers, microprocessors, DSPs.
-   - `crystal` — quartz crystals, oscillators, resonators.
+   - <code>regulator</code> — linear LDOs, switching converters (buck/boost/buck-boost/SEPIC/flyback), charge pumps, isolated converters.
+   - <code>diode</code> — signal, switching, Schottky, zener, TVS, rectifier, bridge, varicap diodes.
+   - <code>transistor</code> — BJT (NPN/PNP), MOSFET (N/P-channel), JFET, IGBT discrete transistors.
+   - <code>opamp</code> — operational amplifiers, comparators, instrumentation amplifiers.
+   - <code>mcu</code> — microcontrollers, microprocessors, DSPs.
+   - <code>crystal</code> — quartz crystals, oscillators, resonators.
 
-3. **`extraction_pages`** — per-task page numbers (1-indexed). Required keys:
-   - `base` — pages with package/pinout headers, absolute max ratings, recommended operating conditions, ESD ratings, thermal information.
-   - `pinout` — pages with the pin description table (often a few pages after the cover).
-   - One key per emitted category (e.g. `regulator`) — pages with that category's electrical characteristics, application info (input/output cap recommendations, inductor selection, feedback divider).
+3. **<code>extraction_pages</code>** — per-task page numbers (1-indexed). Required keys:
+   - <code>base</code> — pages with package/pinout headers, absolute max ratings, recommended operating conditions, ESD ratings, thermal information.
+   - <code>pinout</code> — pages with the pin description table (often a few pages after the cover).
+   - One key per emitted category (e.g. <code>regulator</code>) — pages with that category's electrical characteristics, application info (input/output cap recommendations, inductor selection, feedback divider).
 
-   Pages may overlap across keys (e.g. an EC table page may serve both `base` and `regulator`).
+   Pages may overlap across keys (e.g. an EC table page may serve both <code>base</code> and <code>regulator</code>).
 
-4. **`quality_verdict`** — one of:
-   - `extractable` — proceed with extraction.
-   - `low_quality` — proceed but extraction may yield poor results (set `reason`: e.g. "non-English with limited English appendix", "missing electrical characteristics table on visible pages").
-   - `skip` — extraction would be wasteful; bail out (set `reason`: e.g. "scanned image, OCR-only, no machine-readable text").
+4. **<code>quality_verdict</code>** — one of:
+   - <code>extractable</code> — proceed with extraction.
+   - <code>low_quality</code> — proceed but extraction may yield poor results (set <code>reason</code>: e.g. "non-English with limited English appendix", "missing electrical characteristics table on visible pages").
+   - <code>skip</code> — extraction would be wasteful; bail out (set <code>reason</code>: e.g. "scanned image, OCR-only, no machine-readable text").
 
 ## Constraints
 
-- The MPN you target must match exactly (case-insensitive) a callout in the PDF (cover, ordering info, or family member table). If `{{MPN}}` does not appear, set `quality_verdict.verdict: "skip"` with reason `"target MPN not found in PDF"`.
+- The MPN you target must match exactly (case-insensitive) a callout in the PDF (cover, ordering info, or family member table). If <code>{{MPN}}</code> does not appear, set <code>quality_verdict.verdict: "skip"</code> with reason <code>"target MPN not found in PDF"</code>.
 - For family PDFs, the family member list is the set of variant MPNs printed on the cover or in the ordering-information table. Do not invent variants.
 - Do not extract field values. No spec values, no pin names. The plan stage is structural.
 
 ## Output format
 
-Return only the JSON object — no surrounding prose, no Markdown code fences. The output must validate against `{{SCHEMA_PATH}}`.
+Return only the JSON object — no surrounding prose, no Markdown code fences. The output must validate against <code>{{SCHEMA_PATH}}</code>.
 
 Example shape (LM2596-ADJ):
 

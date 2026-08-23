@@ -42,8 +42,8 @@ Once the target enters their credentials their information will be uploaded to y
 * Plug in your device
 * Invoke-WebRequest will be entered in the Run Box to download and execute the script from memory
 * You no longer need to host your own version of this script 
-* `$db` is the variable that holds your DropBox token
-* `$dc` is the variable that holds your Discord webhook 
+* <code>$db</code> is the variable that holds your DropBox token
+* <code>$dc</code> is the variable that holds your Discord webhook 
 * Fill in either variable or both to set your exfil method
 
 ```

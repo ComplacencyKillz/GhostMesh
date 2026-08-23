@@ -1,6 +1,6 @@
 # Manual PCB Parsing (Script Fallback)
 
-When `analyze_pcb.py` fails (unsupported format, newer KiCad version, corrupted file), fall back to direct file parsing. This is more expensive (reading raw S-expressions) but always works as long as the file is valid KiCad.
+When <code>analyze_pcb.py</code> fails (unsupported format, newer KiCad version, corrupted file), fall back to direct file parsing. This is more expensive (reading raw S-expressions) but always works as long as the file is valid KiCad.
 
 ## Table of Contents
 
@@ -20,7 +20,7 @@ When `analyze_pcb.py` fails (unsupported format, newer KiCad version, corrupted 
 ## When to Use Manual Parsing
 
 Use manual parsing when:
-- `analyze_pcb.py` crashes or returns unexpected results on a file you know is valid
+- <code>analyze_pcb.py</code> crashes or returns unexpected results on a file you know is valid
 - The PCB is from a KiCad version newer than the script supports
 - You need to validate script output against raw file data
 - You need to extract data the script doesn't provide (e.g., specific filled_polygon vertices)
@@ -32,7 +32,7 @@ Always try the script first — it handles coordinate transforms, via classifica
 
 ## Performance: Line-by-Line Parsing
 
-KiCad PCB files can be 20K-70K+ lines, with zones containing thousands of polygon vertices. **Never use full-content regex with `re.DOTALL` on the entire file** — it causes catastrophic backtracking on large files. Use line-by-line state-machine parsing instead for top-level extraction. `re.DOTALL` is acceptable on small, pre-extracted blocks (e.g., a single footprint or pad block) where the input size is bounded.
+KiCad PCB files can be 20K-70K+ lines, with zones containing thousands of polygon vertices. **Never use full-content regex with <code>re.DOTALL</code> on the entire file** — it causes catastrophic backtracking on large files. Use line-by-line state-machine parsing instead for top-level extraction. <code>re.DOTALL</code> is acceptable on small, pre-extracted blocks (e.g., a single footprint or pad block) where the input size is bounded.
 
 ### Buffer Accumulation Pattern
 
@@ -121,7 +121,7 @@ Net 0 is always the unconnected net (empty name).
 
 **KiCad 10:** No net declarations section. Nets are referenced by name string directly in pads, tracks, vias, and zones. Collect unique net names from those elements instead.
 
-Power nets typically have names like `GND`, `+3V3`, `+5V`, `VBUS`.
+Power nets typically have names like <code>GND</code>, <code>+3V3</code>, <code>+5V</code>, <code>VBUS</code>.
 
 ---
 
@@ -159,14 +159,14 @@ def pad_to_absolute(fp_x, fp_y, fp_angle_deg, pad_rx, pad_ry):
 
 | Field | Where | Purpose |
 |-------|-------|---------|
-| `(property "Reference" "U1")` | Footprint block | Component designator |
-| `(property "Value" "STM32F407")` | Footprint block | Component value |
-| `(at X Y ANGLE)` | 2nd-level child | Position and rotation |
-| `(layer "F.Cu")` | 1st-level child | Board side (F.Cu = front, B.Cu = back) |
-| `(attr smd)` | 1st-level child | SMD vs through-hole |
-| `(path "/uuid")` | 1st-level child | Link to schematic symbol |
-| `(sheetname "Power")` | 1st-level child | Source schematic sheet |
-| `(pad ...)` | Nested children | Pads with net assignments |
+| <code>(property "Reference" "U1")</code> | Footprint block | Component designator |
+| <code>(property "Value" "STM32F407")</code> | Footprint block | Component value |
+| <code>(at X Y ANGLE)</code> | 2nd-level child | Position and rotation |
+| <code>(layer "F.Cu")</code> | 1st-level child | Board side (F.Cu = front, B.Cu = back) |
+| <code>(attr smd)</code> | 1st-level child | SMD vs through-hole |
+| <code>(path "/uuid")</code> | 1st-level child | Link to schematic symbol |
+| <code>(sheetname "Power")</code> | 1st-level child | Source schematic sheet |
+| <code>(pad ...)</code> | Nested children | Pads with net assignments |
 
 ### Courtyard Extraction
 
@@ -189,7 +189,7 @@ Build a bounding box from all courtyard primitives, then transform to absolute c
 
 ### Tracks (Segments)
 
-See the buffer accumulation pattern above. KiCad 7+ also has `(arc ...)` blocks with `(start)`, `(mid)`, `(end)` for curved tracks.
+See the buffer accumulation pattern above. KiCad 7+ also has <code>(arc ...)</code> blocks with <code>(start)</code>, <code>(mid)</code>, <code>(end)</code> for curved tracks.
 
 For arc length calculation:
 ```python
@@ -262,7 +262,7 @@ for via in vias:
 
 ## Zone Extraction
 
-Zones are the trickiest part — they contain massive `filled_polygon` blocks. For most analyses, extract only the header:
+Zones are the trickiest part — they contain massive <code>filled_polygon</code> blocks. For most analyses, extract only the header:
 
 ```python
 zones = []
@@ -323,7 +323,7 @@ def extract_zone_polygon(lines, zone_net, zone_layer):
 
 ## Board Outline
 
-Extract graphical primitives on the `Edge.Cuts` layer:
+Extract graphical primitives on the <code>Edge.Cuts</code> layer:
 
 ```python
 outline_segments = []
@@ -385,22 +385,22 @@ Checking whether a net has *any* routing is insufficient — nets can be partial
 
 - ESP32/QFN ground slug pads may appear disconnected if they're just outside the zone fill boundary
 - Zone fills may need to be re-poured after component moves
-- Nets named `unconnected-(...)` are explicitly marked no-connect — skip these
+- Nets named <code>unconnected-(...)</code> are explicitly marked no-connect — skip these
 
 ---
 
 ## KiCad 5 Legacy Format
 
-KiCad 5 PCB files use `(module ...)` instead of `(footprint ...)`, and `(fp_text reference ...)` instead of `(property "Reference" ...)`.
+KiCad 5 PCB files use <code>(module ...)</code> instead of <code>(footprint ...)</code>, and <code>(fp_text reference ...)</code> instead of <code>(property "Reference" ...)</code>.
 
 ### Key Differences
 
 | Modern (KiCad 6+) | Legacy (KiCad 5) |
 |--------------------|------------------|
-| `(footprint "Lib:Name" ...)` | `(module "Lib:Name" ...)` |
-| `(property "Reference" "U1" ...)` | `(fp_text reference "U1" ...)` |
-| `(property "Value" "STM32" ...)` | `(fp_text value "STM32" ...)` |
-| `(uuid "...")` | `(tstamp HEXID)` |
+| <code>(footprint "Lib:Name" ...)</code> | <code>(module "Lib:Name" ...)</code> |
+| <code>(property "Reference" "U1" ...)</code> | <code>(fp_text reference "U1" ...)</code> |
+| <code>(property "Value" "STM32" ...)</code> | <code>(fp_text value "STM32" ...)</code> |
+| <code>(uuid "...")</code> | <code>(tstamp HEXID)</code> |
 | Layer numbers: F.Cu=0, B.Cu=2 | Layer numbers: F.Cu=0, B.Cu=31 |
 
 ### Net Classes (KiCad 5 only)
@@ -441,13 +441,13 @@ When verifying analyzer output (or your own manual parse):
 
 ### Component Count Validation
 
-1. Count all `(footprint ...)` or `(module ...)` top-level blocks
+1. Count all <code>(footprint ...)</code> or <code>(module ...)</code> top-level blocks
 2. Compare against the analyzer's footprint count — should match exactly
-3. Check for `(attr board_only)` or `(attr virtual)` components that may be excluded from counts
+3. Check for <code>(attr board_only)</code> or <code>(attr virtual)</code> components that may be excluded from counts
 
 ### Net Count Validation
 
-1. Count all `(net N "name")` declarations (subtract net 0)
+1. Count all <code>(net N "name")</code> declarations (subtract net 0)
 2. Compare against analyzer's net count
 3. Spot-check 3-5 nets by finding all pads/segments/vias with that net ID
 
@@ -461,7 +461,7 @@ When verifying analyzer output (or your own manual parse):
 ### Known Edge Cases
 
 - **Test points**: Single-pad footprints appear as "unrouted" nets — they only have one endpoint, which is correct
-- **Mounting holes**: Non-plated holes (`np_thru_hole`) have no net and should be excluded
-- **Board-only components**: Logos, fiducials with `(attr board_only)` may not have nets
+- **Mounting holes**: Non-plated holes (<code>np_thru_hole</code>) have no net and should be excluded
+- **Board-only components**: Logos, fiducials with <code>(attr board_only)</code> may not have nets
 - **Zone-only routing**: Some nets (especially GND) are routed entirely through copper pours with no tracks — check zone net assignments
 - **Multi-layer zones**: A zone on F.Cu doesn't connect to the same zone on B.Cu unless there are vias between them

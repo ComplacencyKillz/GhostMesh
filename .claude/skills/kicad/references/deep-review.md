@@ -2,7 +2,7 @@
 
 The Deep Review pass is a per-IC comparison of actual usage against
 datasheet requirements, with findings recorded durably in
-`analysis/deep_review.json` and machine-verified by the evidence
+<code>analysis/deep_review.json</code> and machine-verified by the evidence
 gate. This guide holds the depth the SKILL.md loop points to:
 comparison heuristics per part class, interacting-pair patterns,
 helper-script conventions, evidence quality, and fan-out for big
@@ -80,22 +80,22 @@ After the per-IC loop, look between parts:
 
 ## Helper-script conventions
 
-Write disposable, design-specific scripts under `analysis/helpers/`:
-- Name them `check_<topic>.py`; stdlib-only.
+Write disposable, design-specific scripts under <code>analysis/helpers/</code>:
+- Name them <code>check_<topic>.py</code>; stdlib-only.
 - Read facts from the analyzer JSON (pass paths on argv) — don't
   re-parse KiCad files.
 - Print human-readable result lines with the numbers in them; the
-  key line goes verbatim into `evidence.computation.result`.
+  key line goes verbatim into <code>evidence.computation.result</code>.
 - Keep the scripts (do not delete after use) — they are cited
   evidence and must resolve when the gate re-runs.
 
 ## Recording and evidence quality
 
-Record findings in `analysis/deep_review.json` per
-`skills/kicad/review/schemas/deep_review.schema.json`:
-- `category` is free-form but reuse a small stable vocabulary within
-  a project (e.g. `power_input`, `power_sequencing`, `bus_levels`,
-  `thermal`, `protection`, `required_externals`) — the diff and the
+Record findings in <code>analysis/deep_review.json</code> per
+<code>skills/kicad/review/schemas/deep_review.schema.json</code>:
+- <code>category</code> is free-form but reuse a small stable vocabulary within
+  a project (e.g. <code>power_input</code>, <code>power_sequencing</code>, <code>bus_levels</code>,
+  <code>thermal</code>, <code>protection</code>, <code>required_externals</code>) — the diff and the
   summary group by it.
 - Datasheet quotes must be verbatim text from the cited page — the
   gate greps the page via pdftotext; paraphrases quarantine.
@@ -117,10 +117,10 @@ quarantined renders in the report as an unverified claim.
 
 ## Re-review protocol
 
-1. `cp analysis/deep_review.json analysis/deep_review.prev.json`
+1. <code>cp analysis/deep_review.json analysis/deep_review.prev.json</code>
 2. Run the pass fresh; gate it.
-3. `python3 skills/kicad/scripts/diff_analysis.py analysis/deep_review.prev.json analysis/deep_review.json --text`
-4. Report fixed / still-open / new. Treat `reworded_candidates` as
+3. <code>python3 skills/kicad/scripts/diff_analysis.py analysis/deep_review.prev.json analysis/deep_review.json --text</code>
+4. Report fixed / still-open / new. Treat <code>reworded_candidates</code> as
    advisory — confirm by reading, then report as still-open.
 
 ## Fan-out for big BOMs
@@ -133,8 +133,8 @@ threshold: >20 review-worthy ICs, or context pressure mid-pass):
   analyzer JSON paths, its IC list, the datasheet locations, and
   this guide; it returns a JSON array of findings (schema shape,
   no finding_id — the gate stamps ids). Concatenate the arrays into
-  `findings[]`, then gate once, centrally.
-- `analysis/design_context.json` (optional input) steers priorities:
+  <code>findings[]</code>, then gate once, centrally.
+- <code>analysis/design_context.json</code> (optional input) steers priorities:
   automotive → derating and temperature attention up; battery →
   quiescent current; RF → supply noise on analog rails.
 
@@ -145,6 +145,6 @@ threshold: >20 review-worthy ICs, or context pressure mid-pass):
 | No datasheets at all | Topology-only pass; per-IC "not verified against datasheet" gap lines in the report |
 | Cache miss, PDF on disk | Read the PDF directly |
 | No PDF, no API | Record info finding "X unverified — no datasheet available" |
-| Extraction exists, low quality | It comes back with `quality.trusted: false` — decide: trust, or re-read the PDF |
-| Gate failure | Finding sits in `quarantined[]` with a reason; report as unverified claim |
+| Extraction exists, low quality | It comes back with <code>quality.trusted: false</code> — decide: trust, or re-read the PDF |
+| Gate failure | Finding sits in <code>quarantined[]</code> with a reason; report as unverified claim |
 | Prior deep_review.json missing/old schema | Fresh review; say why in the delta section |

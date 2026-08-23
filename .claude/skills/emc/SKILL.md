@@ -26,17 +26,17 @@ Automated EMC risk analysis for KiCad PCB designs. Identifies the most common ca
 
 | Skill | Purpose |
 |-------|---------|
-| `kicad` | Schematic/PCB analysis — produces the analyzer JSON this skill consumes |
-| `kicad` (thermal) | Thermal hotspot analysis — MLCC derating and ferrite/inductor overheating findings can amplify EMC decoupling and filter issues (an over-stressed MLCC degrades; a hot ferrite drifts impedance). Worth cross-checking when EMC flags DC-001/DC-002 or EF-001/EF-002. |
-| `spice` | SPICE simulation — provides simulator backend for SPICE-enhanced PDN/filter checks |
+| <code>kicad</code> | Schematic/PCB analysis — produces the analyzer JSON this skill consumes |
+| <code>kicad</code> (thermal) | Thermal hotspot analysis — MLCC derating and ferrite/inductor overheating findings can amplify EMC decoupling and filter issues (an over-stressed MLCC degrades; a hot ferrite drifts impedance). Worth cross-checking when EMC flags DC-001/DC-002 or EF-001/EF-002. |
+| <code>spice</code> | SPICE simulation — provides simulator backend for SPICE-enhanced PDN/filter checks |
 
-**Handoff guidance:** Run the `kicad` skill's `analyze_schematic.py` and `analyze_pcb.py` first — this skill consumes their JSON output. Use `--full` on the PCB analyzer for best results (enables per-track coordinates for ground plane crossing, edge proximity, and return path checks). During a design review, run EMC analysis after the schematic/PCB analyzers, SPICE simulation, and thermal analysis, then incorporate EMC findings into the report.
+**Handoff guidance:** Run the <code>kicad</code> skill's <code>analyze_schematic.py</code> and <code>analyze_pcb.py</code> first — this skill consumes their JSON output. Use <code>--full</code> on the PCB analyzer for best results (enables per-track coordinates for ground plane crossing, edge proximity, and return path checks). During a design review, run EMC analysis after the schematic/PCB analyzers, SPICE simulation, and thermal analysis, then incorporate EMC findings into the report.
 
 ## Requirements
 
 - **Python 3.10+** — stdlib only, no pip dependencies
-- **Schematic analyzer JSON** — from `analyze_schematic.py --output`
-- **PCB analyzer JSON** — from `analyze_pcb.py --full --output` (recommended with `--full`)
+- **Schematic analyzer JSON** — from <code>analyze_schematic.py --output</code>
+- **PCB analyzer JSON** — from <code>analyze_pcb.py --full --output</code> (recommended with <code>--full</code>)
 - **SPICE simulator** *(optional)* — ngspice, LTspice, or Xyce for SPICE-enhanced PDN/filter checks. Auto-detected. Without one, analytical models run unchanged.
 
 ## Workflow
@@ -50,8 +50,8 @@ python3 <kicad-skill-path>/scripts/analyze_pcb.py design.kicad_pcb --full --anal
 
 ### Step 2: Run EMC analysis
 
-Pass `--analysis-dir analysis/` — the script auto-resolves `schematic.json`
-and `pcb.json` from the manifest's current run, and writes `emc.json` into
+Pass <code>--analysis-dir analysis/</code> — the script auto-resolves <code>schematic.json</code>
+and <code>pcb.json</code> from the manifest's current run, and writes <code>emc.json</code> into
 the same folder so the manifest tracks it.
 
 ```bash
@@ -90,7 +90,7 @@ Read the JSON report and incorporate findings into the design review. Each findi
 
 ## What Gets Checked
 
-44 rule IDs across 18 categories. Each rule has a specific threshold, rationale, and source citation — see `references/pcb-emc-rules.md` for full details.
+44 rule IDs across 18 categories. Each rule has a specific threshold, rationale, and source citation — see <code>references/pcb-emc-rules.md</code> for full details.
 
 | Category | Rules | What it detects |
 |----------|-------|-----------------|
@@ -168,7 +168,7 @@ Read the JSON report and incorporate findings into the design review. Each findi
 
 Each rule ID contributes at most 3 findings to the score (worst severity first). This prevents per-net rules like GP-001 from saturating the score on 2-layer boards. All findings are still reported — only the score is capped.
 
-`penalty = sum(worst 3 per rule × severity weight)`, `score = max(0, 100 - penalty)`. Scores below 50 indicate significant EMC risk.
+<code>penalty = sum(worst 3 per rule × severity weight)</code>, <code>score = max(0, 100 - penalty)</code>. Scores below 50 indicate significant EMC risk.
 
 ## Interpreting Results
 
@@ -188,14 +188,14 @@ Each rule ID contributes at most 3 findings to the score (worst severity first).
 
 | Standard | Flag | Use Case |
 |----------|------|----------|
-| FCC Part 15 Class B | `fcc-class-b` | US residential (default) |
-| FCC Part 15 Class A | `fcc-class-a` | US commercial/industrial |
-| CISPR 32 Class B | `cispr-class-b` | International (EU CE marking) |
-| CISPR 32 Class A | `cispr-class-a` | International commercial |
-| CISPR 25 Class 5 | `cispr-25` | Automotive (strictest) |
-| MIL-STD-461G RE102 | `mil-std-461` | Military/defense |
+| FCC Part 15 Class B | <code>fcc-class-b</code> | US residential (default) |
+| FCC Part 15 Class A | <code>fcc-class-a</code> | US commercial/industrial |
+| CISPR 32 Class B | <code>cispr-class-b</code> | International (EU CE marking) |
+| CISPR 32 Class A | <code>cispr-class-a</code> | International commercial |
+| CISPR 25 Class 5 | <code>cispr-25</code> | Automotive (strictest) |
+| MIL-STD-461G RE102 | <code>mil-std-461</code> | Military/defense |
 
-The `--market` flag maps markets to all applicable standards: `us`, `eu`, `automotive`, `medical`, `military`.
+The <code>--market</code> flag maps markets to all applicable standards: <code>us</code>, <code>eu</code>, <code>automotive</code>, <code>medical</code>, <code>military</code>.
 
 ## Limitations
 

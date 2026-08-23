@@ -1,12 +1,12 @@
 # PCB Layout Analyzer — Methodology
 
-This document describes the analysis methodology used by `analyze_pcb.py`. It covers parsing, extraction, connectivity analysis, DFM scoring, and all physical layout analyses.
+This document describes the analysis methodology used by <code>analyze_pcb.py</code>. It covers parsing, extraction, connectivity analysis, DFM scoring, and all physical layout analyses.
 
 ## Design Philosophy
 
 Same as the schematic analyzer — this is a **data extraction layer**. It outputs structured JSON containing neutral observations about the physical PCB layout. An LLM (or human reviewer) consumes this alongside the schematic analysis and datasheets for design review.
 
-The PCB analyzer focuses on what can be determined from the `.kicad_pcb` file alone, without requiring the schematic. Cross-referencing with schematic data (component types, net functions) is performed by the consuming LLM.
+The PCB analyzer focuses on what can be determined from the <code>.kicad_pcb</code> file alone, without requiring the schematic. Cross-referencing with schematic data (component types, net functions) is performed by the consuming LLM.
 
 Detection should be thorough — an undetected DFM issue or thermal problem is a blind spot that can cost hundreds of dollars at fab. At the same time, every reported measurement (trace width, clearance, via count, distance) must be accurate, because incorrect data leads to incorrect review conclusions. The analyzer favors comprehensive extraction with precise facts over selective reporting with opinions.
 
@@ -14,15 +14,15 @@ Detection should be thorough — an undetected DFM issue or thermal problem is a
 
 ## 1. Parsing Pipeline
 
-The PCB analyzer uses the same `sexp_parser.py` as the schematic analyzer. A `.kicad_pcb` file is parsed into nested Python lists, then traversed using `find_all`, `find_first`, `get_value`, `get_property`, and `get_at`.
+The PCB analyzer uses the same <code>sexp_parser.py</code> as the schematic analyzer. A <code>.kicad_pcb</code> file is parsed into nested Python lists, then traversed using <code>find_all</code>, <code>find_first</code>, <code>get_value</code>, <code>get_property</code>, and <code>get_at</code>.
 
 ### Format Compatibility
 
 The analyzer handles both:
-- **KiCad 6+**: `(footprint ...)` blocks, `(property "Reference" "R1")` syntax
-- **KiCad 5**: `(module ...)` blocks, `(fp_text reference "R1")` syntax
+- **KiCad 6+**: <code>(footprint ...)</code> blocks, <code>(property "Reference" "R1")</code> syntax
+- **KiCad 5**: <code>(module ...)</code> blocks, <code>(fp_text reference "R1")</code> syntax
 
-Detection is automatic — `find_all(root, "footprint") or find_all(root, "module")`.
+Detection is automatic — <code>find_all(root, "footprint") or find_all(root, "module")</code>.
 
 ---
 
@@ -30,11 +30,11 @@ Detection is automatic — `find_all(root, "footprint") or find_all(root, "modul
 
 ### 2.1 Layer Stack
 
-Extracts from `(layers ...)` block: layer numbers, names, types (signal, user, etc.), and whether visible. Used to determine copper layer count and stackup.
+Extracts from <code>(layers ...)</code> block: layer numbers, names, types (signal, user, etc.), and whether visible. Used to determine copper layer count and stackup.
 
 ### 2.2 Setup / Design Rules
 
-Extracts from `(setup ...)` block:
+Extracts from <code>(setup ...)</code> block:
 - Board thickness, copper weight
 - Default trace width, via size/drill, clearance
 - Solder mask/paste margins
@@ -43,13 +43,13 @@ Extracts from `(setup ...)` block:
 
 ### 2.3 Net Definitions
 
-KiCad ≤9: Extracts `(net N "name")` entries — maps net numbers to names. Net numbers are used throughout the file to identify which net a pad, track, via, or zone belongs to.
+KiCad ≤9: Extracts <code>(net N "name")</code> entries — maps net numbers to names. Net numbers are used throughout the file to identify which net a pad, track, via, or zone belongs to.
 
 KiCad 10: No net declarations section. Nets are identified by name strings directly in pads, tracks, vias, and zones. The analyzer builds a synthetic integer mapping from all unique net names for internal use.
 
 ### 2.4 Footprint Extraction
 
-Each `(footprint ...)` or `(module ...)` block produces:
+Each <code>(footprint ...)</code> or <code>(module ...)</code> block produces:
 
 ```python
 {
@@ -71,23 +71,23 @@ Each `(footprint ...)` or `(module ...)` block produces:
 ```
 
 **Pad extraction** per footprint includes:
-- Pad number, type (`smd`, `thru_hole`, `np_thru_hole`), shape (`circle`, `rect`, `oval`, `roundrect`, `custom`)
+- Pad number, type (<code>smd</code>, <code>thru_hole</code>, <code>np_thru_hole</code>), shape (<code>circle</code>, <code>rect</code>, <code>oval</code>, <code>roundrect</code>, <code>custom</code>)
 - Absolute position (footprint-relative position rotated by footprint angle, then translated)
 - Size (width, height), drill diameter and shape (round vs. oval)
 - Net assignment (KiCad ≤9: net number + name; KiCad 10: net name only)
 - Layer list (which copper/mask/paste layers the pad spans)
-- Pin function and type (from schematic cross-reference: `pinfunction`, `pintype`)
+- Pin function and type (from schematic cross-reference: <code>pinfunction</code>, <code>pintype</code>)
 - Custom pad copper area estimation (from primitives)
 - Solder mask/paste margin overrides
 - Zone connection override
 
-**SMD vs. through-hole classification**: Determined from `(attr smd)` or `(attr through_hole)`. Falls back to pad type inspection for KiCad 5 files.
+**SMD vs. through-hole classification**: Determined from <code>(attr smd)</code> or <code>(attr through_hole)</code>. Falls back to pad type inspection for KiCad 5 files.
 
-**Courtyard extraction**: Bounding box computed from `fp_line`, `fp_rect`, `fp_circle` on `CrtYd` layers, transformed to absolute coordinates.
+**Courtyard extraction**: Bounding box computed from <code>fp_line</code>, <code>fp_rect</code>, <code>fp_circle</code> on <code>CrtYd</code> layers, transformed to absolute coordinates.
 
 ### 2.5 Track Extraction
 
-Extracts `(segment ...)` and `(arc ...)` blocks:
+Extracts <code>(segment ...)</code> and <code>(arc ...)</code> blocks:
 - Start/end coordinates, width, layer, net
 - For arcs: start, mid, and end points (3-point arc definition)
 - Width distribution histogram
@@ -96,9 +96,9 @@ Extracts `(segment ...)` and `(arc ...)` blocks:
 
 ### 2.6 Via Extraction
 
-Extracts `(via ...)` blocks:
+Extracts <code>(via ...)</code> blocks:
 - Position, pad size, drill diameter, net
-- Layer span (e.g., `F.Cu` to `B.Cu` for through-hole, or specific layers for blind/micro vias)
+- Layer span (e.g., <code>F.Cu</code> to <code>B.Cu</code> for through-hole, or specific layers for blind/micro vias)
 - Via type: through, blind, or micro
 - Tenting status (solder mask coverage)
 - Free via flag (unanchored — typically stitching or thermal)
@@ -106,7 +106,7 @@ Extracts `(via ...)` blocks:
 
 ### 2.7 Zone Extraction
 
-Extracts `(zone ...)` blocks — copper pours / fills:
+Extracts <code>(zone ...)</code> blocks — copper pours / fills:
 - Net assignment, layer(s), fill type
 - Zone outline polygon and bounding box
 - Filled polygon regions (actual copper after zone fill)
@@ -114,13 +114,13 @@ Extracts `(zone ...)` blocks — copper pours / fills:
 - Thermal relief settings (spoke width, gap)
 - Min thickness, clearance, pad connection type
 
-**ZoneFills spatial index**: Filled polygon coordinates are stored in a `ZoneFills` class for efficient point-in-polygon queries. This allows checking whether copper actually exists at a specific (x, y) location on a given layer. Uses bounding box pre-filtering + ray-casting for the actual test.
+**ZoneFills spatial index**: Filled polygon coordinates are stored in a <code>ZoneFills</code> class for efficient point-in-polygon queries. This allows checking whether copper actually exists at a specific (x, y) location on a given layer. Uses bounding box pre-filtering + ray-casting for the actual test.
 
-**Important caveat**: Zone fill data is only accurate if zones were filled in KiCad (`Edit → Fill All Zones`) before saving. Stale fills produce incorrect copper presence results.
+**Important caveat**: Zone fill data is only accurate if zones were filled in KiCad (<code>Edit → Fill All Zones</code>) before saving. Stale fills produce incorrect copper presence results.
 
 ### 2.8 Board Outline
 
-Extracts from `Edge.Cuts` layer: `gr_line`, `gr_arc`, `gr_circle`, `gr_rect` elements. Computes bounding box from all edge points to determine board dimensions (width × height).
+Extracts from <code>Edge.Cuts</code> layer: <code>gr_line</code>, <code>gr_arc</code>, <code>gr_circle</code>, <code>gr_rect</code> elements. Computes bounding box from all edge points to determine board dimensions (width × height).
 
 ---
 
@@ -134,7 +134,7 @@ For each net with ≥2 pads, checks whether ANY routing exists (tracks, vias, or
 
 ### 3.2 Full Union-Find Connectivity
 
-Uses union-find (same algorithm concept as the schematic net builder) on `(x, y, layer)` coordinates snapped to a 1µm grid:
+Uses union-find (same algorithm concept as the schematic net builder) on <code>(x, y, layer)</code> coordinates snapped to a 1µm grid:
 
 1. **Register pad locations** — each pad gets a point on each of its copper layers
 2. **Union track segments** — each segment's start and end points are unioned on their layer
@@ -148,14 +148,14 @@ Then count connected components per net:
 
 This catches cases where a net is partially routed (e.g., 5 of 8 pads connected, 3 floating).
 
-**Zone approximation**: Zones are assumed to connect all pads on the same net + layer. This is accurate for ground/power planes but may overcount for partial zone fills. A more precise check would use the `ZoneFills` spatial index to verify each pad is within the fill, but thermal relief clearances complicate point-in-fill tests.
+**Zone approximation**: Zones are assumed to connect all pads on the same net + layer. This is accurate for ground/power planes but may overcount for partial zone fills. A more precise check would use the <code>ZoneFills</code> spatial index to verify each pad is within the fill, but thermal relief clearances complicate point-in-fill tests.
 
 ---
 
 ## 4. Per-Net Trace Length
 
 Measures total routing length per net:
-- Segment length: `√((x2-x1)² + (y2-y1)²)`
+- Segment length: <code>√((x2-x1)² + (y2-y1)²)</code>
 - Arc length: 3-point circle reconstruction → radius × arc angle
 - Per-layer breakdown (length and segment count)
 - Via count per net
@@ -199,11 +199,11 @@ Identifies ground domain splits:
 
 ## 8. Trace Proximity Analysis
 
-Optional analysis (enabled with `--proximity` flag). Uses a spatial grid (default 0.5mm cells) to find signal net pairs with traces running close together on the same layer:
+Optional analysis (enabled with <code>--proximity</code> flag). Uses a spatial grid (default 0.5mm cells) to find signal net pairs with traces running close together on the same layer:
 
 1. Rasterize all track segments into grid cells, recording which nets occupy each cell
 2. For cells with multiple signal nets, count shared-cell pairs
-3. Report pairs sorted by approximate coupling length (`shared_cells × grid_size`)
+3. Report pairs sorted by approximate coupling length (<code>shared_cells × grid_size</code>)
 4. Exclude power/ground nets (expected to be everywhere)
 
 Useful for crosstalk risk assessment.
@@ -222,7 +222,7 @@ Provides facts for IPC-2221 current capacity assessment:
 - Zone coverage (layers, filled area, min thickness)
 
 **Per via drill size**:
-- Plating barrel cross-section: `A = π × d × t` (where `t = 25µm` typical plating)
+- Plating barrel cross-section: <code>A = π × d × t</code> (where <code>t = 25µm</code> typical plating)
 - Approximate current rating at 10°C rise
 
 **Narrow signal net flagging**: Signal nets with traces ≤0.15mm and ≥5 segments are flagged as potential current bottlenecks.
@@ -269,7 +269,7 @@ Comprehensive via characterization:
 Through-hole vs. blind vs. micro via counts and size distributions.
 
 ### Annular Ring
-`(pad_size - drill) / 2` for every via. Reports min/max, distribution, and counts below common manufacturer minimums (0.125mm, 0.100mm).
+<code>(pad_size - drill) / 2</code> for every via. Reports min/max, distribution, and counts below common manufacturer minimums (0.125mm, 0.100mm).
 
 ### Via-in-Pad Detection
 Identifies vias located within SMD pad bounding boxes. For each match: component, pad, whether same net (intentional via-in-pad vs. error).
@@ -311,10 +311,10 @@ Component density per unit area, front/back distribution.
 ## 14. Silkscreen Analysis
 
 ### Board-Level Text
-Extracts `gr_text` on SilkS/Silkscreen layers — project names, version labels, logos.
+Extracts <code>gr_text</code> on SilkS/Silkscreen layers — project names, version labels, logos.
 
 ### Per-Footprint Reference Visibility
-For each footprint: whether its reference designator is visible on the silkscreen (checks both KiCad 9 `property` nodes and KiCad 5–8 `fp_text` nodes for hide flags).
+For each footprint: whether its reference designator is visible on the silkscreen (checks both KiCad 9 <code>property</code> nodes and KiCad 5–8 <code>fp_text</code> nodes for hide flags).
 
 ### Documentation Audit
 Checks for:
@@ -344,7 +344,7 @@ Compares actual design parameters against JLCPCB standard and advanced process l
 
 ### Track Spacing Estimation
 
-Approximate minimum spacing computed from endpoint-to-endpoint distances between different-net segments on the same layer. Edge-to-edge spacing: `center_distance - (width_a + width_b) / 2`. Sampling limited to 2000 segments per layer for performance.
+Approximate minimum spacing computed from endpoint-to-endpoint distances between different-net segments on the same layer. Edge-to-edge spacing: <code>center_distance - (width_a + width_b) / 2</code>. Sampling limited to 2000 segments per layer for performance.
 
 ### DFM Tier Classification
 
@@ -368,7 +368,7 @@ Evaluates thermal asymmetry for small passive components (0201, 0402):
 - **Medium**: Asymmetric track widths or via proximity
 - **Low**: Reasonable thermal symmetry
 
-**Copper ratio**: Computed as `min(pad_copper) / max(pad_copper)`. Ratios below 0.3 indicate high risk, 0.3–0.6 medium risk.
+**Copper ratio**: Computed as <code>min(pad_copper) / max(pad_copper)</code>. Ratios below 0.3 indicate high risk, 0.3–0.6 medium risk.
 
 ---
 
@@ -383,7 +383,7 @@ Extended per-component assessment for packages with exposed thermal pads:
 
 ## 18. Copper Presence Analysis
 
-Uses the `ZoneFills` spatial index to check actual filled copper at pad locations across layers. For power/ground pads on ICs, verifies that zone fills actually reach the pad location (not just that a zone exists on the net).
+Uses the <code>ZoneFills</code> spatial index to check actual filled copper at pad locations across layers. For power/ground pads on ICs, verifies that zone fills actually reach the pad location (not just that a zone exists on the net).
 
 ---
 
@@ -450,7 +450,7 @@ Legacy KiCad 5 net class definitions (stored in PCB file): default and named cla
 }
 ```
 
-Sections previously at top level (`thermal_analysis`, `thermal_pad_vias`, `tombstoning_risk`, `placement_analysis`, `current_capacity`, `copper_presence`, `dfm`) are now flattened into `findings[]`. Summary data is preserved in `dfm_summary`, `placement_density`, `copper_presence_summary`, and `board_thickness_mm`.
+Sections previously at top level (<code>thermal_analysis</code>, <code>thermal_pad_vias</code>, <code>tombstoning_risk</code>, <code>placement_analysis</code>, <code>current_capacity</code>, <code>copper_presence</code>, <code>dfm</code>) are now flattened into <code>findings[]</code>. Summary data is preserved in <code>dfm_summary</code>, <code>placement_density</code>, <code>copper_presence_summary</code>, and <code>board_thickness_mm</code>.
 
 ---
 
@@ -466,7 +466,7 @@ Sections previously at top level (`thermal_analysis`, `thermal_pad_vias`, `tombs
 
 5. **No impedance calculation**: The analyzer doesn't compute controlled impedance from stackup data. It reports trace widths and layer assignments; impedance calculation requires knowing dielectric thickness and Er, which are in the stackup but not processed into impedance values.
 
-6. **Single-file analysis**: Only processes one `.kicad_pcb` file. Doesn't handle multi-board projects or panelized designs.
+6. **Single-file analysis**: Only processes one <code>.kicad_pcb</code> file. Doesn't handle multi-board projects or panelized designs.
 
 7. **Courtyard-only overlap detection**: Component overlap uses courtyard bounding boxes, not actual pad/silk geometry. Components without courtyards aren't checked.
 

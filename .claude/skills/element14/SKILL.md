@@ -1,6 +1,6 @@
 ---
 name: element14
-description: Search Newark, Farnell, and element14 for electronic components — find parts by MPN or distributor part number, check pricing/stock, download datasheets, analyze specifications. One unified API covers all three storefronts (Newark for US, Farnell for UK/EU, element14 for APAC). Free API key, simple query-parameter auth, no OAuth. Datasheets download directly from farnell.com CDN with no bot protection. Sync and maintain a local datasheets directory for a KiCad project, or use batch MPN-list seeding (`--mpn-list`) for bulk workflows without a project. Use this skill when the user mentions Newark, Farnell, element14, needs parts from a non-US distributor, wants to compare pricing across regions, or needs datasheets from a source that doesn't require complex API auth. For package cross-reference tables and BOM workflow, see the `bom` skill.
+description: Search Newark, Farnell, and element14 for electronic components — find parts by MPN or distributor part number, check pricing/stock, download datasheets, analyze specifications. One unified API covers all three storefronts (Newark for US, Farnell for UK/EU, element14 for APAC). Free API key, simple query-parameter auth, no OAuth. Datasheets download directly from farnell.com CDN with no bot protection. Sync and maintain a local datasheets directory for a KiCad project, or use batch MPN-list seeding (<code>--mpn-list</code>) for bulk workflows without a project. Use this skill when the user mentions Newark, Farnell, element14, needs parts from a non-US distributor, wants to compare pricing across regions, or needs datasheets from a source that doesn't require complex API auth. For package cross-reference tables and BOM workflow, see the <code>bom</code> skill.
 ---
 
 # element14 / Newark / Farnell — Component Search, Datasheets & Ordering
@@ -9,19 +9,19 @@ description: Search Newark, Farnell, and element14 for electronic components —
 
 | Skill | Purpose |
 |-------|---------|
-| `kicad` | Schematic analysis — extracts MPNs for part lookup |
-| `bom` | BOM management — orchestrates sourcing across distributors |
-| `spice` | Uses element14 parametric data for behavioral SPICE models |
+| <code>kicad</code> | Schematic analysis — extracts MPNs for part lookup |
+| <code>bom</code> | BOM management — orchestrates sourcing across distributors |
+| <code>spice</code> | Uses element14 parametric data for behavioral SPICE models |
 
 One API covers three regional storefronts — same catalog, same datasheets, only pricing/stock vary by region:
 
 | Storefront | Region | Store ID |
 |------------|--------|----------|
-| **Newark** | North America | `www.newark.com` |
-| **Farnell** | UK / Europe | `uk.farnell.com` |
-| **element14** | Asia-Pacific | `au.element14.com` |
+| **Newark** | North America | <code>www.newark.com</code> |
+| **Farnell** | UK / Europe | <code>uk.farnell.com</code> |
+| **element14** | Asia-Pacific | <code>au.element14.com</code> |
 
-For BOM management and export workflows, see `bom`.
+For BOM management and export workflows, see <code>bom</code>.
 
 ## Key Differences from DigiKey/Mouser
 
@@ -29,7 +29,7 @@ For BOM management and export workflows, see `bom`.
 - **Free API key** — register at partner.element14.com, courtesy usage allowance
 - **Global coverage** — same API covers US (Newark), EU (Farnell), APAC (element14)
 - **Unprotected PDFs** — datasheets hosted on farnell.com CDN, download freely with no bot protection
-- **Datasheet URL in API response** — `responseGroup=medium` includes `datasheets[].url`
+- **Datasheet URL in API response** — <code>responseGroup=medium</code> includes <code>datasheets[].url</code>
 
 ## API Credential Setup
 
@@ -45,30 +45,30 @@ For BOM management and export workflows, see `bom`.
    - Check "Issue a new key for Product Search API" → select "Basic" tier
    - Agree to Terms of Service and click "Register Application"
 3. **Copy your API key** — a 24-character alphanumeric string shown on the My API Keys page
-4. **Set the environment variable** `ELEMENT14_API_KEY` before running the scripts:
+4. **Set the environment variable** <code>ELEMENT14_API_KEY</code> before running the scripts:
    ```bash
    export ELEMENT14_API_KEY=your_api_key_here
    ```
-   If credentials are stored in a central secrets file (e.g., `~/.config/secrets.env`), load them first:
+   If credentials are stored in a central secrets file (e.g., <code>~/.config/secrets.env</code>), load them first:
    ```bash
    export $(grep -v '^#' ~/.config/secrets.env | grep -v '^$' | xargs)
    ```
 
 ## Product Search API
 
-**Base URL:** `https://api.element14.com/catalog/products`
+**Base URL:** <code>https://api.element14.com/catalog/products</code>
 
-All requests use GET with query parameters. Authentication is via `callInfo.apiKey`.
+All requests use GET with query parameters. Authentication is via <code>callInfo.apiKey</code>.
 
 ### Search Modes
 
-The `term` parameter supports three search types:
+The <code>term</code> parameter supports three search types:
 
 | Mode | Format | Example |
 |------|--------|---------|
-| **Keyword** | `any:<keywords>` | `term=any:100nF 0402 X7R` |
-| **MPN** | `manuPartNum:<mpn>` | `term=manuPartNum:GRM155R71C104KA88D` |
-| **Distributor PN** | `id:<sku>` | `term=id:94AK6874` |
+| **Keyword** | <code>any:<keywords></code> | <code>term=any:100nF 0402 X7R</code> |
+| **MPN** | <code>manuPartNum:<mpn></code> | <code>term=manuPartNum:GRM155R71C104KA88D</code> |
+| **Distributor PN** | <code>id:<sku></code> | <code>term=id:94AK6874</code> |
 
 ### Full Example
 
@@ -87,15 +87,15 @@ GET https://api.element14.com/catalog/products
 
 | Group | Fields |
 |-------|--------|
-| `small` | SKU, displayName, brandName, MPN, attributes |
-| `medium` | + datasheets[], prices[], stock |
-| `large` | + images, related products, country of origin |
-| `prices` | Tiered pricing only |
-| `inventory` | Stock levels by warehouse/region |
+| <code>small</code> | SKU, displayName, brandName, MPN, attributes |
+| <code>medium</code> | + datasheets[], prices[], stock |
+| <code>large</code> | + images, related products, country of origin |
+| <code>prices</code> | Tiered pricing only |
+| <code>inventory</code> | Stock levels by warehouse/region |
 
 ### Response Format
 
-With `responseGroup=medium`, the response looks like:
+With <code>responseGroup=medium</code>, the response looks like:
 
 ```json
 {
@@ -139,29 +139,29 @@ With `responseGroup=medium`, the response looks like:
 ```
 
 Key fields:
-- `sku` — Newark/Farnell/element14 part number
-- `translatedManufacturerPartNumber` — MPN
-- `brandName` — manufacturer
-- `datasheets[].url` — **direct PDF URL** (farnell.com CDN, no bot protection)
-- `datasheets[].type` — usually `TechnicalDataSheet`
-- `prices[]` — tiered pricing with `from`, `to`, `cost`
-- `stock.level` — quantity in stock
-- `stock.statusMessage` — human-readable availability
-- `attributes[]` — parametric specs (label, unit, value)
-- `rohsStatusCode` — RoHS compliance (`YES`/`NO`)
+- <code>sku</code> — Newark/Farnell/element14 part number
+- <code>translatedManufacturerPartNumber</code> — MPN
+- <code>brandName</code> — manufacturer
+- <code>datasheets[].url</code> — **direct PDF URL** (farnell.com CDN, no bot protection)
+- <code>datasheets[].type</code> — usually <code>TechnicalDataSheet</code>
+- <code>prices[]</code> — tiered pricing with <code>from</code>, <code>to</code>, <code>cost</code>
+- <code>stock.level</code> — quantity in stock
+- <code>stock.statusMessage</code> — human-readable availability
+- <code>attributes[]</code> — parametric specs (label, unit, value)
+- <code>rohsStatusCode</code> — RoHS compliance (<code>YES</code>/<code>NO</code>)
 
 ### Store IDs
 
-Common store IDs for the `storeInfo.id` parameter:
+Common store IDs for the <code>storeInfo.id</code> parameter:
 
 | Store ID | Region |
 |----------|--------|
-| `www.newark.com` | US (default) |
-| `uk.farnell.com` | UK |
-| `www.farnell.com` | EU |
-| `au.element14.com` | Australia |
-| `sg.element14.com` | Singapore |
-| `in.element14.com` | India |
+| <code>www.newark.com</code> | US (default) |
+| <code>uk.farnell.com</code> | UK |
+| <code>www.farnell.com</code> | EU |
+| <code>au.element14.com</code> | Australia |
+| <code>sg.element14.com</code> | Singapore |
+| <code>in.element14.com</code> | India |
 
 ### Rate Limits
 
@@ -170,22 +170,22 @@ No documented rate limits beyond the courtesy usage allowance. Be respectful —
 ### Filters
 
 Add to query parameters:
-- `resultsSettings.refinements.filter=rohsCompliant` — RoHS parts only
-- `resultsSettings.refinements.filter=inStock` — in-stock only
+- <code>resultsSettings.refinements.filter=rohsCompliant</code> — RoHS parts only
+- <code>resultsSettings.refinements.filter=inStock</code> — in-stock only
 
 ### Pagination
 
-- `resultsSettings.offset` — starting index (0-based)
-- `resultsSettings.numberOfResults` — max 50 per page
+- <code>resultsSettings.offset</code> — starting index (0-based)
+- <code>resultsSettings.numberOfResults</code> — max 50 per page
 - Only the first 100 results are reliably pageable
 
 ## Datasheet Download & Sync
 
-element14's farnell.com CDN serves datasheet PDFs directly — no bot protection, no special headers needed. Datasheet URLs come from the API response (`datasheets[].url`).
+element14's farnell.com CDN serves datasheet PDFs directly — no bot protection, no special headers needed. Datasheet URLs come from the API response (<code>datasheets[].url</code>).
 
 ### Datasheet Directory Sync
 
-Use `sync_datasheets_element14.py` to maintain a `datasheets/` directory alongside a KiCad project. Same workflow and `manifest.json` format as the DigiKey, Mouser, and LCSC skills.
+Use <code>sync_datasheets_element14.py</code> to maintain a <code>datasheets/</code> directory alongside a KiCad project. Same workflow and <code>manifest.json</code> format as the DigiKey, Mouser, and LCSC skills.
 
 ```bash
 # Sync datasheets for a KiCad project
@@ -211,27 +211,27 @@ python3 <skill-path>/scripts/sync_datasheets_element14.py --mpn-list mpns.txt --
 ```
 
 **MPN-list batch mode** (KH-312) — when you have a list of MPNs but no
-KiCad project to point at. One MPN per line; blank lines and `#`
+KiCad project to point at. One MPN per line; blank lines and <code>#</code>
 comments (full-line and inline) are skipped; generic values are filtered
-via `is_real_mpn()` and de-duplicated. Output defaults to `./datasheets/`
-in the current working directory when `--output` is omitted. Note:
-`ELEMENT14_API_KEY` is checked unconditionally at startup, so
-`--dry-run` still requires the env var to be set even though no
+via <code>is_real_mpn()</code> and de-duplicated. Output defaults to <code>./datasheets/</code>
+in the current working directory when <code>--output</code> is omitted. Note:
+<code>ELEMENT14_API_KEY</code> is checked unconditionally at startup, so
+<code>--dry-run</code> still requires the env var to be set even though no
 network calls are made.
 
 The script:
 - **Runs the kicad schematic analyzer** to extract components, MPNs, and distributor PNs
 - **Accepts any identifier** — MPN, Newark/Farnell PN, or other distributor PNs from KiCad symbol properties
-- **Prefers MPN search** (`manuPartNum:`) for exact match — falls back to keyword search
+- **Prefers MPN search** (<code>manuPartNum:</code>) for exact match — falls back to keyword search
 - **Downloads from farnell.com CDN** — direct PDF URLs, no bot protection
-- **Writes `manifest.json` manifest** — same format as DigiKey/Mouser/LCSC skills
+- **Writes <code>manifest.json</code> manifest** — same format as DigiKey/Mouser/LCSC skills
 - **Verifies PDF content** — checks MPN, manufacturer, and description keywords
-- **Rate-limited** — 0.5s between API calls (configurable with `--delay`)
+- **Rate-limited** — 0.5s between API calls (configurable with <code>--delay</code>)
 - **Saves progress incrementally** — safe to interrupt
 
 ### Single Datasheet Download
 
-Use `fetch_datasheet_element14.py` for one-off downloads.
+Use <code>fetch_datasheet_element14.py</code> for one-off downloads.
 
 ```bash
 # Search by MPN
@@ -248,13 +248,13 @@ python3 <skill-path>/scripts/fetch_datasheet_element14.py --search "GRM155R71C10
 ```
 
 The script:
-- **OS-agnostic** — uses `requests` → `urllib` → `playwright` fallback chain
+- **OS-agnostic** — uses <code>requests</code> → <code>urllib</code> → <code>playwright</code> fallback chain
 - **Validates PDF headers** — rejects HTML error pages
 - **Falls back to alternative manufacturer sources** when element14 URL fails
 - **Exit codes**: 0 = success, 1 = download failed, 2 = search/API error
 - **Dependencies**:
-  - `pip install requests` (recommended; urllib fallback works fine for element14)
-  - `pip install playwright && playwright install chromium` (optional; rarely needed)
+  - <code>pip install requests</code> (recommended; urllib fallback works fine for element14)
+  - <code>pip install playwright && playwright install chromium</code> (optional; rarely needed)
 
 ## Web Search Fallback
 
@@ -267,7 +267,7 @@ https://uk.farnell.com/search?st=<query>
 
 ## Tips
 
-- Use `responseGroup=medium` — includes datasheets and pricing without the overhead of `large`
-- Use `manuPartNum:` prefix for exact MPN matches; `any:` for keyword search
-- Cross-reference using `translatedManufacturerPartNumber` (MPN) across DigiKey/Mouser/LCSC
+- Use <code>responseGroup=medium</code> — includes datasheets and pricing without the overhead of <code>large</code>
+- Use <code>manuPartNum:</code> prefix for exact MPN matches; <code>any:</code> for keyword search
+- Cross-reference using <code>translatedManufacturerPartNumber</code> (MPN) across DigiKey/Mouser/LCSC
 - Useful for international users where DigiKey/Mouser shipping is expensive

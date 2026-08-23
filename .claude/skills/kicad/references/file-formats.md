@@ -18,7 +18,7 @@ Detailed field-by-field documentation for all KiCad file types. Consult this whe
 
 ## S-Expression Format Basics
 
-All modern KiCad files use Lisp-like S-expressions: `(keyword value1 (child_keyword value2) ...)`.
+All modern KiCad files use Lisp-like S-expressions: <code>(keyword value1 (child_keyword value2) ...)</code>.
 
 - **Coordinates**: millimeters, origin top-left, X right, Y **down**
 - **Angles**: degrees, counterclockwise positive
@@ -27,7 +27,7 @@ All modern KiCad files use Lisp-like S-expressions: `(keyword value1 (child_keyw
 
 ---
 
-## Schematic (`.kicad_sch`)
+## Schematic (<code>.kicad_sch</code>)
 
 ### Top-Level Structure
 ```
@@ -77,24 +77,24 @@ All modern KiCad files use Lisp-like S-expressions: `(keyword value1 (child_keyw
 
 ### Extracting Key Info from Schematics
 
-**Component list (BOM)**: Collect all `(symbol ...)` nodes. For each, read:
-- `(property "Reference" ...)` - designator (R1, C5, U3)
-- `(property "Value" ...)` - value (10K, 100n, STM32F407)
-- `(property "Footprint" ...)` - PCB footprint
-- `(property "Mfg Part" ...)` / `(property "DigiKey Part" ...)` - sourcing
-- `(in_bom yes/no)` - whether to include in BOM
-- `(dnp yes/no)` - Do Not Populate flag
+**Component list (BOM)**: Collect all <code>(symbol ...)</code> nodes. For each, read:
+- <code>(property "Reference" ...)</code> - designator (R1, C5, U3)
+- <code>(property "Value" ...)</code> - value (10K, 100n, STM32F407)
+- <code>(property "Footprint" ...)</code> - PCB footprint
+- <code>(property "Mfg Part" ...)</code> / <code>(property "DigiKey Part" ...)</code> - sourcing
+- <code>(in_bom yes/no)</code> - whether to include in BOM
+- <code>(dnp yes/no)</code> - Do Not Populate flag
 
 **Net connectivity**: Nets are implicit in schematics, formed by:
 1. **Wires** connecting pin endpoints
 2. **Junctions** where wires cross and connect
-3. **Labels** (`label` = local to sheet, `global_label` = all sheets)
-4. **Power symbols** (e.g., `+3V3`, `GND`) create implicit global nets
+3. **Labels** (<code>label</code> = local to sheet, <code>global_label</code> = all sheets)
+4. **Power symbols** (e.g., <code>+3V3</code>, <code>GND</code>) create implicit global nets
 5. **Hierarchical labels** + sheet pins connect parent/child sheets
 
-For detailed step-by-step net tracing with coordinate math and rotation transforms, read `net-tracing.md`.
+For detailed step-by-step net tracing with coordinate math and rotation transforms, read <code>net-tracing.md</code>.
 
-**Power rails**: Look for symbols with `lib_id` starting with `power:` (e.g., `power:+3V3`, `power:GND`). These create global nets named after their value.
+**Power rails**: Look for symbols with <code>lib_id</code> starting with <code>power:</code> (e.g., <code>power:+3V3</code>, <code>power:GND</code>). These create global nets named after their value.
 
 ### Hierarchical Sheets
 ```
@@ -104,11 +104,11 @@ For detailed step-by-step net tracing with coordinate math and rotation transfor
   (pin "VIN" input (at X Y ANGLE) (uuid "..."))
 )
 ```
-Each sheet has its own `.kicad_sch` file. Pins on the sheet symbol connect to `hierarchical_label` nodes inside.
+Each sheet has its own <code>.kicad_sch</code> file. Pins on the sheet symbol connect to <code>hierarchical_label</code> nodes inside.
 
 ---
 
-## PCB Layout (`.kicad_pcb`)
+## PCB Layout (<code>.kicad_pcb</code>)
 
 ### Top-Level Structure
 ```
@@ -207,7 +207,7 @@ Each sheet has its own `.kicad_sch` file. Pins on the sheet symbol connect to `h
 ```
 
 ### Board Outline
-Look for graphical items on `Edge.Cuts` layer:
+Look for graphical items on <code>Edge.Cuts</code> layer:
 ```
 (gr_line (start X1 Y1) (end X2 Y2) (layer "Edge.Cuts") ...)
 (gr_arc (start ...) (mid ...) (end ...) (layer "Edge.Cuts") ...)
@@ -217,21 +217,21 @@ Look for graphical items on `Edge.Cuts` layer:
 To find everything connected to a net:
 
 **KiCad ≤9** (integer net IDs):
-1. Find `(net N "NetName")` in the net declarations
-2. Find all `(pad ... (net N "name") ...)` in footprints
-3. Find all `(segment ... (net N) ...)` — copper traces
-4. Find all `(via ... (net N) ...)` — layer transitions
-5. Find all `(zone (net N) ...)` — copper pours
+1. Find <code>(net N "NetName")</code> in the net declarations
+2. Find all <code>(pad ... (net N "name") ...)</code> in footprints
+3. Find all <code>(segment ... (net N) ...)</code> — copper traces
+4. Find all <code>(via ... (net N) ...)</code> — layer transitions
+5. Find all <code>(zone (net N) ...)</code> — copper pours
 
 **KiCad 10** (string net names — no net declarations section):
-1. Find all `(pad ... (net "NetName") ...)` in footprints
-2. Find all `(segment ... (net "NetName") ...)` — copper traces
-3. Find all `(via ... (net "NetName") ...)` — layer transitions
-4. Find all `(zone (net "NetName") ...)` — copper pours
+1. Find all <code>(pad ... (net "NetName") ...)</code> in footprints
+2. Find all <code>(segment ... (net "NetName") ...)</code> — copper traces
+3. Find all <code>(via ... (net "NetName") ...)</code> — layer transitions
+4. Find all <code>(zone (net "NetName") ...)</code> — copper pours
 
 ---
 
-## Symbol Library (`.kicad_sym`)
+## Symbol Library (<code>.kicad_sym</code>)
 
 ```
 (kicad_symbol_lib
@@ -260,15 +260,15 @@ To find everything connected to a net:
 )
 ```
 
-**Pin types**: `input`, `output`, `bidirectional`, `tri_state`, `passive`, `free`, `unspecified`, `power_in`, `power_out`, `open_collector`, `open_emitter`, `no_connect`
+**Pin types**: <code>input</code>, <code>output</code>, <code>bidirectional</code>, <code>tri_state</code>, <code>passive</code>, <code>free</code>, <code>unspecified</code>, <code>power_in</code>, <code>power_out</code>, <code>open_collector</code>, <code>open_emitter</code>, <code>no_connect</code>
 
-**Multi-unit naming**: `SymbolName_UNIT_STYLE` - unit 0 = common, units 1+ = per-unit
+**Multi-unit naming**: <code>SymbolName_UNIT_STYLE</code> - unit 0 = common, units 1+ = per-unit
 
 ---
 
-## Footprint (`.kicad_mod`)
+## Footprint (<code>.kicad_mod</code>)
 
-Stored in `.pretty/` directories (one file per footprint).
+Stored in <code>.pretty/</code> directories (one file per footprint).
 
 ```
 (footprint "FootprintName"
@@ -286,12 +286,12 @@ Stored in `.pretty/` directories (one file per footprint).
 )
 ```
 
-**Pad types**: `smd`, `thru_hole`, `np_thru_hole` (non-plated), `connect` (edge connector)
-**Pad shapes**: `circle`, `rect`, `oval`, `roundrect`, `trapezoid`, `custom`
+**Pad types**: <code>smd</code>, <code>thru_hole</code>, <code>np_thru_hole</code> (non-plated), <code>connect</code> (edge connector)
+**Pad shapes**: <code>circle</code>, <code>rect</code>, <code>oval</code>, <code>roundrect</code>, <code>trapezoid</code>, <code>custom</code>
 
 ---
 
-## Custom Design Rules (`.kicad_dru`)
+## Custom Design Rules (<code>.kicad_dru</code>)
 
 Text-based constraint rules applied during DRC. Example:
 ```
@@ -310,7 +310,7 @@ Useful for enforcing manufacturer capabilities (e.g., JLCPCB, PCBWay).
 
 ---
 
-## Netlist (`.net`)
+## Netlist (<code>.net</code>)
 
 ```
 (export (version D)
@@ -335,7 +335,7 @@ The netlist explicitly lists every net and which component pins belong to it.
 
 ---
 
-## Legacy KiCad 5 Schematic (`.sch`)
+## Legacy KiCad 5 Schematic (<code>.sch</code>)
 
 ```
 EESchema Schematic File Version 4
@@ -366,14 +366,14 @@ NetName
 
 ---
 
-## Project File (`.kicad_pro`)
+## Project File (<code>.kicad_pro</code>)
 
 JSON format. Key sections:
-- `board.design_settings` - DRC rules, track widths, via sizes, teardrop settings
-- `board.design_settings.rules` - min clearance, hole sizes, track widths
-- `board.design_settings.track_widths` - available track width options
-- `board.design_settings.via_dimensions` - available via size options
-- `erc.rule_severities` - ERC check severity levels
-- `net_settings.classes` - net class definitions (clearance, track width, via size per class)
-- `schematic.bom_settings` - BOM field configuration
-- `schematic.drawing` - default text/line sizes
+- <code>board.design_settings</code> - DRC rules, track widths, via sizes, teardrop settings
+- <code>board.design_settings.rules</code> - min clearance, hole sizes, track widths
+- <code>board.design_settings.track_widths</code> - available track width options
+- <code>board.design_settings.via_dimensions</code> - available via size options
+- <code>erc.rule_severities</code> - ERC check severity levels
+- <code>net_settings.classes</code> - net class definitions (clearance, track width, via size per class)
+- <code>schematic.bom_settings</code> - BOM field configuration
+- <code>schematic.drawing</code> - default text/line sizes

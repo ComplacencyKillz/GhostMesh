@@ -1,4 +1,4 @@
-# Tracing Net Connectivity in Raw `.kicad_sch` Files
+# Tracing Net Connectivity in Raw <code>.kicad_sch</code> Files
 
 KiCad schematics don't store explicit netlists — connectivity is implicit via coordinate matching. To verify a connection between two pins:
 
@@ -14,7 +14,7 @@ absolute = (symbol_X + pin_X, symbol_Y - pin_Y)
 
 ## Step 1: Find pin positions in the symbol library definition
 
-Each symbol has pins defined with relative offsets in the `lib_symbols` section:
+Each symbol has pins defined with relative offsets in the <code>lib_symbols</code> section:
 ```
 (symbol "BSS84_1_1"
   (pin input line (at -5.08 0 0) ... (number "1"))      ; Gate
@@ -25,7 +25,7 @@ Each symbol has pins defined with relative offsets in the `lib_symbols` section:
 
 ## Step 2: Calculate absolute pin positions
 
-Apply the symbol's placement transform: `(at X Y ANGLE)`.
+Apply the symbol's placement transform: <code>(at X Y ANGLE)</code>.
 
 **No rotation (0 deg):**
 - Pin at relative (px, py) -> absolute **(X + px, Y - py)**
@@ -45,10 +45,10 @@ Example: Resistor at (152.4, 176.53) rotated 90 deg, pin 1 at relative (0, 3.81)
 
 ## Important: Multi-sided IC symbols have pins on different sides at the same Y-coordinate
 
-Large IC symbols (e.g., ESP32 modules) have pins on the left **and** right sides. Two different pins can share the same Y-coordinate but have very different X-coordinates. A `no_connect` or wire at `(91.44, 77.47)` is NOT the same pin as a wire endpoint at `(60.96, 77.47)` — they are on opposite sides of the symbol.
+Large IC symbols (e.g., ESP32 modules) have pins on the left **and** right sides. Two different pins can share the same Y-coordinate but have very different X-coordinates. A <code>no_connect</code> or wire at <code>(91.44, 77.47)</code> is NOT the same pin as a wire endpoint at <code>(60.96, 77.47)</code> — they are on opposite sides of the symbol.
 
 **Always verify BOTH X and Y** when matching coordinates. Use exact floating-point comparison — KiCad stores coordinates with nanometer precision internally, and properly connected elements share the exact same coordinate values. If you see any difference (even 0.001mm), the coordinates are NOT the same point; they indicate a wiring error or coordinate transform bug. To determine which side a pin exits from:
-1. Find the pin's relative offset in the `lib_symbols` definition — negative X = left side, positive X = right side
+1. Find the pin's relative offset in the <code>lib_symbols</code> definition — negative X = left side, positive X = right side
 2. Apply the symbol's placement transform to get the absolute position
 3. Match against wires/labels/no_connects using the **exact** (X, Y) pair
 
@@ -56,39 +56,39 @@ Do not assume a pin exits on a particular side based on the pin name or number a
 
 ## Step 3: Trace wires from pin positions
 
-Search for `(wire (pts (xy X1 Y1) (xy X2 Y2)))` where one endpoint matches the pin position. Follow the wire chain endpoint-to-endpoint.
+Search for <code>(wire (pts (xy X1 Y1) (xy X2 Y2)))</code> where one endpoint matches the pin position. Follow the wire chain endpoint-to-endpoint.
 
-**KiCad 9 wire format note:** The `(wire` keyword, `(pts` keyword, and coordinate data may be on separate lines:
+**KiCad 9 wire format note:** The <code>(wire</code> keyword, <code>(pts</code> keyword, and coordinate data may be on separate lines:
 ```
 (wire
     (pts
         (xy 41.91 77.47) (xy 60.96 77.47)
     )
 ```
-When extracting wires programmatically, search up to 4-5 lines ahead from `(wire` to find the `(xy ...)` coordinates.
+When extracting wires programmatically, search up to 4-5 lines ahead from <code>(wire</code> to find the <code>(xy ...)</code> coordinates.
 
 ## Step 4: Identify net names at wire endpoints
 
 Look for:
-- **Power symbols**: `(lib_id "power:GND")` or `(lib_id "power:+BATT")` placed at a wire endpoint — the symbol's Value property is the net name
-- **Labels**: `(label "NET_NAME" (at X Y ...))` at a wire endpoint
-- **Global labels**: `(global_label "NET_NAME" (at X Y ...))` for cross-sheet nets
-- **Junctions**: `(junction (at X Y))` marks where crossing wires connect
+- **Power symbols**: <code>(lib_id "power:GND")</code> or <code>(lib_id "power:+BATT")</code> placed at a wire endpoint — the symbol's Value property is the net name
+- **Labels**: <code>(label "NET_NAME" (at X Y ...))</code> at a wire endpoint
+- **Global labels**: <code>(global_label "NET_NAME" (at X Y ...))</code> for cross-sheet nets
+- **Junctions**: <code>(junction (at X Y))</code> marks where crossing wires connect
 - **Other component pins**: Another symbol's pin at the same coordinate
 
-**Global label parsing note (KiCad 9):** The `(at ...)` is NOT on the line immediately after `(global_label "...")`. There is a `(shape ...)` line in between:
+**Global label parsing note (KiCad 9):** The <code>(at ...)</code> is NOT on the line immediately after <code>(global_label "...")</code>. There is a <code>(shape ...)</code> line in between:
 ```
 (global_label "EN_5V"
     (shape input)
     (at 43.18 128.27 180)
 ```
-When extracting labels, search 2-3 lines ahead for the `(at ...)` coordinates, not just the next line.
+When extracting labels, search 2-3 lines ahead for the <code>(at ...)</code> coordinates, not just the next line.
 
 **Labels connect via wires, not just at pin endpoints.** A global label is typically placed at the far end of a short wire stub extending from the pin. To find which label connects to which pin, you must trace the wire chain from the pin endpoint to the label position — checking only the exact pin coordinate will miss most connections.
 
 ## Step 5: Verify with junctions
 
-If a wire passes through a point where another wire starts, they only connect if there's a `(junction ...)` at that point, OR if the wire endpoint exactly matches.
+If a wire passes through a point where another wire starts, they only connect if there's a <code>(junction ...)</code> at that point, OR if the wire endpoint exactly matches.
 
 ## Common False Positive Patterns
 
@@ -100,25 +100,25 @@ Not all "programming" connectors are JTAG. A 2x3 header (J2) with TX, RX, GND, 3
 
 ## Multi-Unit Symbols
 
-Components like LM324 (4 opamps), CD4066 (4 switches), or STM32 (multi-bank pin assignments) contain multiple units in one package. Each unit is a separate `_U_1` / `_U_2` / etc. sub-symbol in the `lib_symbols` section. When tracing nets:
+Components like LM324 (4 opamps), CD4066 (4 switches), or STM32 (multi-bank pin assignments) contain multiple units in one package. Each unit is a separate <code>_U_1</code> / <code>_U_2</code> / etc. sub-symbol in the <code>lib_symbols</code> section. When tracing nets:
 
-1. **Identify which unit is placed** — the placed symbol's `lib_id` suffix (e.g., `LM324_1_1` = unit 1) tells you which sub-symbol provides the pin offsets
-2. **Each unit has its own pin set** — unit 1 of an LM324 has pins 1/2/3 (IN+/IN-/OUT), unit 2 has pins 5/6/7, etc. Power pins (VCC/GND) are typically in a shared sub-symbol `_0_1`
-3. **Power pins may not be placed** — the `_0_1` sub-symbol with VCC/GND is often placed on only one instance (or a dedicated power sheet). Don't flag missing power connections on other units — check if any unit of the same component has them connected
-4. **Reference designator is shared** — all units share the same reference (e.g., U1A, U1B, U1C, U1D are all U1). The analyzer reports them as separate symbol instances with the same `reference` field
+1. **Identify which unit is placed** — the placed symbol's <code>lib_id</code> suffix (e.g., <code>LM324_1_1</code> = unit 1) tells you which sub-symbol provides the pin offsets
+2. **Each unit has its own pin set** — unit 1 of an LM324 has pins 1/2/3 (IN+/IN-/OUT), unit 2 has pins 5/6/7, etc. Power pins (VCC/GND) are typically in a shared sub-symbol <code>_0_1</code>
+3. **Power pins may not be placed** — the <code>_0_1</code> sub-symbol with VCC/GND is often placed on only one instance (or a dedicated power sheet). Don't flag missing power connections on other units — check if any unit of the same component has them connected
+4. **Reference designator is shared** — all units share the same reference (e.g., U1A, U1B, U1C, U1D are all U1). The analyzer reports them as separate symbol instances with the same <code>reference</code> field
 
-To find all units of a component: search for placed symbols where the `lib_id` base name matches (ignoring the `_U_V` suffix) and the `reference` property is the same.
+To find all units of a component: search for placed symbols where the <code>lib_id</code> base name matches (ignoring the <code>_U_V</code> suffix) and the <code>reference</code> property is the same.
 
 ## Hierarchical buses
 
 Bus connectivity (GH #25) is resolved by a dedicated per-sheet bus graph,
 separate from the point-to-point tracing above.
 
-- **Expansion.** Vectors (`D[0..7]` -> D0..D7) and groups (`{TX RX}` -> TX,
+- **Expansion.** Vectors (<code>D[0..7]</code> -> D0..D7) and groups (<code>{TX RX}</code> -> TX,
   RX) expand to an ordered member list; group members may themselves be
-  project bus aliases, expanded recursively. `~{...}`/`_{...}`/`^{...}`
+  project bus aliases, expanded recursively. <code>~{...}</code>/<code>_{...}</code>/<code>^{...}</code>
   markup around a bus distributes over each member; markup around a
-  non-bus name (`~{OE}`) is not a bus.
+  non-bus name (<code>~{OE}</code>) is not a bus.
 - **Member attachment.** A member net joins its bus via an unlabelled
   bus-entry tap, or a same-sheet member label matching the bus's own
   member naming.
@@ -130,8 +130,8 @@ separate from the point-to-point tracing above.
   does not — its bare name belongs to the child and repeats per instance.
 - **Naming.** A resolved member net is named from the parent (lowest sheet) label.
 - **Qualified keys.** Bare-name collisions across sheet scopes use the
-  `/<sheet>/<name>` key (KH-359), same as any other net.
-- **Unresolved.** `bus_topology.unresolved` (`[{reason, name}]`) lists
+  <code>/<sheet>/<name></code> key (KH-359), same as any other net.
+- **Unresolved.** <code>bus_topology.unresolved</code> (<code>[{reason, name}]</code>) lists
   every bus construct the resolver could not confidently resolve — those
   connections are not asserted.
 
@@ -143,4 +143,4 @@ To verify Q4 (P-FET) gate connects to R13 -> GND:
 3. R13 Pin 2 at (0, -3.81) -> rotated (-3.81, 0) -> absolute **(148.59, 176.53)**
 4. Wire from (147.32, 176.53) to (148.59, 176.53) connects to R13 Pin 2
 5. Junction at (147.32, 176.53), wire to (147.32, 177.8)
-6. `power:GND` symbol at (147.32, 177.8) -> **GND net**
+6. <code>power:GND</code> symbol at (147.32, 177.8) -> **GND net**

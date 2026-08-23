@@ -19,13 +19,13 @@ Compare two KiCad analysis JSON files (base vs head) and report changes. Support
 
 The diff pipeline has five stages:
 
-1. **Detect type** -- Read `analyzer_type` from both JSONs (falls back to heuristic key inspection for older files). Reject if types mismatch.
-2. **Dispatch** -- Route to the type-specific diff function: `diff_schematic`, `diff_pcb`, `diff_emc`, or `diff_spice`.
+1. **Detect type** -- Read <code>analyzer_type</code> from both JSONs (falls back to heuristic key inspection for older files). Reject if types mismatch.
+2. **Dispatch** -- Route to the type-specific diff function: <code>diff_schematic</code>, <code>diff_pcb</code>, <code>diff_emc</code>, or <code>diff_spice</code>.
 3. **Match by identity** -- For list-based sections (components, detections, findings, footprints), build identity maps from each side and partition into added, removed, and matched pairs.
 4. **Compare values** -- For matched pairs, compare registered value fields. Numeric deltas below the threshold percentage are suppressed.
-5. **Classify severity** -- Walk the diff result and assign an overall severity: `none`, `minor`, `major`, or `breaking`.
+5. **Classify severity** -- Walk the diff result and assign an overall severity: <code>none</code>, <code>minor</code>, <code>major</code>, or <code>breaking</code>.
 
-The tool operates on pre-analyzed JSON produced by `analyze_schematic.py`, `analyze_pcb.py`, `analyze_emc.py`, or the SPICE pipeline. It never re-parses source files.
+The tool operates on pre-analyzed JSON produced by <code>analyze_schematic.py</code>, <code>analyze_pcb.py</code>, <code>analyze_emc.py</code>, or the SPICE pipeline. It never re-parses source files.
 
 **When to use it:**
 - Comparing design revisions (base branch vs PR, v1 vs v2).
@@ -46,16 +46,16 @@ python3 diff_analysis.py <base> <head> [options]
 
 | Argument | Description |
 |----------|-------------|
-| `base` | Path to base (old) analysis JSON |
-| `head` | Path to head (new) analysis JSON |
+| <code>base</code> | Path to base (old) analysis JSON |
+| <code>head</code> | Path to head (new) analysis JSON |
 
 ### Options
 
 | Flag | Description |
 |------|-------------|
-| `--output FILE`, `-o FILE` | Write output to file instead of stdout |
-| `--text` | Human-readable text output instead of JSON |
-| `--threshold FLOAT` | Ignore numeric deltas below this percentage (default: `1.0`) |
+| <code>--output FILE</code>, <code>-o FILE</code> | Write output to file instead of stdout |
+| <code>--text</code> | Human-readable text output instead of JSON |
+| <code>--threshold FLOAT</code> | Ignore numeric deltas below this percentage (default: <code>1.0</code>) |
 
 ### Exit Codes
 
@@ -70,9 +70,9 @@ These flags are not yet implemented but are planned for a future release:
 
 | Flag | Description |
 |------|-------------|
-| `--analysis-dir DIR` | Point to an `analysis/` folder; automatically diff the two most recent runs |
-| `--run RUN_ID` | Specify a particular run ID (timestamp folder) as the base |
-| `--trend N` | Show severity trend across the last N runs in the analysis directory |
+| <code>--analysis-dir DIR</code> | Point to an <code>analysis/</code> folder; automatically diff the two most recent runs |
+| <code>--run RUN_ID</code> | Specify a particular run ID (timestamp folder) as the base |
+| <code>--trend N</code> | Show severity trend across the last N runs in the analysis directory |
 
 ---
 
@@ -80,61 +80,61 @@ These flags are not yet implemented but are planned for a future release:
 
 ### Schematic
 
-Diff function: `diff_schematic(base, head, threshold)`
+Diff function: <code>diff_schematic(base, head, threshold)</code>
 
 Compared sections:
 
 | Section | Identity Key | Compared Fields | Source Path |
 |---------|-------------|-----------------|-------------|
-| Statistics | n/a (scalar paths) | `total_components`, `total_nets`, `unique_parts`, `total_wires`, `total_no_connects` | `statistics.*` |
-| Components | `reference` | `value`, `footprint`, `mpn` | `components[]` |
-| Signal analysis | Per-type via SIGNAL_REGISTRY | Per-type via SIGNAL_REGISTRY | `findings[]` grouped by detector via `group_findings_by_detection_type()` |
-| BOM | `(value, footprint)` tuple | `quantity` | `bom[]` |
-| Connectivity | JSON-serialized item | new/resolved (set diff) | `connectivity_issues.{single_pin_nets,floating_nets,multi_driver_nets}` |
-| ERC warnings | `(type, net, message)` tuple | new/resolved (set diff) | `design_analysis.erc_warnings[]` |
+| Statistics | n/a (scalar paths) | <code>total_components</code>, <code>total_nets</code>, <code>unique_parts</code>, <code>total_wires</code>, <code>total_no_connects</code> | <code>statistics.*</code> |
+| Components | <code>reference</code> | <code>value</code>, <code>footprint</code>, <code>mpn</code> | <code>components[]</code> |
+| Signal analysis | Per-type via SIGNAL_REGISTRY | Per-type via SIGNAL_REGISTRY | <code>findings[]</code> grouped by detector via <code>group_findings_by_detection_type()</code> |
+| BOM | <code>(value, footprint)</code> tuple | <code>quantity</code> | <code>bom[]</code> |
+| Connectivity | JSON-serialized item | new/resolved (set diff) | <code>connectivity_issues.{single_pin_nets,floating_nets,multi_driver_nets}</code> |
+| ERC warnings | <code>(type, net, message)</code> tuple | new/resolved (set diff) | <code>design_analysis.erc_warnings[]</code> |
 
-Signal analysis is reconstructed from `findings[]` via `group_findings_by_detection_type()`, then iterates all detector types present in either base or head. For each detection type, identity and value fields come from `SIGNAL_REGISTRY` (derived from `detection_schema.SCHEMAS`). Unknown detection types fall back to `["reference"]` identity with no value fields. The diff output still uses `signal_analysis` as a key for backward compatibility with diff consumers.
+Signal analysis is reconstructed from <code>findings[]</code> via <code>group_findings_by_detection_type()</code>, then iterates all detector types present in either base or head. For each detection type, identity and value fields come from <code>SIGNAL_REGISTRY</code> (derived from <code>detection_schema.SCHEMAS</code>). Unknown detection types fall back to <code>["reference"]</code> identity with no value fields. The diff output still uses <code>signal_analysis</code> as a key for backward compatibility with diff consumers.
 
 ### PCB
 
-Diff function: `diff_pcb(base, head, threshold)`
+Diff function: <code>diff_pcb(base, head, threshold)</code>
 
 | Section | Identity Key | Compared Fields | Source Path |
 |---------|-------------|-----------------|-------------|
-| Statistics | n/a (scalar paths) | `footprint_count`, `track_segments`, `via_count`, `zone_count`, `net_count`, `copper_layers_used`, `board_width_mm`, `board_height_mm`, `total_track_length_mm` | `statistics.*` |
-| Routing completeness | n/a (scalar) | `routing_complete`, `unrouted_count` | `connectivity.*` |
-| Footprints | `reference` | `value`, `lib_id`, `layer` | `footprints[]` |
+| Statistics | n/a (scalar paths) | <code>footprint_count</code>, <code>track_segments</code>, <code>via_count</code>, <code>zone_count</code>, <code>net_count</code>, <code>copper_layers_used</code>, <code>board_width_mm</code>, <code>board_height_mm</code>, <code>total_track_length_mm</code> | <code>statistics.*</code> |
+| Routing completeness | n/a (scalar) | <code>routing_complete</code>, <code>unrouted_count</code> | <code>connectivity.*</code> |
+| Footprints | <code>reference</code> | <code>value</code>, <code>lib_id</code>, <code>layer</code> | <code>footprints[]</code> |
 
 ### EMC
 
-Diff function: `diff_emc(base, head, threshold)`
+Diff function: <code>diff_emc(base, head, threshold)</code>
 
 | Section | Identity Key | Compared Fields | Source Path |
 |---------|-------------|-----------------|-------------|
-| Risk score | n/a (scalar) | `emc_risk_score` | `summary.emc_risk_score` |
-| Severity distribution | n/a (scalar paths) | `critical`, `high`, `medium`, `low`, `info` | `summary.*` |
-| Findings | `rule_id::sorted(nets)::sorted(components)` | `severity` (new/resolved/changed) | `findings[]` |
-| Per-net scores | `net` | `score` (filtered by threshold) | `per_net_scores[]` |
+| Risk score | n/a (scalar) | <code>emc_risk_score</code> | <code>summary.emc_risk_score</code> |
+| Severity distribution | n/a (scalar paths) | <code>critical</code>, <code>high</code>, <code>medium</code>, <code>low</code>, <code>info</code> | <code>summary.*</code> |
+| Findings | <code>rule_id::sorted(nets)::sorted(components)</code> | <code>severity</code> (new/resolved/changed) | <code>findings[]</code> |
+| Per-net scores | <code>net</code> | <code>score</code> (filtered by threshold) | <code>per_net_scores[]</code> |
 
 Per-net score changes are sorted by absolute delta (largest first).
 
 ### SPICE
 
-Diff function: `diff_spice(base, head, threshold)`
+Diff function: <code>diff_spice(base, head, threshold)</code>
 
 | Section | Identity Key | Compared Fields | Source Path |
 |---------|-------------|-----------------|-------------|
-| Summary counts | n/a (scalar paths) | `pass`, `warn`, `fail`, `skip`, `total` | `summary.*` |
-| Simulation results | `subcircuit_type::sorted(components)` | `status` (transitions annotated) | `simulation_results[]` |
-| Monte Carlo concerns | `subcircuit_type::metric` | new/resolved (set diff) | `monte_carlo_summary.concerns[]` |
+| Summary counts | n/a (scalar paths) | <code>pass</code>, <code>warn</code>, <code>fail</code>, <code>skip</code>, <code>total</code> | <code>summary.*</code> |
+| Simulation results | <code>subcircuit_type::sorted(components)</code> | <code>status</code> (transitions annotated) | <code>simulation_results[]</code> |
+| Monte Carlo concerns | <code>subcircuit_type::metric</code> | new/resolved (set diff) | <code>monte_carlo_summary.concerns[]</code> |
 
-Status transitions from `pass` to `fail` or `warn` are annotated as regressions with up to 3 delta fields from the result.
+Status transitions from <code>pass</code> to <code>fail</code> or <code>warn</code> are annotated as regressions with up to 3 delta fields from the result.
 
 ---
 
 ## Severity Classification
 
-Function: `classify_severity(analyzer_type, diff_result)`
+Function: <code>classify_severity(analyzer_type, diff_result)</code>
 
 Evaluation order (first match wins):
 
@@ -142,25 +142,25 @@ Evaluation order (first match wins):
 
 | Analyzer | Condition |
 |----------|-----------|
-| SPICE | Any `status_changes` entry where `base_status == "pass"` and `head_status == "fail"` |
-| EMC | Any new finding with `severity == "CRITICAL"` |
-| Schematic | Any new ERC warning (`erc.new_warnings` non-empty) |
+| SPICE | Any <code>status_changes</code> entry where <code>base_status == "pass"</code> and <code>head_status == "fail"</code> |
+| EMC | Any new finding with <code>severity == "CRITICAL"</code> |
+| Schematic | Any new ERC warning (<code>erc.new_warnings</code> non-empty) |
 
 ### Major
 
 | Condition |
 |-----------|
-| `signal_analysis` key present in diff |
-| `components` key present in diff |
-| `findings` key present in diff (EMC) |
-| `status_changes` key present in diff (SPICE) |
-| `footprints` with any added, removed, or modified entries (PCB) |
+| <code>signal_analysis</code> key present in diff |
+| <code>components</code> key present in diff |
+| <code>findings</code> key present in diff (EMC) |
+| <code>status_changes</code> key present in diff (SPICE) |
+| <code>footprints</code> with any added, removed, or modified entries (PCB) |
 
 ### Minor
 
 | Condition |
 |-----------|
-| Only `statistics` key present in diff |
+| Only <code>statistics</code> key present in diff |
 
 ### None
 
@@ -172,60 +172,60 @@ No changes detected, or diff result is empty.
 
 ### SIGNAL_REGISTRY
 
-`SIGNAL_REGISTRY` is derived at import time from `detection_schema.SCHEMAS`:
+<code>SIGNAL_REGISTRY</code> is derived at import time from <code>detection_schema.SCHEMAS</code>:
 
 ```python
 SIGNAL_REGISTRY = {dt: (s.identity_fields, s.value_fields) for dt, s in _SCHEMAS.items()}
 ```
 
-Each detection type maps to `(identity_fields, value_fields)` where both are lists of dotpath strings.
+Each detection type maps to <code>(identity_fields, value_fields)</code> where both are lists of dotpath strings.
 
 **Registered detection types and their identity/value fields:**
 
 | Detection Type | Identity Fields | Value Fields |
 |---------------|-----------------|--------------|
-| `rc_filters` | `resistor.ref`, `capacitor.ref` | `cutoff_hz` |
-| `lc_filters` | `inductor.ref`, `capacitor.ref` | `resonant_hz` |
-| `voltage_dividers` | `r_top.ref`, `r_bottom.ref` | `ratio`, `vout_estimated` |
-| `feedback_networks` | `r_top.ref`, `r_bottom.ref` | `ratio` |
-| `opamp_circuits` | `reference` | `gain`, `gain_dB`, `configuration` |
-| `crystal_circuits` | `reference` | `frequency`, `effective_load_pF` |
-| `current_sense` | `shunt.ref` | `max_current_50mV_A`, `max_current_100mV_A` |
-| `power_regulators` | `ref` | `vout_estimated`, `topology` |
-| `transistor_circuits` | `reference` | `type` |
-| `protection_devices` | `reference`, `type` | `protected_net` |
-| `bridge_circuits` | `topology` | (none) |
-| `rf_matching` | `antenna_ref` | (none) |
-| `bms_systems` | `bms_reference` | `cell_count` |
-| `decoupling_analysis` | `rail_net` | (none) |
-| `rf_chains` | (none) | (none) |
-| `ethernet_interfaces` | `phy_ref` | (none) |
-| `memory_interfaces` | `type` | (none) |
-| `isolation_barriers` | `isolator_ref` | (none) |
-| `snubber_circuits` | (none) | (none) |
+| <code>rc_filters</code> | <code>resistor.ref</code>, <code>capacitor.ref</code> | <code>cutoff_hz</code> |
+| <code>lc_filters</code> | <code>inductor.ref</code>, <code>capacitor.ref</code> | <code>resonant_hz</code> |
+| <code>voltage_dividers</code> | <code>r_top.ref</code>, <code>r_bottom.ref</code> | <code>ratio</code>, <code>vout_estimated</code> |
+| <code>feedback_networks</code> | <code>r_top.ref</code>, <code>r_bottom.ref</code> | <code>ratio</code> |
+| <code>opamp_circuits</code> | <code>reference</code> | <code>gain</code>, <code>gain_dB</code>, <code>configuration</code> |
+| <code>crystal_circuits</code> | <code>reference</code> | <code>frequency</code>, <code>effective_load_pF</code> |
+| <code>current_sense</code> | <code>shunt.ref</code> | <code>max_current_50mV_A</code>, <code>max_current_100mV_A</code> |
+| <code>power_regulators</code> | <code>ref</code> | <code>vout_estimated</code>, <code>topology</code> |
+| <code>transistor_circuits</code> | <code>reference</code> | <code>type</code> |
+| <code>protection_devices</code> | <code>reference</code>, <code>type</code> | <code>protected_net</code> |
+| <code>bridge_circuits</code> | <code>topology</code> | (none) |
+| <code>rf_matching</code> | <code>antenna_ref</code> | (none) |
+| <code>bms_systems</code> | <code>bms_reference</code> | <code>cell_count</code> |
+| <code>decoupling_analysis</code> | <code>rail_net</code> | (none) |
+| <code>rf_chains</code> | (none) | (none) |
+| <code>ethernet_interfaces</code> | <code>phy_ref</code> | (none) |
+| <code>memory_interfaces</code> | <code>type</code> | (none) |
+| <code>isolation_barriers</code> | <code>isolator_ref</code> | (none) |
+| <code>snubber_circuits</code> | (none) | (none) |
 
 ### Dotpath Resolution
 
-Identity and value fields use dotted paths (e.g., `r_top.ref`) resolved by `_resolve()`. Each segment indexes into nested dicts. Returns `None` if any segment is missing.
+Identity and value fields use dotted paths (e.g., <code>r_top.ref</code>) resolved by <code>_resolve()</code>. Each segment indexes into nested dicts. Returns <code>None</code> if any segment is missing.
 
 ### Identity Key Building
 
-`_identity_key(item, fields)` extracts the value at each dotpath and joins them with `::`. List values are sorted and joined with `|`. If any field resolves to `None`, the entire key is `None` and the item is excluded from matching.
+<code>_identity_key(item, fields)</code> extracts the value at each dotpath and joins them with <code>::</code>. List values are sorted and joined with <code>|</code>. If any field resolves to <code>None</code>, the entire key is <code>None</code> and the item is excluded from matching.
 
-Example: for a voltage divider with `r_top.ref = "R1"` and `r_bottom.ref = "R2"`, the identity key is `R1::R2`.
+Example: for a voltage divider with <code>r_top.ref = "R1"</code> and <code>r_bottom.ref = "R2"</code>, the identity key is <code>R1::R2</code>.
 
 ### Generic Fallback
 
-When a detection type is not in `SIGNAL_REGISTRY`, `_generic_identity()` is used. It tries:
+When a detection type is not in <code>SIGNAL_REGISTRY</code>, <code>_generic_identity()</code> is used. It tries:
 
-1. Top-level `reference` or `ref` field.
-2. Any nested dict with a `ref` sub-key.
+1. Top-level <code>reference</code> or <code>ref</code> field.
+2. Any nested dict with a <code>ref</code> sub-key.
 
-Returns `None` if nothing is found (item is excluded from matching).
+Returns <code>None</code> if nothing is found (item is excluded from matching).
 
 ### Validation
 
-`validate_signal_registry(sample_output)` checks that every key in `SIGNAL_REGISTRY` has at least one finding with a matching detector in `findings[]`. Returns warning strings for any missing keys. Useful for catching stale registry entries after schema changes.
+<code>validate_signal_registry(sample_output)</code> checks that every key in <code>SIGNAL_REGISTRY</code> has at least one finding with a matching detector in <code>findings[]</code>. Returns warning strings for any missing keys. Useful for catching stale registry entries after schema changes.
 
 ---
 
@@ -254,7 +254,7 @@ Returns `None` if nothing is found (item is excluded from matching).
 
 ### Summary Counts
 
-`summary.total_changes` = `added + removed + modified`. What counts as added/removed/modified depends on analyzer type:
+<code>summary.total_changes</code> = <code>added + removed + modified</code>. What counts as added/removed/modified depends on analyzer type:
 
 | Analyzer | Added | Removed | Modified |
 |----------|-------|---------|----------|
@@ -265,15 +265,15 @@ Returns `None` if nothing is found (item is excluded from matching).
 
 ### Diff Section (by analyzer type)
 
-The `diff` object contains only sections with actual changes. Empty sections are omitted.
+The <code>diff</code> object contains only sections with actual changes. Empty sections are omitted.
 
-**Schematic diff keys:** `statistics`, `components`, `signal_analysis`, `bom`, `connectivity`, `erc`
+**Schematic diff keys:** <code>statistics</code>, <code>components</code>, <code>signal_analysis</code>, <code>bom</code>, <code>connectivity</code>, <code>erc</code>
 
-**PCB diff keys:** `statistics`, `routing_complete`, `unrouted`, `footprints`
+**PCB diff keys:** <code>statistics</code>, <code>routing_complete</code>, <code>unrouted</code>, <code>footprints</code>
 
-**EMC diff keys:** `risk_score`, `by_severity`, `findings`, `per_net_scores`
+**EMC diff keys:** <code>risk_score</code>, <code>by_severity</code>, <code>findings</code>, <code>per_net_scores</code>
 
-**SPICE diff keys:** `summary`, `status_changes`, `new_results`, `removed_results`, `monte_carlo`
+**SPICE diff keys:** <code>summary</code>, <code>status_changes</code>, <code>new_results</code>, <code>removed_results</code>, <code>monte_carlo</code>
 
 ### List Diff Format
 
@@ -296,11 +296,11 @@ All list-based sections (components, signal analysis detections, footprints) use
 }
 ```
 
-The `delta_pct` field is only present for numeric comparisons where the base value is nonzero.
+The <code>delta_pct</code> field is only present for numeric comparisons where the base value is nonzero.
 
 ### Text Output
 
-The `--text` flag renders a summary header followed by per-section detail. Items are capped at `MAX_TEXT_ITEMS` (20) with a "... and N more changes" footer. Per-section caps: 5 items for components/footprints/findings, 3 items for signal analysis detections per type.
+The <code>--text</code> flag renders a summary header followed by per-section detail. Items are capped at <code>MAX_TEXT_ITEMS</code> (20) with a "... and N more changes" footer. Per-section caps: 5 items for components/footprints/findings, 3 items for signal analysis detections per type.
 
 Format:
 
@@ -322,19 +322,19 @@ Signal Analysis:
 
 ## Integration with analysis_cache
 
-`analysis_cache.should_create_new_run()` uses diff_analysis programmatically to decide whether new analyzer outputs warrant a new timestamped run folder.
+<code>analysis_cache.should_create_new_run()</code> uses diff_analysis programmatically to decide whether new analyzer outputs warrant a new timestamped run folder.
 
 **Protocol:**
 
-1. Import `diff_analysis` (adding the scripts directory to `sys.path` if needed).
+1. Import <code>diff_analysis</code> (adding the scripts directory to <code>sys.path</code> if needed).
 2. For each output type present in both the current run and the new outputs, load both JSONs.
-3. Read `analyzer_type` from the base JSON and dispatch to the matching diff function (`diff_schematic`, `diff_pcb`, `diff_emc`, `diff_spice`).
-4. Call `classify_severity()` on the diff result.
-5. If any severity meets or exceeds the configured threshold (default: `major`), return `True` (create new run).
-6. If no current run exists, return `True` (first run).
-7. If all diffs are below threshold, return `False` (overwrite current run).
+3. Read <code>analyzer_type</code> from the base JSON and dispatch to the matching diff function (<code>diff_schematic</code>, <code>diff_pcb</code>, <code>diff_emc</code>, <code>diff_spice</code>).
+4. Call <code>classify_severity()</code> on the diff result.
+5. If any severity meets or exceeds the configured threshold (default: <code>major</code>), return <code>True</code> (create new run).
+6. If no current run exists, return <code>True</code> (first run).
+7. If all diffs are below threshold, return <code>False</code> (overwrite current run).
 
-The threshold comparison uses a severity ordering: `none=0`, `minor=1`, `major=2`, `breaking=3`.
+The threshold comparison uses a severity ordering: <code>none=0</code>, <code>minor=1</code>, <code>major=2</code>, <code>breaking=3</code>.
 
 ---
 
@@ -344,12 +344,12 @@ Natural-language queries and their corresponding command invocations.
 
 | User Says | Command |
 |-----------|---------|
-| "What changed between these two analyses" | `diff_analysis.py old.json new.json --text` |
-| "Show me changes as JSON" | `diff_analysis.py old.json new.json` |
-| "Ignore small changes" | `diff_analysis.py old.json new.json --threshold 5.0 --text` |
-| "Compare my schematic revisions" | `diff_analysis.py base.json head.json --text` |
-| "Did the EMC risk get worse" | `diff_analysis.py emc_old.json emc_new.json --text` |
-| "Any SPICE regressions" | `diff_analysis.py spice_old.json spice_new.json --text` |
-| "Save the diff report" | `diff_analysis.py base.json head.json --output diff.json` |
-| "Diff my last two runs" | `diff_analysis.py --analysis-dir analysis/ --text` (planned) |
-| "Show trends over time" | `diff_analysis.py --analysis-dir analysis/ --trend 5 --text` (planned) |
+| "What changed between these two analyses" | <code>diff_analysis.py old.json new.json --text</code> |
+| "Show me changes as JSON" | <code>diff_analysis.py old.json new.json</code> |
+| "Ignore small changes" | <code>diff_analysis.py old.json new.json --threshold 5.0 --text</code> |
+| "Compare my schematic revisions" | <code>diff_analysis.py base.json head.json --text</code> |
+| "Did the EMC risk get worse" | <code>diff_analysis.py emc_old.json emc_new.json --text</code> |
+| "Any SPICE regressions" | <code>diff_analysis.py spice_old.json spice_new.json --text</code> |
+| "Save the diff report" | <code>diff_analysis.py base.json head.json --output diff.json</code> |
+| "Diff my last two runs" | <code>diff_analysis.py --analysis-dir analysis/ --text</code> (planned) |
+| "Show trends over time" | <code>diff_analysis.py --analysis-dir analysis/ --trend 5 --text</code> (planned) |

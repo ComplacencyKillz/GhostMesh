@@ -23,11 +23,11 @@ Documentation of the SPICE models used across all phases — ideal models, per-p
 
 When the skill encounters an active component (opamp, LDO, comparator), it resolves the model through this cascade:
 
-1. **Project cache** — `<project>/spice/models/manifest.json` (legacy name: `index.json`) stores previously resolved models (instant, no network)
+1. **Project cache** — <code><project>/spice/models/manifest.json</code> (legacy name: <code>index.json</code>) stores previously resolved models (instant, no network)
 2. **Distributor API parametric data** — queries LCSC (no auth), DigiKey, element14, Mouser for real electrical specs like GBW, slew rate, offset voltage. Structured JSON, no PDF parsing.
-3. **Structured datasheet extraction** — reads pre-extracted specs from `<project>/datasheets/extracted/<MPN>.json`. Cached JSON produced by the `datasheets` skill, scored 0-10 for completeness. See `skills/datasheets/references/extraction-schema.md` and `skills/datasheets/references/quality-scoring.md`.
-4. **Datasheet PDF regex extraction** — reads downloaded PDFs from `<project>/datasheets/`, extracts specs via text pattern matching. Requires `pdftotext`. Last-resort fallback.
-5. **Built-in lookup table** — `spice_part_library.py` has ~100 common parts with datasheet-verified specs. Offline safety net.
+3. **Structured datasheet extraction** — reads pre-extracted specs from <code><project>/datasheets/extracted/<MPN>.json</code>. Cached JSON produced by the <code>datasheets</code> skill, scored 0-10 for completeness. See <code>skills/datasheets/references/extraction-schema.md</code> and <code>skills/datasheets/references/quality-scoring.md</code>.
+4. **Datasheet PDF regex extraction** — reads downloaded PDFs from <code><project>/datasheets/</code>, extracts specs via text pattern matching. Requires <code>pdftotext</code>. Last-resort fallback.
+5. **Built-in lookup table** — <code>spice_part_library.py</code> has ~100 common parts with datasheet-verified specs. Offline safety net.
 6. **Ideal model fallback** — generic model with fixed parameters (e.g., 10 MHz GBW for opamps)
 
 Real data from APIs and datasheets takes priority over the lookup table. The table serves as an offline fallback when no network or downloaded PDFs are available. Passive components (R, C, L) always use the simulator's exact built-in primitives (standard SPICE R/C/L elements) — no model resolution needed. All three supported simulators (ngspice, LTspice, Xyce) handle these identically.
@@ -236,12 +236,12 @@ KiCad net names are translated to ngspice-safe names:
 
 | KiCad Net | ngspice Net | Rule |
 |-----------|-------------|------|
-| `GND`, `gnd`, `earth`, `VSS` | `0` | Ground nets → node 0 |
-| `3V3` | `n3V3` | Leading digit → prefix with `n` |
-| `Net-(U3-pin7)` | `Net__U3_pin7_` | Special chars → underscores |
-| `__unnamed_0` | `__unnamed_0` | Internal nets pass through |
+| <code>GND</code>, <code>gnd</code>, <code>earth</code>, <code>VSS</code> | <code>0</code> | Ground nets → node 0 |
+| <code>3V3</code> | <code>n3V3</code> | Leading digit → prefix with <code>n</code> |
+| <code>Net-(U3-pin7)</code> | <code>Net__U3_pin7_</code> | Special chars → underscores |
+| <code>__unnamed_0</code> | <code>__unnamed_0</code> | Internal nets pass through |
 
-The `_sanitize_net()` function in `spice_models.py` handles this translation. When debugging a `.cir` file, KiCad net names in the comment header map to the sanitized names in the netlist.
+The <code>_sanitize_net()</code> function in <code>spice_models.py</code> handles this translation. When debugging a <code>.cir</code> file, KiCad net names in the comment header map to the sanitized names in the netlist.
 
 ### Voltage Inference from Net Names
 
@@ -249,13 +249,13 @@ For voltage divider simulations, the input voltage is inferred from the top net 
 
 | Net Name Pattern | Inferred Voltage |
 |------------------|------------------|
-| `3V3`, `+3.3V` | 3.3 V |
-| `5V`, `+5V`, `5V0` | 5.0 V |
-| `1V8` | 1.8 V |
-| `12V` | 12.0 V |
-| `VBUS`, `USB_VBUS` | 5.0 V |
-| `VBAT`, `BATTERY` | 3.7 V |
-| `VCC`, `VDD` | 3.3 V (default for modern designs) |
+| <code>3V3</code>, <code>+3.3V</code> | 3.3 V |
+| <code>5V</code>, <code>+5V</code>, <code>5V0</code> | 5.0 V |
+| <code>1V8</code> | 1.8 V |
+| <code>12V</code> | 12.0 V |
+| <code>VBUS</code>, <code>USB_VBUS</code> | 5.0 V |
+| <code>VBAT</code>, <code>BATTERY</code> | 3.7 V |
+| <code>VCC</code>, <code>VDD</code> | 3.3 V (default for modern designs) |
 | Anything else | 3.3 V (default) |
 
 If the inferred voltage is wrong, the absolute Vout value will be wrong but the error percentage will still be ~0% (because both expected and simulated use the same ratio). The key metric is the error percentage, not the absolute voltage.
@@ -266,36 +266,36 @@ If the inferred voltage is wrong, the absolute Vout value will be wrong but the 
 
 ### ngspice Backend
 
-The ngspice backend uses `.control` blocks (ngspice scripting) rather than `.meas` statements in the netlist body. This is because:
+The ngspice backend uses <code>.control</code> blocks (ngspice scripting) rather than <code>.meas</code> statements in the netlist body. This is because:
 
-1. `.control` blocks allow `let` for computed values (e.g., `let target = gain_1k - 3`)
-2. Results are written as ASCII text via `echo`, avoiding binary `.raw` file parsing
-3. Flow control (`if`/`else`) is available for conditional measurement
+1. <code>.control</code> blocks allow <code>let</code> for computed values (e.g., <code>let target = gain_1k - 3</code>)
+2. Results are written as ASCII text via <code>echo</code>, avoiding binary <code>.raw</code> file parsing
+3. Flow control (<code>if</code>/<code>else</code>) is available for conditional measurement
 
 ### LTspice and Xyce Backends
 
-LTspice and Xyce use `.meas`/`.measure` statements directly in the netlist body (no `.control` block). Measurement results are parsed from the `.log` file (LTspice) or stdout (Xyce). The `SpiceTestbench` class abstracts the difference — generators define measurement intent (what to measure), and the backend renders the simulator-specific syntax.
+LTspice and Xyce use <code>.meas</code>/<code>.measure</code> statements directly in the netlist body (no <code>.control</code> block). Measurement results are parsed from the <code>.log</code> file (LTspice) or stdout (Xyce). The <code>SpiceTestbench</code> class abstracts the difference — generators define measurement intent (what to measure), and the backend renders the simulator-specific syntax.
 
 ### Key ngspice Gotchas
 
-**`meas` cannot reference other `meas` variables.** This fails:
+**<code>meas</code> cannot reference other <code>meas</code> variables.** This fails:
 ```spice
 meas ac gain_dc find vdb(out) at=10
 meas ac bw_3db when vdb(out)=gain_dc-3  * ERROR: gain_dc is not a number here
 ```
 
-The workaround is to use `let` after `meas`:
+The workaround is to use <code>let</code> after <code>meas</code>:
 ```spice
 meas ac gain_1k find vdb(out) at=1k
 let target = gain_1k - 3
 meas ac bw_3db when vdb(out)=target fall=1
 ```
 
-**`find ... at=X` requires X to be in the swept range.** If the AC sweep starts at 1 Hz and you ask `find ... at=0.1`, the measurement fails silently and the variable is empty.
+**<code>find ... at=X</code> requires X to be in the swept range.** If the AC sweep starts at 1 Hz and you ask <code>find ... at=0.1</code>, the measurement fails silently and the variable is empty.
 
-**Empty variables produce empty strings in `echo`.** When a measurement fails, `$&varname` expands to nothing, producing `key=` in the output file. The parser (`spice_results.py`) handles this by treating empty values as `None`.
+**Empty variables produce empty strings in <code>echo</code>.** When a measurement fails, <code>$&varname</code> expands to nothing, producing <code>key=</code> in the output file. The parser (<code>spice_results.py</code>) handles this by treating empty values as <code>None</code>.
 
-**`when ... rise=1` and `fall=1` matter.** For a bandpass response, there are two -3dB crossings — one rising and one falling. Use `rise=1` for the lower frequency crossing and `fall=1` for the upper.
+**<code>when ... rise=1</code> and <code>fall=1</code> matter.** For a bandpass response, there are two -3dB crossings — one rising and one falling. Use <code>rise=1</code> for the lower frequency crossing and <code>fall=1</code> for the upper.
 
 ---
 
@@ -305,7 +305,7 @@ The testbench generators reconstruct subcircuit topology from the analyzer's det
 
 ### RC Filter Topology
 
-The analyzer reports `type` (low-pass, high-pass, RC-network), `input_net`, `output_net`, and `ground_net`. The testbench places:
+The analyzer reports <code>type</code> (low-pass, high-pass, RC-network), <code>input_net</code>, <code>output_net</code>, and <code>ground_net</code>. The testbench places:
 - **Low-pass:** R from input to output, C from output to ground
 - **High-pass:** C from input to output, R from output to ground
 - **RC-network (ambiguous):** Defaults to low-pass
@@ -320,7 +320,7 @@ This is the most complex reconstruction. The testbench must:
 5. Connect power supply rails
 
 **Common failure modes:**
-- **Floating non-inverting input** — inverting configurations need the positive input biased. The testbench adds `Rpos_bias` (0.001 Ω to ground) for this.
+- **Floating non-inverting input** — inverting configurations need the positive input biased. The testbench adds <code>Rpos_bias</code> (0.001 Ω to ground) for this.
 - **Transimpedance amplifiers** — no input resistor means the stimulus must be a current source, not a voltage source. Currently these configurations often skip.
 - **Buffer (unity gain)** — output connected directly to inverting input. The testbench must drive the non-inverting input instead.
 - **Non-inverting amplifier** — the "input resistor" from the analyzer is actually the ground-leg resistor (from inverting input to ground, setting the gain). The testbench repositions it.
@@ -333,19 +333,19 @@ Straightforward: VIN → R_top → mid_net → R_bottom → ground. No load resi
 
 ## Per-Part Behavioral Models
 
-When a recognized MPN is detected (e.g., LM358, TL072, MCP6002), the skill generates a parameterized `.subckt` with the part's actual GBW, slew rate, input offset, and output swing from the lookup table in `spice_part_library.py`.
+When a recognized MPN is detected (e.g., LM358, TL072, MCP6002), the skill generates a parameterized <code>.subckt</code> with the part's actual GBW, slew rate, input offset, and output swing from the lookup table in <code>spice_part_library.py</code>.
 
 ### Model Parameters Used
 
 | Parameter | Source | Impact |
 |-----------|--------|--------|
-| `gbw_hz` | Datasheet GBW | Sets the dominant pole → correct bandwidth at any gain |
-| `aol_db` | Datasheet open-loop gain | Determines loop gain margin and gain accuracy |
-| `slew_vus` | Datasheet slew rate | (Reserved for future transient simulation) |
-| `vos_mv` | Datasheet input offset | Shifts DC operating point by Vos |
-| `rin_ohms` | Datasheet input impedance | Affects high-impedance source loading |
-| `swing_v` | Datasheet output swing from rail | Determines output clipping points |
-| `rro`/`rri` | Rail-to-rail output/input | Affects clamp behavior near supply rails |
+| <code>gbw_hz</code> | Datasheet GBW | Sets the dominant pole → correct bandwidth at any gain |
+| <code>aol_db</code> | Datasheet open-loop gain | Determines loop gain margin and gain accuracy |
+| <code>slew_vus</code> | Datasheet slew rate | (Reserved for future transient simulation) |
+| <code>vos_mv</code> | Datasheet input offset | Shifts DC operating point by Vos |
+| <code>rin_ohms</code> | Datasheet input impedance | Affects high-impedance source loading |
+| <code>swing_v</code> | Datasheet output swing from rail | Determines output clipping points |
+| <code>rro</code>/<code>rri</code> | Rail-to-rail output/input | Affects clamp behavior near supply rails |
 
 ### Adaptive Measurement Frequency
 
@@ -409,19 +409,19 @@ Parasitics are only injected when significant relative to the circuit:
 
 The SPICE skill consumes data from multiple analyzer outputs:
 
-### From Schematic Analyzer (`analyze_schematic.py`)
-- **findings[]** — all 21+ subcircuit detections (grouped by `detector` field)
-- **Component MPN** — `det["value"]` used for behavioral model lookup
+### From Schematic Analyzer (<code>analyze_schematic.py</code>)
+- **findings[]** — all 21+ subcircuit detections (grouped by <code>detector</code> field)
+- **Component MPN** — <code>det["value"]</code> used for behavioral model lookup
 - **Power rail nets** — for opamp supply inference
 - **Regulator output capacitors** — values, package sizes, ESR estimates
 - **Compensation capacitors** — feed-forward/compensation role on FB nets
 
-### From PCB Analyzer (`analyze_pcb.py --full`)
+### From PCB Analyzer (<code>analyze_pcb.py --full</code>)
 - **trace_segments** — per-segment width, length, layer, impedance
 - **via_details** — drill size, layer span, stub length
 - **pad_to_pad_distances** — actual routed distance between components
 - **return_path_continuity** — ground plane coverage under signal traces
 - **stackup** — εr, dielectric thickness, copper weight for impedance
 
-### From Gerber Analyzer (`analyze_gerbers.py`)
+### From Gerber Analyzer (<code>analyze_gerbers.py</code>)
 - **net_copper_usage** — per-net draw/flash operation counts (proxy for copper area)

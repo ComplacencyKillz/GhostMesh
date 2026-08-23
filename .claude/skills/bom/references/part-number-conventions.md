@@ -1,6 +1,6 @@
 # Part Number Conventions in KiCad Projects
 
-This reference documents how real-world KiCad projects track part numbers. The `bom_manager.py` script handles the most common patterns automatically, but many projects use unconventional approaches. When the script doesn't detect a project's convention, use this guide to understand what you're looking at and adapt.
+This reference documents how real-world KiCad projects track part numbers. The <code>bom_manager.py</code> script handles the most common patterns automatically, but many projects use unconventional approaches. When the script doesn't detect a project's convention, use this guide to understand what you're looking at and adapt.
 
 ## Table of Contents
 
@@ -23,7 +23,7 @@ Projects fall on a spectrum from "no tracking at all" to "full multi-distributor
 
 The schematic has only Reference, Value, Footprint, and maybe Datasheet. No MPNs, no distributor PNs, no manufacturer info. Common in tutorials, student projects, hobby boards, and early-stage designs.
 
-**What to do:** This is the cleanest starting point. Add fields from scratch using canonical names (`MPN`, `Manufacturer`, `DigiKey`, etc.). Use KiCad's Field Name Templates (KiCad 9+) to add them to all symbols at once, or use `edit_properties.py` to batch-add.
+**What to do:** This is the cleanest starting point. Add fields from scratch using canonical names (<code>MPN</code>, <code>Manufacturer</code>, <code>DigiKey</code>, etc.). Use KiCad's Field Name Templates (KiCad 9+) to add them to all symbols at once, or use <code>edit_properties.py</code> to batch-add.
 
 ### Level 1: MPN Only
 
@@ -60,7 +60,7 @@ Each distributor gets its own property field on every symbol.
 (property "LCSC" "C14663" ...)
 ```
 
-The `bom_manager.py` script handles this pattern and recognizes 50+ field name variants.
+The <code>bom_manager.py</code> script handles this pattern and recognizes 50+ field name variants.
 
 ### Pattern B: Supplier Slot Fields
 
@@ -74,9 +74,9 @@ Generic numbered supplier slots where the supplier name is in one field and the 
 (property "Supplier 2 Part #" "81-GRM155R71C104KA8D" ...)
 ```
 
-Used by some projects and KiCad BOM export templates. The `bom_manager.py` script detects this pattern by reading the supplier name value and mapping it to a canonical distributor.
+Used by some projects and KiCad BOM export templates. The <code>bom_manager.py</code> script detects this pattern by reading the supplier name value and mapping it to a canonical distributor.
 
-Variants: `Vendor` / `Vendor Part Number`, `Source` / `Source Part Number`, `Distributor 1` / `Distributor 1 PN`.
+Variants: <code>Vendor</code> / <code>Vendor Part Number</code>, <code>Source</code> / <code>Source Part Number</code>, <code>Distributor 1</code> / <code>Distributor 1 PN</code>.
 
 ### Pattern C: Internal Key System
 
@@ -88,9 +88,9 @@ A project-internal identifier (slug, database ID, or custom code) instead of or 
 (property "PartID" "P00123" ...)
 ```
 
-Some projects use `Key` fields with slugs like `ic-cy7c68013a-56`, or custom IDs like `UST_ID`. These IDs cross-reference to an external database or spreadsheet, not to a distributor.
+Some projects use <code>Key</code> fields with slugs like <code>ic-cy7c68013a-56</code>, or custom IDs like <code>UST_ID</code>. These IDs cross-reference to an external database or spreadsheet, not to a distributor.
 
-**What to do:** The internal key is NOT an MPN. Look for a separate MPN field (might be named `MFN`, `MFPN`, `Part Number`, etc.). If there's no MPN, the internal key might be the only identifier — ask the user how they want to proceed.
+**What to do:** The internal key is NOT an MPN. Look for a separate MPN field (might be named <code>MFN</code>, <code>MFPN</code>, <code>Part Number</code>, etc.). If there's no MPN, the internal key might be the only identifier — ask the user how they want to proceed.
 
 ### Pattern D: Parametric Properties
 
@@ -138,7 +138,7 @@ Symbols downloaded from SnapEDA or SamacSys inject a distinctive set of metadata
 (property "MAXIMUM_PACKAGE_HEIGHT" "1.45mm" ...)
 ```
 
-These often coexist with the project's own field naming convention, creating inconsistency. `Manufacturer_Part_Number` (SnapEDA) might be on some symbols while `MPN` (project convention) is on others.
+These often coexist with the project's own field naming convention, creating inconsistency. <code>Manufacturer_Part_Number</code> (SnapEDA) might be on some symbols while <code>MPN</code> (project convention) is on others.
 
 **What to do:** Recognize both naming conventions. When writing new fields, use whichever convention the project uses more consistently. If the project has both, prefer the simpler/more canonical name.
 
@@ -170,15 +170,15 @@ Reference,Value,Footprint,MPN,DigiKey,Qty
 R1,10K,0805,RC0805FR-0710KL,311-10.0KCRCT-ND,1
 ```
 
-Common locations: `bom/`, `docs/`, `exports/`, project root. File names: `bom.csv`, `BOM.csv`, `parts.csv`, `partlist.csv`, `<project>_bom.csv`.
+Common locations: <code>bom/</code>, <code>docs/</code>, <code>exports/</code>, project root. File names: <code>bom.csv</code>, <code>BOM.csv</code>, <code>parts.csv</code>, <code>partlist.csv</code>, <code><project>_bom.csv</code>.
 
-**What to do:** Read the CSV, match reference designators to schematic symbols, and optionally write the data back into symbol properties using `edit_properties.py`. Ask the user which direction they want the data to flow.
+**What to do:** Read the CSV, match reference designators to schematic symbols, and optionally write the data back into symbol properties using <code>edit_properties.py</code>. Ask the user which direction they want the data to flow.
 
 ### Spreadsheet BOM (XLS/XLSX/ODS)
 
 Same as CSV but in a spreadsheet format. May have multiple sheets (e.g., one per board revision, or separate sheets for different distributors).
 
-**What to do:** Use Python (`openpyxl` for xlsx, `xlrd` for xls) to read the spreadsheet. The structure varies too much to automate — look at the column headers and ask the user to confirm the mapping.
+**What to do:** Use Python (<code>openpyxl</code> for xlsx, <code>xlrd</code> for xls) to read the spreadsheet. The structure varies too much to automate — look at the column headers and ask the user to confirm the mapping.
 
 ### KiCad Symbol Fields CSV (Edit Symbol Fields export)
 
@@ -195,9 +195,9 @@ This is a round-trip format — the user can export, edit in a spreadsheet, and 
 
 KiCad has BOM export plugins (Tools > Generate Bill of Materials) that produce various formats. Common outputs:
 
-- `<project>_bom.xml` — KiCad's native XML BOM format
-- `<project>_bom.csv` — CSV from built-in or third-party BOM plugin
-- `ibom.html` — Interactive HTML BOM (visual, not for editing)
+- <code><project>_bom.xml</code> — KiCad's native XML BOM format
+- <code><project>_bom.csv</code> — CSV from built-in or third-party BOM plugin
+- <code>ibom.html</code> — Interactive HTML BOM (visual, not for editing)
 
 These are generated outputs, not source-of-truth files. Don't edit them — edit the schematic properties instead and regenerate.
 
@@ -220,8 +220,8 @@ Some projects keep freeform notes about parts in README, docs, or text files.
 
 When encountering a new project, check in this order:
 
-1. **Run `bom_manager.py`** — it will detect most symbol property patterns automatically
-2. **Check for unrecognized fields** — the JSON output includes `unrecognized_fields` with values that look like part numbers in unknown field names
+1. **Run <code>bom_manager.py</code>** — it will detect most symbol property patterns automatically
+2. **Check for unrecognized fields** — the JSON output includes <code>unrecognized_fields</code> with values that look like part numbers in unknown field names
 3. **Look for external BOM files:**
    ```
    *.csv, *.tsv, *.xlsx, *.xls, *.ods in the project directory
@@ -235,120 +235,120 @@ When encountering a new project, check in this order:
 
 ## Field Name Variants
 
-Comprehensive list of every field name variant observed across 56 open-source KiCad projects, grouped by canonical name. The `bom_manager.py` script recognizes all of these.
+Comprehensive list of every field name variant observed across 56 open-source KiCad projects, grouped by canonical name. The <code>bom_manager.py</code> script recognizes all of these.
 
 ### MPN (Manufacturer Part Number)
 
 | Field Name | Notes |
 |---|---|
-| `MPN` | Most common, canonical name |
-| `PartNumber` | Common in older projects |
-| `Part Number` | Space-separated variant |
-| `Manufacturer_Part_Number` | SnapEDA imports |
-| `Manufacturer Part Number` | Verbose variant |
-| `Manufacturer Part #` | Hash-suffixed variant |
-| `Manf#` / `manf#` | Older KiCad convention |
-| `Mfr No.` | Abbreviated variant |
-| `MFN` | Rare abbreviation |
-| `MFPN` | Rare abbreviation |
-| `Partno` | Rare variant |
-| `PN` | Ambiguous — see note below |
-| `MP` | SnapEDA imports |
-| `Mfg Part` / `MfgPart` | Various |
+| <code>MPN</code> | Most common, canonical name |
+| <code>PartNumber</code> | Common in older projects |
+| <code>Part Number</code> | Space-separated variant |
+| <code>Manufacturer_Part_Number</code> | SnapEDA imports |
+| <code>Manufacturer Part Number</code> | Verbose variant |
+| <code>Manufacturer Part #</code> | Hash-suffixed variant |
+| <code>Manf#</code> / <code>manf#</code> | Older KiCad convention |
+| <code>Mfr No.</code> | Abbreviated variant |
+| <code>MFN</code> | Rare abbreviation |
+| <code>MFPN</code> | Rare abbreviation |
+| <code>Partno</code> | Rare variant |
+| <code>PN</code> | Ambiguous — see note below |
+| <code>MP</code> | SnapEDA imports |
+| <code>Mfg Part</code> / <code>MfgPart</code> | Various |
 
-**Note:** `PN` is ambiguous — it could be MPN or a distributor PN. If a project uses `PN` alongside a separate `Manufacturer` field, it's likely an MPN. If used alone, check the values.
+**Note:** <code>PN</code> is ambiguous — it could be MPN or a distributor PN. If a project uses <code>PN</code> alongside a separate <code>Manufacturer</code> field, it's likely an MPN. If used alone, check the values.
 
 ### Manufacturer
 
 | Field Name | Notes |
 |---|---|
-| `Manufacturer` | Most common |
-| `Manufacturer_Name` | SnapEDA imports |
-| `MF` | Abbreviated |
-| `MFR` | Abbreviated |
-| `Mfr` | Abbreviated |
-| `Mfg` | Abbreviated |
+| <code>Manufacturer</code> | Most common |
+| <code>Manufacturer_Name</code> | SnapEDA imports |
+| <code>MF</code> | Abbreviated |
+| <code>MFR</code> | Abbreviated |
+| <code>Mfr</code> | Abbreviated |
+| <code>Mfg</code> | Abbreviated |
 
 ### DigiKey
 
 | Field Name | Notes |
 |---|---|
-| `DigiKey` | Common short form |
-| `Digi-Key Part Number` | Verbose variant |
-| `Digi-Key_PN` | Underscore variant |
-| `Digi-Key PN` | Space variant |
-| `DigiKey_Part_Number` | Underscore verbose |
-| `Digikey Part Number` | No hyphen variant |
-| `DK` | Short abbreviation |
-| `Vendor Part Number` | When `Vendor` = "Digi-Key" (slot pattern) |
-| `Supplier 1 Part #` | When `Supplier 1` = "Digikey" (slot pattern) |
+| <code>DigiKey</code> | Common short form |
+| <code>Digi-Key Part Number</code> | Verbose variant |
+| <code>Digi-Key_PN</code> | Underscore variant |
+| <code>Digi-Key PN</code> | Space variant |
+| <code>DigiKey_Part_Number</code> | Underscore verbose |
+| <code>Digikey Part Number</code> | No hyphen variant |
+| <code>DK</code> | Short abbreviation |
+| <code>Vendor Part Number</code> | When <code>Vendor</code> = "Digi-Key" (slot pattern) |
+| <code>Supplier 1 Part #</code> | When <code>Supplier 1</code> = "Digikey" (slot pattern) |
 
 ### Mouser
 
 | Field Name | Notes |
 |---|---|
-| `Mouser` | Common short form |
-| `Mouser Part Number` | Verbose variant |
-| `Mouser Part` | Space variant |
-| `Mouser_PN` | Underscore variant |
+| <code>Mouser</code> | Common short form |
+| <code>Mouser Part Number</code> | Verbose variant |
+| <code>Mouser Part</code> | Space variant |
+| <code>Mouser_PN</code> | Underscore variant |
 
 ### LCSC / JLCPCB
 
 | Field Name | Notes |
 |---|---|
-| `LCSC` | Most common |
-| `LCSCStockCode` | Rare variant |
-| `LCSC Part #` | Hash-suffixed |
-| `LCSC Part Number` | Verbose variant |
-| `LCSC_PN` | Underscore variant |
-| `LCSC PN` | Space variant |
-| `JLCPCB` | Common for JLCPCB assembly |
-| `JLCPCB Part` | Verbose variant |
-| `JLC` | Short abbreviation |
+| <code>LCSC</code> | Most common |
+| <code>LCSCStockCode</code> | Rare variant |
+| <code>LCSC Part #</code> | Hash-suffixed |
+| <code>LCSC Part Number</code> | Verbose variant |
+| <code>LCSC_PN</code> | Underscore variant |
+| <code>LCSC PN</code> | Space variant |
+| <code>JLCPCB</code> | Common for JLCPCB assembly |
+| <code>JLCPCB Part</code> | Verbose variant |
+| <code>JLC</code> | Short abbreviation |
 
 ### Newark / Farnell / element14
 
 | Field Name | Notes |
 |---|---|
-| `Newark` | Newark (US) |
-| `Farnell` | Farnell (UK/EU) |
-| `element14` | element14 (APAC) |
-| Various `_PN` / `Part Number` suffixed variants | Same pattern as other distributors |
+| <code>Newark</code> | Newark (US) |
+| <code>Farnell</code> | Farnell (UK/EU) |
+| <code>element14</code> | element14 (APAC) |
+| Various <code>_PN</code> / <code>Part Number</code> suffixed variants | Same pattern as other distributors |
 
 ### Other Distributors
 
 | Field Name | Notes |
 |---|---|
-| `TME` | Transfer Multisort Elektronik (European) |
-| `Adafruit PN` | Adafruit |
-| `Arrow` | Arrow Electronics (rare) |
+| <code>TME</code> | Transfer Multisort Elektronik (European) |
+| <code>Adafruit PN</code> | Adafruit |
+| <code>Arrow</code> | Arrow Electronics (rare) |
 
 ### DNP (Do Not Populate)
 
 | Field Name | Meaning |
 |---|---|
-| `DNP` | KiCad 9 built-in attribute |
-| `(dnp yes)` | KiCad 9 S-expression flag |
-| `DONOTPLACE` | Boolean "TRUE" |
-| `DNM` | Do Not Mount |
-| `POPULATE` | "0" = DNP, "1" = populate |
-| `Do Not Populate` | Verbose variant |
+| <code>DNP</code> | KiCad 9 built-in attribute |
+| <code>(dnp yes)</code> | KiCad 9 S-expression flag |
+| <code>DONOTPLACE</code> | Boolean "TRUE" |
+| <code>DNM</code> | Do Not Mount |
+| <code>POPULATE</code> | "0" = DNP, "1" = populate |
+| <code>Do Not Populate</code> | Verbose variant |
 
 ---
 
 ## Part Number Pattern Recognition
 
-When a value is found in an ambiguous field (like `PN` or `Part Number`), these patterns help classify it:
+When a value is found in an ambiguous field (like <code>PN</code> or <code>Part Number</code>), these patterns help classify it:
 
 | Pattern | Likely Distributor | Examples |
 |---|---|---|
-| Ends with `-ND` | DigiKey | `490-10698-1-ND`, `296-TPS61023DRLRCT-ND` |
-| `C` + 3-8 digits | LCSC | `C14663`, `C2913202` |
-| 2-3 digits + `-` + alphanum | Mouser | `81-GRM155R71C104KA8D`, `595-TPS63020DSJR` |
-| Alphanumeric 8+ chars, no hyphens | Often MPN | `GRM155R71C104KA88D`, `TPS61023DRLR` |
-| URL | Not a PN — datasheet or product link | `https://www.digikey.com/...` |
-| Simple value (digits + unit) | Not a PN — component value | `100nF`, `10K`, `4.7uH` |
-| Slug with hyphens | Internal key | `cap-cer-0402-100n`, `ic-stm32f407` |
+| Ends with <code>-ND</code> | DigiKey | <code>490-10698-1-ND</code>, <code>296-TPS61023DRLRCT-ND</code> |
+| <code>C</code> + 3-8 digits | LCSC | <code>C14663</code>, <code>C2913202</code> |
+| 2-3 digits + <code>-</code> + alphanum | Mouser | <code>81-GRM155R71C104KA8D</code>, <code>595-TPS63020DSJR</code> |
+| Alphanumeric 8+ chars, no hyphens | Often MPN | <code>GRM155R71C104KA88D</code>, <code>TPS61023DRLR</code> |
+| URL | Not a PN — datasheet or product link | <code>https://www.digikey.com/...</code> |
+| Simple value (digits + unit) | Not a PN — component value | <code>100nF</code>, <code>10K</code>, <code>4.7uH</code> |
+| Slug with hyphens | Internal key | <code>cap-cer-0402-100n</code>, <code>ic-stm32f407</code> |
 
 These are heuristics, not guarantees. A Mouser-pattern string could be an MPN. Always verify by searching the distributor.
 
@@ -358,11 +358,11 @@ These are heuristics, not guarantees. A Mouser-pattern string could be an MPN. A
 
 ### Typos in Field Names
 
-Real projects contain typos: `Manufactuer`, `MAXIMUM_PACKAGE_HIEGHT`, `LCSC Parrt #`. When you see a field name that's close to a known alias but not an exact match, it's probably a typo. Search by the value to verify, and consider mentioning the typo to the user.
+Real projects contain typos: <code>Manufactuer</code>, <code>MAXIMUM_PACKAGE_HIEGHT</code>, <code>LCSC Parrt #</code>. When you see a field name that's close to a known alias but not an exact match, it's probably a typo. Search by the value to verify, and consider mentioning the typo to the user.
 
 ### Multiple Fields for the Same Thing
 
-Some projects have both `LCSC` and `LCSC Part #` on different symbols, or both `Digi-Key_PN` and `DigiKey` from different symbol sources. The `bom_manager.py` picks the most common variant, but individual symbols might use the other. Always check both when extracting values.
+Some projects have both <code>LCSC</code> and <code>LCSC Part #</code> on different symbols, or both <code>Digi-Key_PN</code> and <code>DigiKey</code> from different symbol sources. The <code>bom_manager.py</code> picks the most common variant, but individual symbols might use the other. Always check both when extracting values.
 
 ### Empty Fields as Placeholders
 
@@ -370,28 +370,28 @@ Projects using KiCad's Field Name Templates often have empty fields on every sym
 
 ### Fields with Unexpected Content
 
-- `Digi-Key Part Number` containing "LCSC" as a value — meaning "source this from LCSC instead"
-- `LCSC link` containing full URLs instead of LCSC codes
-- `Mouser Price/Stock` containing a Mouser URL, not a price
-- `Source` = "ANY" meaning any distributor is acceptable
-- `Alt MPN` or `Substitution` containing alternative parts, not the primary MPN
-- `Notes` containing distributor info in free text: "Digikey: USB4105-GF-A"
-- `Remarks` containing color info, mating connector references, or errata
-- `BOM Comments` / `Notes` / `Remarks` containing ordering/assembly quirks: "Proto only", "shares cable with board X", "hand-solder", "order 10% extra", variant-specific population rules
-- `Assembly` or `Assembly Notes` containing post-reflow instructions or orientation notes
-- `Variant` / `Config` / `SKU` containing conditional population rules for multi-variant designs
+- <code>Digi-Key Part Number</code> containing "LCSC" as a value — meaning "source this from LCSC instead"
+- <code>LCSC link</code> containing full URLs instead of LCSC codes
+- <code>Mouser Price/Stock</code> containing a Mouser URL, not a price
+- <code>Source</code> = "ANY" meaning any distributor is acceptable
+- <code>Alt MPN</code> or <code>Substitution</code> containing alternative parts, not the primary MPN
+- <code>Notes</code> containing distributor info in free text: "Digikey: USB4105-GF-A"
+- <code>Remarks</code> containing color info, mating connector references, or errata
+- <code>BOM Comments</code> / <code>Notes</code> / <code>Remarks</code> containing ordering/assembly quirks: "Proto only", "shares cable with board X", "hand-solder", "order 10% extra", variant-specific population rules
+- <code>Assembly</code> or <code>Assembly Notes</code> containing post-reflow instructions or orientation notes
+- <code>Variant</code> / <code>Config</code> / <code>SKU</code> containing conditional population rules for multi-variant designs
 
 ### Multi-Unit Symbols
 
-A dual op-amp (e.g., LM358) has one reference (U1) but two units (U1A, U1B). In KiCad, both units share the same symbol properties. Editing U1's properties affects both units. The `edit_properties.py` script handles this by finding all symbol blocks with the same reference.
+A dual op-amp (e.g., LM358) has one reference (U1) but two units (U1A, U1B). In KiCad, both units share the same symbol properties. Editing U1's properties affects both units. The <code>edit_properties.py</code> script handles this by finding all symbol blocks with the same reference.
 
 ### Hierarchical Schematics
 
-Properties are on the symbol instances in each sheet, not on the sheet reference. When a project uses hierarchical design (root + sub-sheets), `bom_manager.py --recursive` finds all symbols across all sheets. The `edit_properties.py` script needs to be pointed at the specific `.kicad_sch` file containing the symbol to edit.
+Properties are on the symbol instances in each sheet, not on the sheet reference. When a project uses hierarchical design (root + sub-sheets), <code>bom_manager.py --recursive</code> finds all symbols across all sheets. The <code>edit_properties.py</code> script needs to be pointed at the specific <code>.kicad_sch</code> file containing the symbol to edit.
 
 ### KiCad 5 vs KiCad 6+ Format
 
-KiCad 5 used `.sch` files (different text format). KiCad 6+ uses `.kicad_sch` (S-expression format). The `bom_manager.py` and `edit_properties.py` scripts only support KiCad 6+ format. If a project has `.sch` files, it needs to be opened and saved in KiCad 6+ first (KiCad auto-converts on open). The KiCad analyzer (`kicad` skill) can read both formats for analysis purposes.
+KiCad 5 used <code>.sch</code> files (different text format). KiCad 6+ uses <code>.kicad_sch</code> (S-expression format). The <code>bom_manager.py</code> and <code>edit_properties.py</code> scripts only support KiCad 6+ format. If a project has <code>.sch</code> files, it needs to be opened and saved in KiCad 6+ first (KiCad auto-converts on open). The KiCad analyzer (<code>kicad</code> skill) can read both formats for analysis purposes.
 
 ---
 
@@ -403,7 +403,7 @@ When you encounter a project that doesn't match any known pattern:
 2. **Look at all custom fields** — not just the ones you recognize. Unknown fields often contain valuable BOM data under project-specific names
 3. **Check for external files** — CSV, spreadsheet, or text files in the project directory
 4. **Ask the user** what convention they want to use going forward, especially if the current state is messy or inconsistent
-5. **Match existing style** — if the project uses `Digi-Key_PN`, don't introduce `DigiKey` as a new field. Use whatever names already exist, even if they're not canonical
+5. **Match existing style** — if the project uses <code>Digi-Key_PN</code>, don't introduce <code>DigiKey</code> as a new field. Use whatever names already exist, even if they're not canonical
 6. **MPN is non-negotiable** — regardless of what other fields exist, always ensure MPN is populated. It's the universal cross-reference key and should be present on every real component (not test points, mounting holes, or power symbols)
-7. **Be conservative with edits** — don't "fix" field names to canonical unless the user asks. A project with `Manf#` on 200 symbols should keep using `Manf#`, not suddenly switch to `MPN` on the 201st
+7. **Be conservative with edits** — don't "fix" field names to canonical unless the user asks. A project with <code>Manf#</code> on 200 symbols should keep using <code>Manf#</code>, not suddenly switch to <code>MPN</code> on the 201st
 8. **Preserve what exists** — never delete or overwrite a user's existing data. If a field has a value, update it only if you have better data and the user agrees

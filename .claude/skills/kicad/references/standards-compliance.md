@@ -28,7 +28,7 @@ Reference tables and formulas for checking PCB designs against industry standard
 
 ### Remaining Gaps
 
-1. **IPC-2152 formula** — The approximate formula `A = (117.555 × ΔT^(-0.913) + 1.15) × I^(0.84 × ΔT^(-0.108) + 1.159)` and correction factors for copper planes are from secondary sources (online calculators). The Jouppi article confirms the standard's methodology, test scope (≤25A), and limitations but does not reprint the formula. Impact: **Low** — the IPC-2221A formula is adequate for most reviews, and the caveats about when IPC-2152 matters are well documented.
+1. **IPC-2152 formula** — The approximate formula <code>A = (117.555 × ΔT^(-0.913) + 1.15) × I^(0.84 × ΔT^(-0.108) + 1.159)</code> and correction factors for copper planes are from secondary sources (online calculators). The Jouppi article confirms the standard's methodology, test scope (≤25A), and limitations but does not reprint the formula. Impact: **Low** — the IPC-2221A formula is adequate for most reviews, and the caveats about when IPC-2152 matters are well documented.
 
 2. **IEC 62368-1** — Energy source classification thresholds (ES1/ES2/ES3 current and voltage limits) and the hazard-based safety engineering approach are described from secondary sources. Impact: **Low** — the creepage/clearance tables from ECMA-287 (which derives from the same IEC 60664-1 framework) cover the PCB-relevant requirements. IEC 62368-1 mainly adds the energy-source classification layer on top.
 
@@ -117,10 +117,10 @@ I = k × ΔT^0.44 × A^0.725
 ```
 
 Where:
-- `I` = current capacity (Amperes)
-- `k` = 0.048 for external (outer) layers; 0.024 for internal layers
-- `ΔT` = temperature rise above ambient (°C)
-- `A` = cross-sectional area of the conductor (square mils; 1 mil = 0.0254 mm)
+- <code>I</code> = current capacity (Amperes)
+- <code>k</code> = 0.048 for external (outer) layers; 0.024 for internal layers
+- <code>ΔT</code> = temperature rise above ambient (°C)
+- <code>A</code> = cross-sectional area of the conductor (square mils; 1 mil = 0.0254 mm)
 
 **Converting trace width to cross-sectional area:**
 ```
@@ -151,7 +151,7 @@ Note: Internal layer capacity is approximately half of external (k=0.024 vs k=0.
 - **IPC-2152** is the successor standard with updated test methodology. See the IPC-2152 section below.
 - The formula assumes steady-state DC current. For pulsed/transient currents, the RMS equivalent should be used.
 
-**Usage in design review:** Extract power net trace widths from the PCB analyzer's `power_net_routing` list. Calculate current capacity using the formula and compare against expected current from the schematic's power analysis. Flag any traces with <50% margin as WARNING, <20% margin as CRITICAL.
+**Usage in design review:** Extract power net trace widths from the PCB analyzer's <code>power_net_routing</code> list. Calculate current capacity using the formula and compare against expected current from the schematic's power analysis. Flag any traces with <50% margin as WARNING, <20% margin as CRITICAL.
 
 ---
 
@@ -232,14 +232,14 @@ Z₀ = (87 / √(εᵣ + 1.41)) × ln(5.98h / (0.8w + t))
 ```
 
 Where:
-- `Z₀` = characteristic impedance (Ω)
-- `εᵣ` = relative dielectric constant of substrate
-- `h` = height of trace above ground plane (dielectric thickness)
-- `w` = trace width
-- `t` = trace thickness
+- <code>Z₀</code> = characteristic impedance (Ω)
+- <code>εᵣ</code> = relative dielectric constant of substrate
+- <code>h</code> = height of trace above ground plane (dielectric thickness)
+- <code>w</code> = trace width
+- <code>t</code> = trace thickness
 - All dimensions in the same units
 
-Valid for: `w/h < 1` (narrow trace relative to dielectric height)
+Valid for: <code>w/h < 1</code> (narrow trace relative to dielectric height)
 
 ### Embedded Microstrip (inner trace with reference plane)
 
@@ -253,9 +253,9 @@ Z₀ = (60 / √εᵣ) × ln(4h / (0.67(0.8w + t)))
 Z₀ = (60 / √εᵣ) × ln(4b / (0.67π(0.8w + t)))
 ```
 
-Where `b` = distance between the two reference planes.
+Where <code>b</code> = distance between the two reference planes.
 
-**Usage in design review:** For USB (90Ω differential), DDR, LVDS, and other controlled-impedance signals, verify the trace width against the board stackup using these formulas. The PCB analyzer doesn't calculate impedance directly — use the track widths from the analyzer and the stackup from the `.kicad_pro` or fab stackup notes.
+**Usage in design review:** For USB (90Ω differential), DDR, LVDS, and other controlled-impedance signals, verify the trace width against the board stackup using these formulas. The PCB analyzer doesn't calculate impedance directly — use the track widths from the analyzer and the stackup from the <code>.kicad_pro</code> or fab stackup notes.
 
 ---
 
@@ -521,9 +521,9 @@ A = (117.555 × ΔT^(-0.913) + 1.15) × I^(0.84 × ΔT^(-0.108) + 1.159)
 ```
 
 Where:
-- `A` = cross-sectional area (sq. mils)
-- `ΔT` = temperature rise (°C)
-- `I` = current (Amperes)
+- <code>A</code> = cross-sectional area (sq. mils)
+- <code>ΔT</code> = temperature rise (°C)
+- <code>I</code> = current (Amperes)
 
 This solves for the required area given current and acceptable temperature rise (the inverse of the IPC-2221A formula which solves for current given area).
 
@@ -600,7 +600,7 @@ When standards checking is triggered, add this section to the report (after the 
 
 ## Fab House Capabilities (DFM Tier Classification)
 
-Canonical reference for DFM tier determination. The analyzer (`analyze_pcb.py`) uses these values in its `LIMITS_STD` and `LIMITS_ADV` constants. Report generation must cite values from this table — do not substitute values from training data.
+Canonical reference for DFM tier determination. The analyzer (<code>analyze_pcb.py</code>) uses these values in its <code>LIMITS_STD</code> and <code>LIMITS_ADV</code> constants. Report generation must cite values from this table — do not substitute values from training data.
 
 **Source:** JLCPCB capabilities page (verified 2025-01), PCBWay capabilities page (verified 2025-01). Fab capabilities change periodically — check the fab's website for the latest values before making DFM decisions.
 

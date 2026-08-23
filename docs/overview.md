@@ -46,12 +46,12 @@ The Flipper talks to the Heltec over the **Meshtastic Serial module in PROTO mod
 
 | Deliverable | Where | State |
 |-------------|-------|-------|
-| Operator app (Flipper FAP, C99) | [`flipper-app/`](../flipper-app/) | working |
-| Backpack firmware (custom Heltec Meshtastic modules, C++) | [`heltec-firmware/`](../heltec-firmware/) | working |
-| Board CAD (the GhostMesh PCB) | [`kicad/`](../kicad/) | in progress |
+| Operator app (Flipper FAP, C99) | [<code>flipper-app/</code>](../flipper-app/) | working |
+| Backpack firmware (custom Heltec Meshtastic modules, C++) | [<code>heltec-firmware/</code>](../heltec-firmware/) | working |
+| Board CAD (the GhostMesh PCB) | [<code>kicad/</code>](../kicad/) | in progress |
 | Case CAD (3D-printable enclosure) | FreeCAD | planned |
 | Hardware spec (every component, datasheet-trackable) | [hardware.md](hardware.md) | in progress |
-| Wiring schematic (the full system) | [`kicad/`](../kicad/) · [wiring.md](wiring.md) | in progress |
+| Wiring schematic (the full system) | [<code>kicad/</code>](../kicad/) · [wiring.md](wiring.md) | in progress |
 
 All of it open — software, firmware, board, case, BoM.
 
@@ -61,15 +61,15 @@ All of it open — software, firmware, board, case, BoM.
 
 **The private channel.** GhostMesh runs on a Meshtastic private channel with a random key. That key is the security boundary — a node can't be commanded, read, or joined without it. The command syntax is public by design; the secret is the key, not the words. See [meshtastic-setup.md](meshtastic-setup.md) and [opsec.md](opsec.md).
 
-**The arming gate.** A single shared flag, `ghostmesh_armed`, decides whether the node is live. Disarmed, it can be handled and staged silently. Armed, its tamper sensors report and its destruct is available. The gate is flipped three ways — a switch on the board, a mesh command, or IR — last action wins.
+**The arming gate.** A single shared flag, <code>ghostmesh_armed</code>, decides whether the node is live. Disarmed, it can be handled and staged silently. Armed, its tamper sensors report and its destruct is available. The gate is flipped three ways — a switch on the board, a mesh command, or IR — last action wins.
 
 **Sensing.** Tilt (moved), photoresistor (case opened), ultrasonic proximity (someone approached). Each fires a plain-text mesh alert — only while armed. See [hardware.md](hardware.md).
 
-**Command & control.** Two paths. Over the mesh: a text CLI, `/cmd @target` — status, arm/disarm, indicators, wipe (see [command-cli.md](command-cli.md)). Out of band: line-of-sight IR — arm, disarm, and the destruct sequence, for when you can see the device but the mesh can't reach it.
+**Command & control.** Two paths. Over the mesh: a text CLI, <code>/cmd @target</code> — status, arm/disarm, indicators, wipe (see [command-cli.md](command-cli.md)). Out of band: line-of-sight IR — arm, disarm, and the destruct sequence, for when you can see the device but the mesh can't reach it.
 
-**The destruct.** An armed-gated **complete flash erase** — firmware, config, and channel keys wiped, the chip left in USB download mode. Layered: it fires only when armed, and only behind a confirm (a one-time mesh token, an IR `ARM → WIPE → CONFIRM` sequence, or a physical double-press). Recover by reflashing and restoring an encrypted config backup. See [opsec.md](opsec.md).
+**The destruct.** An armed-gated **complete flash erase** — firmware, config, and channel keys wiped, the chip left in USB download mode. Layered: it fires only when armed, and only behind a confirm (a one-time mesh token, an IR <code>ARM → WIPE → CONFIRM</code> sequence, or a physical double-press). Recover by reflashing and restoring an encrypted config backup. See [opsec.md](opsec.md).
 
-**Backup & restore.** The FAP captures the node's config — including the channel key — at connect, encrypts it with an operator passphrase (AES-256-GCM), and writes it to the Flipper SD. A wiped node comes back with a reflash + `tools/restore_backpack.py`. The passphrase is never stored; a captured Flipper yields only ciphertext.
+**Backup & restore.** The FAP captures the node's config — including the channel key — at connect, encrypts it with an operator passphrase (AES-256-GCM), and writes it to the Flipper SD. A wiped node comes back with a reflash + <code>tools/restore_backpack.py</code>. The passphrase is never stored; a captured Flipper yields only ciphertext.
 
 ---
 
@@ -81,7 +81,7 @@ What exists today is the backbone: comms, situational awareness, and control. Th
 
 ## Where to go next
 
-- **Build it:** [hardware.md](hardware.md) · [wiring.md](wiring.md) · [meshtastic-setup.md](meshtastic-setup.md) · [flipper-setup.md](flipper-setup.md) · [`heltec-firmware/README.md`](../heltec-firmware/README.md)
+- **Build it:** [hardware.md](hardware.md) · [wiring.md](wiring.md) · [meshtastic-setup.md](meshtastic-setup.md) · [flipper-setup.md](flipper-setup.md) · [<code>heltec-firmware/README.md</code>](../heltec-firmware/README.md)
 - **Operate it:** [user-guide.md](user-guide.md) · [command-cli.md](command-cli.md) · [opsec.md](opsec.md)
 - **Understand the code:** [developer-guide.md](developer-guide.md) · [serial-modes.md](serial-modes.md)
 - **Scope & plan:** [red-team-lab-use-cases.md](red-team-lab-use-cases.md) · [roadmap.md](roadmap.md)

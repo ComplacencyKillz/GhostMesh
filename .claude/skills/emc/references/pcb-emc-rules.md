@@ -222,12 +222,12 @@ Source: Goldfarb, E. & Pucha, R. "Modeling Via Grounds in Microstrip." IEEE Micr
 ### DP-001: Intra-pair skew
 - **Severity:** HIGH (exceeds protocol limit), MEDIUM (>50% of limit)
 - **Threshold:** Protocol-specific — USB HS: 25 ps, USB SS: 5 ps, Ethernet: 50 ps, HDMI: 20 ps, PCIe: 5 ps
-- **Formula:** `skew_ps = ΔL_mm × propagation_delay_ps_per_mm(εr)`. For FR4 microstrip (εr=4.4): ~5.5 ps/mm.
+- **Formula:** <code>skew_ps = ΔL_mm × propagation_delay_ps_per_mm(εr)</code>. For FR4 microstrip (εr=4.4): ~5.5 ps/mm.
 - **Source:** USB 2.0 spec §7.1.2; IEEE 802.3 §40.6.1; PCI Express Base Spec §4.3.3; HDMI 2.1 spec §4.2.1.1.
 
 ### DP-002: Skew-induced CM radiation
 - **Severity:** HIGH (estimated emission exceeds limit), MEDIUM (within 6 dB of limit)
-- **Formula:** `V_CM = V_diff × Δt / (2 × T_rise)`. CM current: `I_CM = V_CM / Z_cable`. Radiation from `cm_radiation_dbuv_m()`.
+- **Formula:** <code>V_CM = V_diff × Δt / (2 × T_rise)</code>. CM current: <code>I_CM = V_CM / Z_cable</code>. Radiation from <code>cm_radiation_dbuv_m()</code>.
 - **Source:** Ott, *EMC Engineering*, Ch. 19; Johnson, *High-Speed Signal Propagation*, Ch. 11; Altium, "Guide to Mode Conversion."
 
 ### DP-003: Reference plane change under diff pair

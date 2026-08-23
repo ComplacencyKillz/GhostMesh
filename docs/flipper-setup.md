@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Python 3.8+ installed
-- `pip` available
+- <code>pip</code> available
 - Flipper Zero connected via USB (for deploying the FAP)
 - Flipper with stock firmware or a compatible fork (OFW recommended for compatibility)
 
@@ -41,7 +41,7 @@ LINK    ghostmesh.elf
 FAP     ghostmesh.fap
 <pre><code>
 
-The built FAP will be in `flipper-app/dist/`.
+The built FAP will be in <code>flipper-app/dist/</code>.
 
 ---
 
@@ -49,7 +49,7 @@ The built FAP will be in `flipper-app/dist/`.
 
 ### Option 1: Copy via qFlipper or SD card
 
-1. Copy `flipper-app/dist/ghostmesh.fap` to your SD card at `apps/Tools/ghostmesh.fap`
+1. Copy <code>flipper-app/dist/ghostmesh.fap</code> to your SD card at <code>apps/Tools/ghostmesh.fap</code>
 2. On the Flipper: **Apps → Tools → GhostMesh**
 
 ### Option 2: Deploy via USB with ufbt
@@ -101,11 +101,11 @@ ufbt update
 
 | Problem | Cause | Fix |
 |---------|-------|-----|
-| `ufbt: command not found` | pip install path not in PATH | Use `python -m ufbt` or add pip scripts dir to PATH |
-| Compile error: unknown type | SDK version mismatch | Run `ufbt update` to refresh the SDK |
-| `UART acquire failed` at runtime | Another app holds USART1 | Exit any other UART app on the Flipper before running GhostMesh |
-| FAP not visible in Apps menu | Wrong SD card path | Confirm the FAP is at `SD:/apps/Tools/ghostmesh.fap` |
-| Flipper reboots on FAP launch | Stack overflow | Increase `stack_size` in `application.fam` (currently `2 * 1024`) |
+| <code>ufbt: command not found</code> | pip install path not in PATH | Use <code>python -m ufbt</code> or add pip scripts dir to PATH |
+| Compile error: unknown type | SDK version mismatch | Run <code>ufbt update</code> to refresh the SDK |
+| <code>UART acquire failed</code> at runtime | Another app holds USART1 | Exit any other UART app on the Flipper before running GhostMesh |
+| FAP not visible in Apps menu | Wrong SD card path | Confirm the FAP is at <code>SD:/apps/Tools/ghostmesh.fap</code> |
+| Flipper reboots on FAP launch | Stack overflow | Increase <code>stack_size</code> in <code>application.fam</code> (currently <code>2 * 1024</code>) |
 
 ---
 
@@ -113,8 +113,8 @@ ufbt update
 
 GhostMesh targets the **official Flipper Zero SDK** via ufbt. The app uses:
 
-- `furi_hal_serial` for UART (USART1 / FuriHalSerialIdUsart)
-- `gui` / `ViewPort` for display
-- `furi` core (mutex, logging, delays)
+- <code>furi_hal_serial</code> for UART (USART1 / FuriHalSerialIdUsart)
+- <code>gui</code> / <code>ViewPort</code> for display
+- <code>furi</code> core (mutex, logging, delays)
 
 These APIs are stable across recent official firmware releases. If you are using a fork (Unleashed, Momentum, etc.), the SDK should be compatible, but test on your specific firmware version.

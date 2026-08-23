@@ -4,7 +4,7 @@
 
 Use this skill when building, previewing, or deploying the **ghostmesh.info** website.
 
-The site lives in `ghostmesh.info/` inside the GhostMesh repo. It is a static Astro site
+The site lives in <code>ghostmesh.info/</code> inside the GhostMesh repo. It is a static Astro site
 deployed to IONOS shared hosting via SFTP using lftp.
 
 ---
@@ -27,7 +27,7 @@ The template showing the expected structure is at:
 
 ## Reading Credentials with yq
 
-Use `yq` to parse the parameters file and export as environment variables before any
+Use <code>yq</code> to parse the parameters file and export as environment variables before any
 deploy operation:
 
 ```bash
@@ -55,7 +55,7 @@ cd ~/repos/ghostmesh/ghostmesh.info
 npm run build
 ```
 
-Output lands in `ghostmesh.info/dist/`.
+Output lands in <code>ghostmesh.info/dist/</code>.
 
 ---
 
@@ -66,8 +66,8 @@ cd ~/repos/ghostmesh/ghostmesh.info
 npm run deploy
 ```
 
-The deploy script (`scripts/deploy.sh`) reads from `parameters.ghostmeshinfo.yaml`,
-runs the build, and mirrors `dist/` to the IONOS web root via lftp SFTP.
+The deploy script (<code>scripts/deploy.sh</code>) reads from <code>parameters.ghostmeshinfo.yaml</code>,
+runs the build, and mirrors <code>dist/</code> to the IONOS web root via lftp SFTP.
 
 Manual deploy if the script is unavailable:
 
@@ -89,7 +89,7 @@ cd ~/repos/ghostmesh/ghostmesh.info
 npm run dev
 ```
 
-Runs Astro dev server at `http://localhost:4321`.
+Runs Astro dev server at <code>http://localhost:4321</code>.
 
 ---
 
@@ -147,7 +147,7 @@ ghostmesh.info/
 
 ## .gitignore Entry Required
 
-Ensure `parameters.ghostmeshinfo.yaml` is gitignored:
+Ensure <code>parameters.ghostmeshinfo.yaml</code> is gitignored:
 
 ```
 ghostmesh.info/parameters.ghostmeshinfo.yaml
