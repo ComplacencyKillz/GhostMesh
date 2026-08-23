@@ -194,8 +194,43 @@ static uint8_t settings_first(void) {
     return 0;
 }
 
+// Recompute the STANCE preset rows from the current granular set_vals, so the two views never drift
+// even if the reconcile /cfg is dropped (mirrors the web's refreshPresets). BLACKOUT = all outputs
+// off; HIBERNATE = inferred from gps + inputs. SENTINEL (arm) has no granular source — left as-is.
+static void settings_refresh_presets(GhostMeshApp* app) {
+    bool any_out = false, gps_on = false, in_all = true, in_any = false;
+    for(uint8_t i = 0; i < GM_SETTING_COUNT; i++) {
+        const GmSetting* g = &GM_SETTINGS[i];
+        if(g->type != GM_TOGGLE) continue;
+        bool on = app->set_vals[i] != 0;
+        if(g->mask == GM_MASK_OUT) {
+            if(on) any_out = true;
+        } else if(g->mask == GM_MASK_IN) {
+            if(on) in_any = true;
+            else in_all = false;
+        } else if(g->mask == GM_MASK_NONE && strcmp(g->key, "gps") == 0) {
+            gps_on = on;
+        }
+    }
+    bool in_none = !in_any;
+    for(uint8_t i = 0; i < GM_SETTING_COUNT; i++) {
+        const GmSetting* g = &GM_SETTINGS[i];
+        if(g->type != GM_STANCE) continue;
+        if(strcmp(g->key, "silent") == 0) {
+            app->set_vals[i] = any_out ? 0 : 1; // every output off ⇒ dark
+        } else if(strcmp(g->key, "mode") == 0) {
+            if(gps_on && in_all) app->set_vals[i] = 0;        // active
+            else if(!gps_on && in_all) app->set_vals[i] = 1;  // deployed
+            else if(!gps_on && in_none) app->set_vals[i] = 2; // dormant
+            // else: a custom mix — leave the last value
+        }
+    }
+}
+
 // Change the selected field by dir (-1/+1) and push it to the local node. Table-driven — one branch
-// for sliders, one for toggles, keyed off the GM_SETTINGS descriptor.
+// for sliders, one for toggles, keyed off the GM_SETTINGS descriptor. STANCE presets also mirror
+// their effect onto the granular set_vals (and vice versa via settings_refresh_presets) so the
+// Settings screen stays self-consistent without waiting on a /cfg round-trip.
 static void settings_edit(GhostMeshApp* app, int dir) {
     const GmSetting* g = &GM_SETTINGS[app->settings_sel];
     if(g->type == GM_HEADER) return;
@@ -209,18 +244,32 @@ static void settings_edit(GhostMeshApp* app, int dir) {
         app->set_vals[app->settings_sel] = (uint16_t)v;
         snprintf(cmd, sizeof(cmd), "/set @%s %s %u", id, g->key, (unsigned)v);
     } else if(g->type == GM_STANCE) {
-        // Compound presets — Lt/Rt (dir -1/+1) drives them; state is optimistic here and reconciled
-        // on the next /cfg. "arm" and "silent" are 2-state; "mode" cycles active/deployed/dormant.
+        // Compound presets — Lt/Rt (dir -1/+1) drives them. Mirror each preset's effect onto the
+        // granular rows here; settings_refresh_presets (below) then re-derives the preset row from
+        // them, so presets and granular toggles stay in lockstep with no /cfg round-trip.
         if(strcmp(g->key, "mode") == 0) {
             int v = (int)app->set_vals[app->settings_sel] + dir;
             if(v < 0) v = 0;
             if(v > 2) v = 2;
-            app->set_vals[app->settings_sel] = (uint16_t)v;
+            bool gps_on = (v == 0), ins_on = (v != 2);          // active / (active|deployed)
+            uint16_t tel = (v == 0) ? 120 : (v == 1) ? 900 : 3600;
+            for(uint8_t i = 0; i < GM_SETTING_COUNT; i++) {
+                const GmSetting* s = &GM_SETTINGS[i];
+                if(s->type == GM_TOGGLE && s->mask == GM_MASK_IN)
+                    app->set_vals[i] = ins_on ? 1 : 0;
+                else if(s->type == GM_TOGGLE && s->mask == GM_MASK_NONE && strcmp(s->key, "gps") == 0)
+                    app->set_vals[i] = gps_on ? 1 : 0;
+                else if(s->type == GM_SLIDER && strcmp(s->key, "telint") == 0)
+                    app->set_vals[i] = tel;
+            }
             snprintf(cmd, sizeof(cmd), "/set @%s mode %s", id, GM_STANCE_MODES[v]);
         } else if(strcmp(g->key, "silent") == 0) {
-            app->set_vals[app->settings_sel] = (dir > 0);
+            bool out_on = (dir < 0); // silent on (dir>0) ⇒ every output off; silent off ⇒ on
+            for(uint8_t i = 0; i < GM_SETTING_COUNT; i++)
+                if(GM_SETTINGS[i].type == GM_TOGGLE && GM_SETTINGS[i].mask == GM_MASK_OUT)
+                    app->set_vals[i] = out_on ? 1 : 0;
             snprintf(cmd, sizeof(cmd), "/set @%s silent %s", id, (dir > 0) ? "on" : "off");
-        } else { // "arm" → bare /arm or /disarm command (not a /set key)
+        } else { // "arm" → bare /arm or /disarm command (no granular equivalent)
             app->set_vals[app->settings_sel] = (dir > 0);
             snprintf(cmd, sizeof(cmd), "%s @%s", (dir > 0) ? "/arm" : "/disarm", id);
         }
@@ -229,6 +278,8 @@ static void settings_edit(GhostMeshApp* app, int dir) {
         snprintf(cmd, sizeof(cmd), "/set @%s %s %s", id, g->key, (dir > 0) ? "on" : "off");
     }
     proto_mode_send_local(app->proto, cmd);
+    // Keep presets ↔ granular in lockstep after any toggle/preset change (no /cfg round-trip needed).
+    if(g->type == GM_TOGGLE || g->type == GM_STANCE) settings_refresh_presets(app);
 }
 
 // ── Input callback ────────────────────────────────────────────────────────
