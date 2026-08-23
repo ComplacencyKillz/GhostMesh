@@ -91,9 +91,9 @@ When GhostMesh connects:
 ## Uploading Custom Profiles
 
 Place a `profiles.yaml` file at:
-~~~
+<pre><code>
 SD:/apps_data/ghostmesh/profiles.yaml
-~~~
+</code></pre>
 
 Example format:
 ```yaml

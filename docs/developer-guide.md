@@ -5,7 +5,7 @@
 GhostMesh is a Flipper Zero FAP (Flipper Application Package) written in C. It connects
 to a Heltec ESP32-S3 running Meshtastic over UART using Meshtastic's binary PROTO protocol.
 
-~~~
+<pre><code>
 ghostmesh.c          — app entry point, main loop, state machine, modal passphrase entry
 helpers/
   proto_mode.c/.h    — PROTO encode/decode, handshake, rx state machine, config capture
@@ -18,7 +18,7 @@ helpers/
 views/
   main_view.c/.h     — menu-hub UI (8 hub screens), shared chrome, marquee, ViewPort callbacks
   views/gm_settings.c/.h — data-driven descriptor table driving the Settings screen
-~~~
+</code></pre>
 
 ---
 
@@ -32,7 +32,7 @@ ufbt          # build
 ufbt launch   # build + deploy + run (Flipper connected via USB, qFlipper closed)
 ufbt clean    # clean artifacts
 ufbt update   # update SDK
-~~~
+<pre><code>
 
 The FAP targets the official Flipper Zero SDK. `application.fam` declares the entry point,
 stack size, and category. API compatibility is checked at build time (`APPCHK`).
@@ -46,11 +46,11 @@ stack size, and category. API compatibility is checked at build time (`APPCHK`).
 `furi_hal_serial_async_rx_start` fires its callback from the UART interrupt handler —
 not a thread. The callback chain is:
 
-~~~
+</code></pre>
 uart_internal_rx_cb (uart_helper.c)
   → on_rx_byte (proto_mode.c)       — byte-level PROTO state machine
     → on_rx_text (ghostmesh.c)      — called when a full text packet is decoded
-~~~
+<pre><code>
 
 **Consequences:**
 - Never call `furi_mutex_acquire` from `on_rx_text` or anything it calls. FuriMutex is
@@ -87,7 +87,7 @@ typedef enum {
     GhostMeshScreenBackup,     // encrypted config backup
     GhostMeshScreenSettings,   // live node config (/set + /cfg over the local link)
 } GhostMeshScreen;
-~~~
+</code></pre>
 
 Add new screens by extending this enum, adding draw logic to `main_view.c`, handling input in
 `on_input` (`ghostmesh.c`), and — if it's a hub destination — adding a `MENU[]` entry.
@@ -111,11 +111,11 @@ GhostMesh hand-codes all protobuf encoding and decoding. No nanopb or other libr
 
 ### Sending
 
-~~~
+<pre><code>
 proto_mode_send_text(proto, "CHECKIN OK")
   → proto_encode_text()        builds ToRadio { packet: MeshPacket { ... } }
   → uart_helper_send_bytes()   writes framed packet to UART
-~~~
+</code></pre>
 
 PROTO framing: `0x94 0xC3 [len_hi] [len_lo] [protobuf payload]`
 

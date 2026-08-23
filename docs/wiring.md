@@ -138,12 +138,12 @@ GPIO4 (`ArmingModule`).
 
 ### Flipper ProtoBoard pinout (PINGEQUA v3.1)
 
-~~~
+<pre><code>
 Pin  1     2     3     4     5     6     7     8
      5V    PA7   PA6   PA4   SWO   PB2   PC3   GND
 Pin  9     10    11    12    13    14    15    16    17    18
      3.3V  SWCLK GND   SWDIO U_TX  U_RX  PC1   PC0   PB14  GND
-~~~
+</code></pre>
 
 Numbers and labels match the Flipper case. The external UART is fixed by the STM32 at pins **13 (U_TX)** / **14 (U_RX)**. GND is available on pins 8, 11, or 18.
 

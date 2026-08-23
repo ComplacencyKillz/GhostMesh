@@ -16,9 +16,9 @@ This **requires** Serial-module config (*Module Config → Serial*: enabled, mod
 
 All packets use Meshtastic's binary framing:
 
-~~~
+<pre><code>
 [0x94] [0xC3] [len_hi] [len_lo] [protobuf payload]
-~~~
+</code></pre>
 
 - `0x94 0xC3` — magic start bytes
 - `len_hi len_lo` — 16-bit big-endian payload length

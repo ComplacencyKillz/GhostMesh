@@ -73,13 +73,13 @@ hardware — passive buzzer, vibration motor, RGB LED, arming slide, and wipe bu
 
 ### Power Architecture
 
-~~~
+<pre><code>
 [Flipper battery]  ──►  [Flipper Zero]       (independent — do not share)
 [Heltec battery]   ──►  [Heltec ESP32-S3]    (independent — do not share)
                               │
                          [GPIO36 Vext]  ──► [OLED + external 3.3V rail]
                                             (software power gate — drives the OLED too)
-~~~
+</code></pre>
 
 **Never connect Flipper 3.3V or 5V to Heltec Vcc.** The Flipper's 3.3V regulator cannot
 source the 200–500mA an ESP32-S3 draws under load. Only TX, RX, and GND are wired between the devices.
@@ -180,7 +180,7 @@ displays), stepper motor, servo, joystick, potentiometer, UNO R3, 7-segment disp
 
 The Heltec V3 has two independent I2C buses. Do not mix them.
 
-~~~
+<pre><code>
 Bus 1 (GPIO17 SDA / GPIO18 SCL):
   └── OLED display (0x3C) — hardwired to board, no Qwiic connector
 
@@ -188,7 +188,7 @@ Bus 2 (GPIO41 SDA / GPIO42 SCL):
   └── STEMMA QT 5-port passive hub
         ├── BME280 (0x76) — temp/humidity/pressure
         └── MAX17048 (0x36) — LiPo fuel gauge
-~~~
+</code></pre>
 
 No address conflicts between these three devices. The Qwiic hub is passive (no active
 I2C muxing), so all devices share the same bus with distinct addresses.
@@ -197,7 +197,7 @@ I2C muxing), so all devices share the same bus with distinct addresses.
 
 ## UART Architecture
 
-~~~
+<pre><code>
 Serial module — PROTO (GPIO7 RX / GPIO6 TX):   ← GhostMesh Flipper link
   └── Meshtastic StreamAPI over the Serial module (ToRadio / FromRadio protobuf only)
         └── Sensor alerts arrive here too — as FromRadio mesh packets, not a separate protocol
@@ -209,13 +209,13 @@ UART0 (GPIO43 TX / GPIO44 RX):
 UART1 (GPIO34 RX / GPIO33 TX):
   └── BN-220 GPS module (NMEA-0183, 9600 baud)
         └── Meshtastic reads and parses for position beaconing
-~~~
+</code></pre>
 
 ---
 
 ## System Architecture
 
-~~~
+<pre><code>
 ┌─────────────────────────────────────────────────────────────────┐
 │  BACKPACK (planted, runs unattended)                            │
 │                                                                 │
@@ -244,7 +244,7 @@ UART1 (GPIO34 RX / GPIO33 TX):
 │   (no control hardware on the Flipper — every output lives on   │
 │    the backpack, triggered over the mesh or by IR)              │
 └─────────────────────────────────────────────────────────────────┘
-~~~
+</code></pre>
 
 ### What Requires Custom Meshtastic Firmware
 
