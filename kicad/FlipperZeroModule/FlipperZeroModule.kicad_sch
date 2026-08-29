@@ -5371,6 +5371,16 @@
 	)
 	(wire
 		(pts
+			(xy 205.74 113.03) (xy 213.36 113.03)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "42e3607b-08c8-4939-b84d-5963b4fe1fbf")
+	)
+	(wire
+		(pts
 			(xy 130.81 36.83) (xy 133.35 36.83)
 		)
 		(stroke
@@ -5691,16 +5701,6 @@
 	)
 	(wire
 		(pts
-			(xy 48.26 163.83) (xy 55.88 163.83)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "8f776f39-e4fd-4c73-8216-9cbf984053ff")
-	)
-	(wire
-		(pts
 			(xy 74.93 116.84) (xy 80.01 116.84)
 		)
 		(stroke
@@ -5711,16 +5711,6 @@
 	)
 	(wire
 		(pts
-			(xy 88.9 158.75) (xy 100.33 158.75)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "93111dcd-5cbe-42a5-83dc-cd4a83380076")
-	)
-	(wire
-		(pts
 			(xy 205.74 120.65) (xy 213.36 120.65)
 		)
 		(stroke
@@ -5728,16 +5718,6 @@
 			(type default)
 		)
 		(uuid "96eabd12-3892-45a2-b6dd-1af605fa9031")
-	)
-	(wire
-		(pts
-			(xy 48.26 166.37) (xy 55.88 166.37)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "97967727-83d2-4550-bc97-e30aca843ff8")
 	)
 	(wire
 		(pts
@@ -5768,16 +5748,6 @@
 			(type default)
 		)
 		(uuid "9d163086-84fe-451c-a1aa-e703f14b2d78")
-	)
-	(wire
-		(pts
-			(xy 100.33 158.75) (xy 100.33 154.94)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "a3b0891d-9bda-41ee-a45e-c5eb3387116b")
 	)
 	(wire
 		(pts
@@ -6207,28 +6177,6 @@
 			)
 		)
 	)
-	(global_label "Buzz"
-		(shape input)
-		(at 55.88 163.83 0)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left)
-		)
-		(uuid "2b2a7948-f8a1-43d9-bdbc-17153e83af22")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 63.3404 163.83 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-				(hide yes)
-			)
-		)
-	)
 	(global_label "Tilt"
 		(shape input)
 		(at 205.74 105.41 180)
@@ -6537,6 +6485,28 @@
 			)
 		)
 	)
+	(global_label "Buzz"
+		(shape input)
+		(at 205.74 113.03 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "9ddce991-2016-4ddf-a100-1b45347a37c6")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 198.2796 113.03 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+				(hide yes)
+			)
+		)
+	)
 	(global_label "Flipper.RX"
 		(shape input)
 		(at 205.74 92.71 180)
@@ -6748,28 +6718,6 @@
 		(uuid "e67fc889-e77b-4d1d-a7d8-d27c8c8f0bba")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
 			(at 112.6285 168.91 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-				(hide yes)
-			)
-		)
-	)
-	(global_label "Coin"
-		(shape input)
-		(at 55.88 166.37 0)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left)
-		)
-		(uuid "ed402199-d83e-4baf-81b9-9008abcf66d5")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 63.038 166.37 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7167,72 +7115,6 @@
 			(project "FlipperZeroModule"
 				(path "/a09f6278-802e-4639-b86a-f31af2565473"
 					(reference "#PWR028")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:+3V3")
-		(at 100.33 154.94 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "0e9df1b8-ccbe-449d-a781-7f0396e7a4b7")
-		(property "Reference" "#PWR012"
-			(at 100.33 158.75 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Value" "+3V3"
-			(at 100.33 149.86 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" ""
-			(at 100.33 154.94 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" ""
-			(at 100.33 154.94 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" "Power symbol creates a global label with name \"+3V3\""
-			(at 100.33 154.94 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "e5d019f4-a00a-47f9-badb-3ac670e6a519")
-		)
-		(instances
-			(project ""
-				(path "/a09f6278-802e-4639-b86a-f31af2565473"
-					(reference "#PWR012")
 					(unit 1)
 				)
 			)
@@ -7747,7 +7629,7 @@
 				(hide yes)
 			)
 		)
-		(property "Value" "+3V3"
+		(property "Value" "3v3ext"
 			(at 53.34 96.52 0)
 			(effects
 				(font
@@ -7959,7 +7841,7 @@
 				(hide yes)
 			)
 		)
-		(property "Value" "+3V3"
+		(property "Value" "3v3ext"
 			(at 100.33 88.9 0)
 			(effects
 				(font
@@ -9391,7 +9273,7 @@
 				)
 			)
 		)
-		(property "Value" "100"
+		(property "Value" "1k"
 			(at 83.82 113.03 90)
 			(effects
 				(font
