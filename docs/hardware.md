@@ -1,7 +1,9 @@
+---
+---
 # Hardware Reference
 
-> **Board schematic (source of truth):** the KiCad design lives in `kicad/` —
-> `kicad/FlipperZeroModule/` (schematic + PCB) and `kicad/HeltecModule/` (Heltec symbol/footprint).
+> **Board schematic (source of truth):** the KiCad design lives in <code>kicad/</code> —
+> <code>kicad/FlipperZeroModule/</code> (schematic + PCB) and <code>kicad/HeltecModule/</code> (Heltec symbol/footprint).
 > Where this document and the schematic disagree, the schematic wins.
 
 ## Component Spec
@@ -20,9 +22,9 @@ Every part in the build, with the maker and part marking to chase down a datashe
 | Fuel gauge | MAX17048 | Analog Devices (Maxim) | LiPo state-of-charge | I2C 0x36 |
 | Tilt switch | SW-520D | generic | Tamper — node moved | GPIO |
 | Light sensor | GL5528 photoresistor (LDR) | generic | Tamper — case opened | ADC |
-| Ultrasonic ranger | HC-SR04 (deploy: RCWL-1601) | generic | Proximity — approach | GPIO (5 V) |
+| Ultrasonic ranger | RCWL-1601 (3.3 V; HC-SR04 needs 5 V) | generic | Proximity — approach | GPIO (3.3 V) |
 | IR receiver | VS1838B | generic | NEC IR remote control | GPIO (38 kHz demod) |
-| RGB indicator | SK6812 | Adafruit-compatible | Status LED (`/led`, working) | 1-wire addressable |
+| RGB indicator | SK6812 | Adafruit-compatible | Status LED (<code>/led</code>, working) | 1-wire addressable |
 | Buzzer | passive magnetic buzzer | generic | Audible indicator (tones) | GPIO PWM via driver |
 | Haptic | 3 V coin/cyl vibration motor | generic | Vibration indicator | GPIO via driver |
 | Driver (bench) | PN2222A (TO-92) | generic NPN BJT | Low-side switch for buzzer/motor | — |
@@ -73,13 +75,13 @@ hardware — passive buzzer, vibration motor, RGB LED, arming slide, and wipe bu
 
 ### Power Architecture
 
-```
+<pre><code>
 [Flipper battery]  ──►  [Flipper Zero]       (independent — do not share)
 [Heltec battery]   ──►  [Heltec ESP32-S3]    (independent — do not share)
                               │
                          [GPIO36 Vext]  ──► [OLED + external 3.3V rail]
                                             (software power gate — drives the OLED too)
-```
+</code></pre>
 
 **Never connect Flipper 3.3V or 5V to Heltec Vcc.** The Flipper's 3.3V regulator cannot
 source the 200–500mA an ESP32-S3 draws under load. Only TX, RX, and GND are wired between the devices.
@@ -103,20 +105,20 @@ custom Meshtastic modules.
 | 18 | ❌ I2C bus 1 SCL | OLED display (hardwired) |
 | 19 | ❌ USB D- | ESP32-S3 native USB |
 | 20 | ❌ USB D+ | ESP32-S3 native USB |
-| 21 | ❌ OLED reset | Hardwired OLED reset — NOT free (HC-SR04 trigger uses GPIO38 instead) |
-| 26 | ✅ RGB status LED | External SK6812 data (`/led` via `neopixelWrite`; colors + gradient, working) — NOT Vext (that's GPIO36) |
+| 21 | ❌ OLED reset | Hardwired OLED reset — NOT free (proximity trigger uses GPIO38 instead) |
+| 26 | ✅ RGB status LED | External SK6812 data (<code>/led</code> via <code>neopixelWrite</code>; colors + gradient, working) — NOT Vext (that's GPIO36) |
 | 33 | ✅ Free — confirmed | GPS UART1 TX (Heltec → BN-220 RX) |
 | 34 | ✅ Free — confirmed | GPS UART1 RX (BN-220 TX → Heltec) |
-| 35 | ❌ Onboard LED | White user LED (does NOT work as a UART RX); `CommandModule` mirrors the `/led` on/off state here (backup to the GPIO26 RGB) |
-| 36 | ❌ Vext control | Powers OLED + external 3.3V rail (Meshtastic `VEXT_ENABLE`, active LOW) |
-| 37 | 🚧 Wipe button | Tact switch, INPUT_PULLUP → `CommandModule` factory reset (armed + double-press) |
-| 39 | 🚧 Buzzer | Passive buzzer via PN2222 low-side driver — PWM tone (`CommandModule` `/buzz`) |
-| 40 | 🚧 Vibration | Motor via PN2222 + 1N4007 flyback (`CommandModule` `/vibrate`); EE PCB uses AO3400 |
+| 35 | ❌ Onboard LED | White user LED (does NOT work as a UART RX); <code>CommandModule</code> mirrors the <code>/led</code> on/off state here (backup to the GPIO26 RGB) |
+| 36 | ❌ Vext control | Powers OLED + external 3.3V rail (Meshtastic <code>VEXT_ENABLE</code>, active LOW) |
+| 37 | ✅ Wipe button | Tact switch, INPUT_PULLUP → <code>CommandModule</code> factory reset (armed + double-press) |
+| 39 | ✅ Buzzer | Passive buzzer via PN2222 low-side driver — PWM tone (<code>CommandModule</code> <code>/buzz</code>) |
+| 40 | ✅ Vibration | Motor via PN2222 + 1N4007 flyback (<code>CommandModule</code> <code>/vibrate</code>); EE PCB uses AO3400 |
 | 41 | ❌ I2C bus 2 SDA | Sensor I2C bus (BME280, MAX17048 via Qwiic hub) |
 | 42 | ❌ I2C bus 2 SCL | Sensor I2C bus |
 | 43 | ⚠️ UART0 TX / CP2102 | USB console (flash/debug). **NOT the Flipper link** — CP2102 clamps it on battery |
 | 44 | ⚠️ UART0 RX / CP2102 | USB console (flash/debug). **NOT the Flipper link** — CP2102 clamps it on battery |
-| 47 | ✅ Free | HC-SR04 Echo |
+| 47 | ✅ Proximity echo | RCWL-1601 Echo (3.3 V, no divider) |
 | 48 | ✅ Free | IR receiver (NEC decode — remote arm/disarm ~10m) |
 
 ---
@@ -133,13 +135,13 @@ custom Meshtastic modules.
 | MAX17048 (LiPo fuel gauge) | I2C via Qwiic hub | 0x36 | Bus 2 (41/42) | 9 |
 | BN-220 GPS module | UART1, 9600 baud | — | GPIO34 (RX), GPIO33 (TX) | 8 |
 | STEMMA QT 5-port passive hub | — | — | GPIO41/42 | 7 |
-| HC-SR04 ultrasonic sensor | Digital GPIO | — | GPIO38 (trig — was 21, which is OLED reset), GPIO47 (echo) | 11 |
+| RCWL-1601 ultrasonic sensor (3.3 V) | Digital GPIO | — | GPIO38 (trig — was 21, which is OLED reset), GPIO47 (echo) | 11 |
 | SW-520D tilt switch | Digital GPIO | — | GPIO2 | 10 |
 | Slide switch — backpack arm/disarm | Digital GPIO | — | GPIO4 | 10 |
 | Photoresistor (light tamper) | ADC | — | GPIO5 | 10 |
 | IR receiver (remote arm/disarm) | Digital GPIO | — | GPIO48 | 10 |
 
-**Heltec backpack outputs & controls** — operator triggers them over the FAP / mesh / IR; driven by `CommandModule`:
+**Heltec backpack outputs & controls** — operator triggers them over the FAP / mesh / IR; driven by <code>CommandModule</code>:
 
 | Component | Interface | Heltec GPIO | Phase |
 |-----------|-----------|-------------|-------|
@@ -158,7 +160,7 @@ custom Meshtastic modules.
 | IR receiver module | Remote arm/disarm | Heltec GPIO48 | 10 |
 | 1N4007 diode rectifier (2pcs) | Flyback for the vibration motor + coil buzzer | Heltec backpack | 10 |
 | PN2222 NPN transistor (2pcs) | Buzzer (GPIO39) + vibration (GPIO40) low-side drivers | Heltec backpack | 10 |
-| Passive buzzer | Tone alerts (distinct tones per event) via `/buzz` | Heltec GPIO39 | 10 |
+| Passive buzzer | Tone alerts (distinct tones per event) via <code>/buzz</code> | Heltec GPIO39 | 10 |
 
 **Not used:** DHT11 (redundant — BME280 is strictly better), LCD 1602 (both devices have
 displays), stepper motor, servo, joystick, potentiometer, UNO R3, 7-segment displays, the
@@ -180,7 +182,7 @@ displays), stepper motor, servo, joystick, potentiometer, UNO R3, 7-segment disp
 
 The Heltec V3 has two independent I2C buses. Do not mix them.
 
-```
+<pre><code>
 Bus 1 (GPIO17 SDA / GPIO18 SCL):
   └── OLED display (0x3C) — hardwired to board, no Qwiic connector
 
@@ -188,7 +190,7 @@ Bus 2 (GPIO41 SDA / GPIO42 SCL):
   └── STEMMA QT 5-port passive hub
         ├── BME280 (0x76) — temp/humidity/pressure
         └── MAX17048 (0x36) — LiPo fuel gauge
-```
+</code></pre>
 
 No address conflicts between these three devices. The Qwiic hub is passive (no active
 I2C muxing), so all devices share the same bus with distinct addresses.
@@ -197,7 +199,7 @@ I2C muxing), so all devices share the same bus with distinct addresses.
 
 ## UART Architecture
 
-```
+<pre><code>
 Serial module — PROTO (GPIO7 RX / GPIO6 TX):   ← GhostMesh Flipper link
   └── Meshtastic StreamAPI over the Serial module (ToRadio / FromRadio protobuf only)
         └── Sensor alerts arrive here too — as FromRadio mesh packets, not a separate protocol
@@ -209,13 +211,13 @@ UART0 (GPIO43 TX / GPIO44 RX):
 UART1 (GPIO34 RX / GPIO33 TX):
   └── BN-220 GPS module (NMEA-0183, 9600 baud)
         └── Meshtastic reads and parses for position beaconing
-```
+</code></pre>
 
 ---
 
 ## System Architecture
 
-```
+<pre><code>
 ┌─────────────────────────────────────────────────────────────────┐
 │  BACKPACK (planted, runs unattended)                            │
 │                                                                 │
@@ -225,7 +227,7 @@ UART1 (GPIO34 RX / GPIO33 TX):
 │    ├── [BN-220 GPS]       position — stock Meshtastic           │
 │    ├── [SW-520D tilt]     tamper → TAMPER over LoRa (armed)     │
 │    ├── [Photoresistor]    case-open → TAMPER_LIGHT (armed)      │
-│    ├── [HC-SR04]          proximity → PERSON_DETECTED (armed)   │
+│    ├── [RCWL-1601]        proximity → PERSON_DETECTED (armed)   │
 │    ├── [IR receiver]      arm / disarm / destruct (line of sight)│
 │    ├── [toggle switch]    flip to arm/disarm                    │
 │    ├── [buzzer/motor/LED] indicators — driven over mesh or IR   │
@@ -244,7 +246,7 @@ UART1 (GPIO34 RX / GPIO33 TX):
 │   (no control hardware on the Flipper — every output lives on   │
 │    the backpack, triggered over the mesh or by IR)              │
 └─────────────────────────────────────────────────────────────────┘
-```
+</code></pre>
 
 ### What Requires Custom Meshtastic Firmware
 
@@ -254,8 +256,8 @@ UART1 (GPIO34 RX / GPIO33 TX):
 | BN-220 GPS | ✅ built-in | — |
 | Private channels / config | ✅ AdminMessage + config | — |
 | Complete-flash destruct | ⚠️ AdminMessage only resets config | ✅ GhostMeshWipe (built) |
-| Mesh command CLI (`/cmd @target`) | ❌ | ✅ CommandModule (built) |
-| HC-SR04 → LoRa alert | ❌ | ✅ ProximityModule (built) |
+| Mesh command CLI (<code>/cmd @target</code>) | ❌ | ✅ CommandModule (built) |
+| Ultrasonic (RCWL-1601) → LoRa alert | ❌ | ✅ ProximityModule (built) |
 | Tilt switch → LoRa alert | built-in exists but isn't arm-gated | ✅ TiltModule (used) |
 | Slide switch arm/disarm + gate | ❌ | ✅ ArmingModule (built) |
 | Photoresistor → LoRa alert | ❌ | ✅ LightTamperModule (built) |
@@ -268,11 +270,11 @@ UART1 (GPIO34 RX / GPIO33 TX):
 
 ## Confirmed Working State
 
-- FAP: menu-hub UI (Messages / RX History / Sensors / Control / Status / Backup); `RDY` after the handshake
+- FAP: menu-hub UI (Messages / RX History / Sensors / Control / Status / Backup / Settings); <code>RDY</code> after the handshake
 - TX/RX text over the mesh; per-message RSSI/SNR; dated CSV logging; marquee display
 - Telemetry: BME280 temp/humidity/pressure, BN-220 GPS position, battery % in the title bar
 - Backpack firmware: tamper (tilt / light), proximity (RCWL-1601 at 3.3V), arming toggle, buzzer + vibration + RGB LED — all over the private mesh, arm-gated
-- IR control: arm / disarm confirmed on hardware; the `ARM → WIPE → CONFIRM` destruct + complete-flash wipe built (spare-board test pending)
+- IR control: arm / disarm confirmed on hardware; the <code>ARM → WIPE → CONFIRM</code> destruct + complete-flash wipe built (spare-board test pending)
 - Encrypted config backup written by the FAP (backup → restore round-trip test pending)
 
 Full phase-by-phase status: [roadmap.md](roadmap.md).

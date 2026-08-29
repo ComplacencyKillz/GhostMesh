@@ -1,5 +1,6 @@
 #include "ArmingModule.h"
 #include "GhostMeshArming.h"
+#include "GhostMeshConfig.h"
 #include "MeshService.h"
 #include "configuration.h"
 #include "main.h"
@@ -29,6 +30,7 @@ int32_t ArmingModule::runOnce()
         firstTime = false;
         pinMode(ARM_PIN, INPUT);
         lastLevel = digitalRead(ARM_PIN); // remember the current position; leave the state alone
+        ghostmesh_config_ensure_loaded();
         LOG_INFO("Arming: init on GPIO%d (toggle mode), boot DISARMED", ARM_PIN);
         return ARM_POLL_MS;
     }
@@ -44,6 +46,7 @@ int32_t ArmingModule::runOnce()
 
 void ArmingModule::broadcastArmState(bool armed)
 {
+    if (!ghostmesh_config.repArm) return; // arm/disarm mesh announce gated by rep_arm (default off)
     meshtastic_MeshPacket *p = allocDataPacket(); // portnum = TEXT_MESSAGE_APP
     p->want_ack = false;
     const char *msg = armed ? "ARMED" : "DISARMED";

@@ -1,3 +1,5 @@
+---
+---
 # GhostMesh Developer Guide
 
 ## Architecture Overview
@@ -5,7 +7,7 @@
 GhostMesh is a Flipper Zero FAP (Flipper Application Package) written in C. It connects
 to a Heltec ESP32-S3 running Meshtastic over UART using Meshtastic's binary PROTO protocol.
 
-```
+<pre><code>
 ghostmesh.c          — app entry point, main loop, state machine, modal passphrase entry
 helpers/
   proto_mode.c/.h    — PROTO encode/decode, handshake, rx state machine, config capture
@@ -16,8 +18,9 @@ helpers/
   gm_backup.c/.h     — AES-256-GCM encrypted config backup → SD
   sha256.c/.h        — bundled SHA-256 (the backup KDF)
 views/
-  main_view.c/.h     — menu-hub UI (7 screens), shared chrome, marquee, ViewPort callbacks
-```
+  main_view.c/.h     — menu-hub UI (8 hub screens), shared chrome, marquee, ViewPort callbacks
+  views/gm_settings.c/.h — data-driven descriptor table driving the Settings screen
+</code></pre>
 
 ---
 
@@ -25,16 +28,16 @@ views/
 
 GhostMesh uses **ufbt** (Micro Flipper Build Tool). No full Flipper firmware clone needed.
 
-```bash
+<pre><code>
 cd flipper-app
 ufbt          # build
 ufbt launch   # build + deploy + run (Flipper connected via USB, qFlipper closed)
 ufbt clean    # clean artifacts
 ufbt update   # update SDK
-```
+<pre><code>
 
-The FAP targets the official Flipper Zero SDK. `application.fam` declares the entry point,
-stack size, and category. API compatibility is checked at build time (`APPCHK`).
+The FAP targets the official Flipper Zero SDK. <code>application.fam</code> declares the entry point,
+stack size, and category. API compatibility is checked at build time (<code>APPCHK</code>).
 
 ---
 
@@ -42,26 +45,26 @@ stack size, and category. API compatibility is checked at build time (`APPCHK`).
 
 ### UART RX runs in ISR context
 
-`furi_hal_serial_async_rx_start` fires its callback from the UART interrupt handler —
+<code>furi_hal_serial_async_rx_start</code> fires its callback from the UART interrupt handler —
 not a thread. The callback chain is:
 
-```
+</code></pre>
 uart_internal_rx_cb (uart_helper.c)
   → on_rx_byte (proto_mode.c)       — byte-level PROTO state machine
     → on_rx_text (ghostmesh.c)      — called when a full text packet is decoded
-```
+<pre><code>
 
 **Consequences:**
-- Never call `furi_mutex_acquire` from `on_rx_text` or anything it calls. FuriMutex is
+- Never call <code>furi_mutex_acquire</code> from <code>on_rx_text</code> or anything it calls. FuriMutex is
   backed by FreeRTOS mutexes which cannot be taken from ISR. Doing so silently drops every
-  received message. See `proto_notes.md`.
-- ISR-written fields in `GhostMeshApp` (`rx_sender`, `rx_text_buf`, `rx_rssi`, `rx_snr`,
-  `rx_updated`) use `volatile` for the flag. Reading and processing happens in the main loop.
+  received message. See <code>proto_notes.md</code>.
+- ISR-written fields in <code>GhostMeshApp</code> (<code>rx_sender</code>, <code>rx_text_buf</code>, <code>rx_rssi</code>, <code>rx_snr</code>,
+  <code>rx_updated</code>) use <code>volatile</code> for the flag. Reading and processing happens in the main loop.
 - All SD card I/O, RTC access, and display updates happen in the main loop only.
 
 ### Main loop tick rate
 
-The main loop runs at 200ms (`furi_delay_ms(200)`). All state transitions, sensor reads,
+The main loop runs at 200ms (<code>furi_delay_ms(200)</code>). All state transitions, sensor reads,
 and view updates happen within this budget. The marquee scroll tick increments once per
 loop iteration.
 
@@ -69,12 +72,12 @@ loop iteration.
 
 ## State Machine
 
-`GhostMeshApp` holds all app state. The main loop reads it, builds a `MainViewState`
-snapshot, and calls `main_view_update()` each tick.
+<code>GhostMeshApp</code> holds all app state. The main loop reads it, builds a <code>MainViewState</code>
+snapshot, and calls <code>main_view_update()</code> each tick.
 
 ### Screens
 
-```c
+</code></pre>
 typedef enum {
     GhostMeshScreenProfile,    // message-set picker (reached via Menu → Messages)
     GhostMeshScreenMenu,       // hub / home
@@ -84,21 +87,22 @@ typedef enum {
     GhostMeshScreenStatus,     // node state overview
     GhostMeshScreenControl,    // IR arm / disarm / wipe
     GhostMeshScreenBackup,     // encrypted config backup
+    GhostMeshScreenSettings,   // live node config (/set + /cfg over the local link)
 } GhostMeshScreen;
-```
+</code></pre>
 
-Add new screens by extending this enum, adding draw logic to `main_view.c`, handling input in
-`on_input` (`ghostmesh.c`), and — if it's a hub destination — adding a `MENU[]` entry.
+Add new screens by extending this enum, adding draw logic to <code>main_view.c</code>, handling input in
+<code>on_input</code> (<code>ghostmesh.c</code>), and — if it's a hub destination — adding a <code>MENU[]</code> entry.
 
 ### Input handling
 
-`on_input` runs on the Flipper's input thread (not ISR, not main loop). It modifies app state
-directly via a per-screen switch. Navigation keys fire on `InputTypePress`, `InputTypeRepeat`,
-and `InputTypeLong`; action keys on `InputTypePress` only.
+<code>on_input</code> runs on the Flipper's input thread (not ISR, not main loop). It modifies app state
+directly via a per-screen switch. Navigation keys fire on <code>InputTypePress</code>, <code>InputTypeRepeat</code>,
+and <code>InputTypeLong</code>; action keys on <code>InputTypePress</code> only.
 
 The hub is home: it opens the selected screen, and every screen's BACK returns to it. The Backup
-entry sets a `request_backup` flag that the **main loop** consumes to run the modal passphrase
-prompt — a `text_input` in a `view_holder`, swapped in for the main ViewPort and blocked on a
+entry sets a <code>request_backup</code> flag that the **main loop** consumes to run the modal passphrase
+prompt — a <code>text_input</code> in a <code>view_holder</code>, swapped in for the main ViewPort and blocked on a
 semaphore until the operator confirms.
 
 ---
@@ -109,42 +113,42 @@ GhostMesh hand-codes all protobuf encoding and decoding. No nanopb or other libr
 
 ### Sending
 
-```
+<pre><code>
 proto_mode_send_text(proto, "CHECKIN OK")
   → proto_encode_text()        builds ToRadio { packet: MeshPacket { ... } }
   → uart_helper_send_bytes()   writes framed packet to UART
-```
+</code></pre>
 
-PROTO framing: `0x94 0xC3 [len_hi] [len_lo] [protobuf payload]`
+PROTO framing: <code>0x94 0xC3 [len_hi] [len_lo] [protobuf payload]</code>
 
-Sends are gated on `proto->connected` — the handshake must complete first.
-`want_config_id: 42` is sent on startup; `config_complete_id: 42` in a FromRadio
-packet sets `connected = true`.
+Sends are gated on <code>proto->connected</code> — the handshake must complete first.
+<code>want_config_id: 42</code> is sent on startup; <code>config_complete_id: 42</code> in a FromRadio
+packet sets <code>connected = true</code>.
 
 ### Receiving
 
-A byte-level state machine in `on_rx_byte` (proto_mode.c) synchronizes on the
-`0x94 0xC3` magic bytes, reads the 2-byte length, accumulates the payload, then
-decodes the FromRadio protobuf. `TEXT_MESSAGE_APP` packets surface via the `ProtoRxCallback`;
-`TELEMETRY_APP` (67) and `POSITION_APP` (3) surface via the optional `ProtoTelemetryCallback`
-and `ProtoPositionCallback`.
+A byte-level state machine in <code>on_rx_byte</code> (proto_mode.c) synchronizes on the
+<code>0x94 0xC3</code> magic bytes, reads the 2-byte length, accumulates the payload, then
+decodes the FromRadio protobuf. <code>TEXT_MESSAGE_APP</code> packets surface via the <code>ProtoRxCallback</code>;
+<code>TELEMETRY_APP</code> (67) and <code>POSITION_APP</code> (3) surface via the optional <code>ProtoTelemetryCallback</code>
+and <code>ProtoPositionCallback</code>.
 
 ### Adding a new FromRadio packet type
 
-1. Add field decoding in `on_rx_byte`'s FromRadio dispatch block in `proto_mode.c`
-2. Extend `ProtoRxCallback` or add a separate callback type in `proto_mode.h` for the
-   new data (e.g., `ProtoTelemetryCallback`, `ProtoPositionCallback`)
-3. Wire the new callback in `ghostmesh_alloc()` in `ghostmesh.c`
+1. Add field decoding in <code>on_rx_byte</code>'s FromRadio dispatch block in <code>proto_mode.c</code>
+2. Extend <code>ProtoRxCallback</code> or add a separate callback type in <code>proto_mode.h</code> for the
+   new data (e.g., <code>ProtoTelemetryCallback</code>, <code>ProtoPositionCallback</code>)
+3. Wire the new callback in <code>ghostmesh_alloc()</code> in <code>ghostmesh.c</code>
 4. Handle the data in the main loop
 
 Confirmed field numbers for all current and planned packet types are in
-`helpers/proto_notes.md` and `docs/serial-modes.md`.
+<code>helpers/proto_notes.md</code> and <code>docs/serial-modes.md</code>.
 
 ### Adding a new ToRadio message type
 
-1. Add an encode function in `proto_mode.c` following the pattern of `proto_encode_text()`
-2. Add a public API declaration in `proto_mode.h`
-3. Call from `ghostmesh.c` as needed
+1. Add an encode function in <code>proto_mode.c</code> following the pattern of <code>proto_encode_text()</code>
+2. Add a public API declaration in <code>proto_mode.h</code>
+3. Call from <code>ghostmesh.c</code> as needed
 
 ---
 
@@ -152,93 +156,97 @@ Confirmed field numbers for all current and planned packet types are in
 
 ### ViewPort + Mutex
 
-`MainView` wraps a Flipper `ViewPort`. The draw callback runs on the GUI thread.
-`main_view_update()` acquires the mutex, copies the `MainViewState` struct, releases,
+<code>MainView</code> wraps a Flipper <code>ViewPort</code>. The draw callback runs on the GUI thread.
+<code>main_view_update()</code> acquires the mutex, copies the <code>MainViewState</code> struct, releases,
 then triggers a redraw. The draw callback reads from the copied state under the same mutex.
 
 ### Adding a new screen
 
-1. Add a value to `GhostMeshScreen` in `main_view.h`
-2. Add a draw function `draw_X_screen(Canvas*, const MainViewState*)` in `main_view.c`
-3. Dispatch to it in `draw_cb()`
-4. Add fields to `MainViewState` if the screen needs new data
-5. Handle navigation to/from the screen in `on_input()` in `ghostmesh.c`
+1. Add a value to <code>GhostMeshScreen</code> in <code>main_view.h</code>
+2. Add a draw function <code>draw_X_screen(Canvas*, const MainViewState*)</code> in <code>main_view.c</code>
+3. Dispatch to it in <code>draw_cb()</code>
+4. Add fields to <code>MainViewState</code> if the screen needs new data
+5. Handle navigation to/from the screen in <code>on_input()</code> in <code>ghostmesh.c</code>
 6. Populate the new state fields in the main loop
 
 ### Marquee scrolling
 
-`marquee(s, tick, max_chars)` in `main_view.c` returns a pointer into `s` offset so
-that the visible window slides from start to end over time. `max_chars` is the estimated
+<code>marquee(s, tick, max_chars)</code> in <code>main_view.c</code> returns a pointer into <code>s</code> offset so
+that the visible window slides from start to end over time. <code>max_chars</code> is the estimated
 number of characters that fit in the display region — it determines how far the marquee
-travels. For hard-clipped regions (the title bar), use `copy_window()` after `marquee()`
+travels. For hard-clipped regions (the title bar), use <code>copy_window()</code> after <code>marquee()</code>
 to prevent overflow into adjacent elements. For full-width regions (list rows, status bar),
 draw the marquee pointer directly and let the canvas clip at x=127.
 
-`scroll_tick` in `MainViewState` increments once per main loop tick (200ms). All text on
+<code>scroll_tick</code> in <code>MainViewState</code> increments once per main loop tick (200ms). All text on
 all screens scrolls in sync.
 
 ---
 
 ## SD Card Logging
 
-`log_manager.c` opens `SD:/apps_data/ghostmesh/log_YYYYMMDD.csv`, writes a header on
+<code>log_manager.c</code> opens <code>SD:/apps_data/ghostmesh/log_YYYYMMDD.csv</code>, writes a header on
 first creation, then appends one CSV row per call. It is called from the **main loop**
-(never from ISR) after reading `rx_updated`. The RTC datetime is fetched in the main loop
-and passed to `log_rx_message()` to avoid ISR-unsafe RTC calls.
+(never from ISR) after reading <code>rx_updated</code>. The RTC datetime is fetched in the main loop
+and passed to <code>log_rx_message()</code> to avoid ISR-unsafe RTC calls.
 
 ---
 
 ## Profile Loading
 
-`profile_manager.c` handles both built-in and SD card profiles.
+<code>profile_manager.c</code> handles both built-in and SD card profiles.
 
-- `profile_load_builtins()` fills the first 3 slots with hardcoded profiles.
-- `profile_load_yaml()` parses `SD:/apps_data/ghostmesh/profiles.yaml` line by line.
-  The parser is a simple state machine: `name:` lines start a profile, `- text` lines
+- <code>profile_load_builtins()</code> fills the first 3 slots with hardcoded profiles.
+- <code>profile_load_yaml()</code> parses <code>SD:/apps_data/ghostmesh/profiles.yaml</code> line by line.
+  The parser is a simple state machine: <code>name:</code> lines start a profile, <code>- text</code> lines
   add messages. Input is validated (printable ASCII, length caps, quote stripping).
-  Storage for SD-loaded message strings lives in `GhostMeshApp.sd_buf` on the heap.
+  Storage for SD-loaded message strings lives in <code>GhostMeshApp.sd_buf</code> on the heap.
 
 ---
 
 ## Phase Development Conventions
 
-Each phase gets its own branch: `phase-N-short-description`. All changes for that phase
-land on the branch before merging to main. The roadmap (`docs/roadmap.md`) tracks what
+Each phase gets its own branch: <code>phase-N-short-description</code>. All changes for that phase
+land on the branch before merging to main. The roadmap (<code>docs/roadmap.md</code>) tracks what
 each phase covers and what requires custom Meshtastic firmware vs. FAP-only changes.
 
-Phases 9+ introduce custom Meshtastic modules on the Heltec. Their source lives in the
-`heltec-firmware/` directory in this repo (module `.cpp/.h` plus build notes). To build,
-drop them into a checkout of the Meshtastic firmware at the pinned tag and compile with
-PlatformIO for the `heltec-v3` environment. See `heltec-firmware/README.md` for the steps.
+Phases 10+ introduce custom Meshtastic modules on the Heltec. Their source lives in the
+<code>heltec-firmware/</code> directory in this repo (module <code>.cpp/.h</code>, plus <code>gps-timepulse.patch</code> and
+<code>setup.sh</code>). To build, clone the Meshtastic firmware at the pinned tag, run
+<code>heltec-firmware/setup.sh</code> (copies the modules in, registers them in <code>Modules.cpp</code>, and applies
+the GPS patch — the build won't link without it), then <code>pio run -e heltec-v3</code>. See
+<code>heltec-firmware/README.md</code> for the steps.
 
 ### The Heltec module system
 
-Meshtastic modules extend `MeshModule` (C++) and register themselves at startup. A module
+Meshtastic modules extend <code>MeshModule</code> (C++) and register themselves at startup. A module
 can:
 - Listen for incoming mesh packets and react
 - Read local hardware (I2C sensors, GPIOs) on a timer
 - Broadcast mesh packets autonomously
 
 Sensor events (tamper, proximity, jammer, etc.) are broadcast as ordinary **mesh packets**
-over LoRa — typically a short text message such as `TAMPER`. They reach the Flipper as
-normal `FromRadio` PROTO frames on the existing GPIO6/7 link, so the FAP's PROTO decoder
+over LoRa — typically a short text message such as <code>TAMPER</code>. They reach the Flipper as
+normal <code>FromRadio</code> PROTO frames on the existing GPIO6/7 link, so the FAP's PROTO decoder
 already handles them; there is no separate serial "sentinel" protocol. Broadcasting over the
 mesh (rather than the wire) is what lets a deployed backpack alert the operator when the
 Flipper is nowhere near it.
 
-**GhostMesh's Heltec modules** live in `heltec-firmware/` (drop into a Meshtastic checkout at
-tag `v2.7.15.567b8ea`, register in `Modules.cpp`, `pio run -e heltec-v3`):
+**GhostMesh's Heltec modules** live in <code>heltec-firmware/</code> (run <code>setup.sh</code> against a Meshtastic
+checkout at tag <code>v2.7.15.567b8ea</code>, then <code>pio run -e heltec-v3</code>):
 
-- `ArmingModule` (GPIO4) — toggle switch; any flip inverts `volatile bool ghostmesh_armed` (`GhostMeshArming.h`) and broadcasts `ARMED`/`DISARMED`
-- `TiltModule` (GPIO2) → `TAMPER` — **replaces the built-in Detection Sensor (disable it in the app)**
-- `LightTamperModule` (GPIO5 ADC) → `TAMPER_LIGHT`
-- `ProximityModule` (GPIO38/47) → `PERSON_DETECTED`
-- `IRModule` (GPIO48) — NECext decode (addr `0x474D`); arm / disarm + the `ARM→WIPE→CONFIRM` destruct
-- `CommandModule` — **listens** for `/cmd @target` mesh text; drives buzzer/vibration/LED, status, arm/disarm, wipe (the first *receiving* module)
-- `GhostMeshWipe` — the complete-flash destruct, shared by `CommandModule` and `IRModule`
+- <code>ArmingModule</code> (GPIO4) — toggle switch; any flip inverts <code>volatile bool ghostmesh_armed</code> (<code>GhostMeshArming.h</code>) and broadcasts <code>ARMED</code>/<code>DISARMED</code>
+- <code>TiltModule</code> (GPIO2) → <code>TAMPER</code> — **replaces the built-in Detection Sensor (disable it in the app)**
+- <code>LightTamperModule</code> (GPIO5 ADC) → <code>TAMPER_LIGHT</code>
+- <code>ProximityModule</code> (GPIO38/47) → <code>PERSON_DETECTED</code>
+- <code>IRModule</code> (GPIO48) — NECext decode (addr <code>0x474D</code>); arm / disarm + the <code>ARM→WIPE→CONFIRM</code> destruct
+- <code>CommandModule</code> — **listens** for <code>/cmd @target</code> mesh text; drives buzzer/vibration/LED, status, arm/disarm, wipe, live config (<code>/set</code>/<code>/cfg</code>), and <code>/put</code> file upload (the first *receiving* module)
+- <code>CommandModule_payload.cpp</code> — the <code>/put</code> chunked-file receiver (base64 over PROTO → LittleFS, CRC32-verified), a split-out part of <code>CommandModule</code>
+- <code>GhostMeshConfig</code> — the NVS-backed config layer (~23 settings) read by every module; <code>/set</code>/<code>/cfg</code> and <code>ghostmesh_apply_native_config()</code>
+- <code>GhostMeshWipe</code> — the complete-flash destruct, shared by <code>CommandModule</code> and <code>IRModule</code>
 
-The tamper modules check `ghostmesh_armed` and only broadcast when armed. Alerts are plain
-`TEXT_MESSAGE_APP` packets, so they need a **private channel** (blocked on the default), and both
+The tamper modules check <code>ghostmesh_armed</code> and only broadcast when armed. Alerts are plain
+<code>TEXT_MESSAGE_APP</code> packets, so they need a **private channel** (blocked on the default), and both
 nodes must share a frequency slot.
 
 ---
@@ -246,14 +254,14 @@ nodes must share a frequency slot.
 ## Coding Style
 
 - C99, no C++
-- No dynamic allocation after init (heap used only in `ghostmesh_alloc`)
+- No dynamic allocation after init (heap used only in <code>ghostmesh_alloc</code>)
 - No comments explaining what code does — names do that. Comments only for non-obvious
   WHY: ISR constraints, hardware quirks, protocol gotchas
 - No error handling for conditions that cannot occur in practice
-- All ISR-shared variables: `volatile` for the synchronization flag; accept benign races
+- All ISR-shared variables: <code>volatile</code> for the synchronization flag; accept benign races
   on multi-byte fields (display strings)
-- GCC `-Werror=format-truncation` is active — use explicit width specifiers on all
-  `snprintf` calls with variable-length arguments
+- GCC <code>-Werror=format-truncation</code> is active — use explicit width specifiers on all
+  <code>snprintf</code> calls with variable-length arguments
 
 ---
 
@@ -261,6 +269,6 @@ nodes must share a frequency slot.
 
 GhostMesh has no third-party dependencies and should stay that way. The protobuf codec is
 hand-coded, the YAML parser is hand-coded, and the backup crypto uses a bundled SHA-256
-(`sha256.c`) plus the Flipper's `furi_hal_crypto` AES-256-GCM — no external library. (Phase 14
+(<code>sha256.c</code>) plus the Flipper's <code>furi_hal_crypto</code> AES-256-GCM — no external library. (Phase 14
 UART encryption will add a single-header ChaCha20-Poly1305 in the same spirit.) Adding a library
 requires a strong justification.

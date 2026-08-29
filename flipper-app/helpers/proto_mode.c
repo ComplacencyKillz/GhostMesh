@@ -108,7 +108,7 @@ static bool skip_field(const uint8_t* buf, size_t len, size_t* pos, uint32_t wir
 //   MeshPacket.decoded   = field 4, bytes
 //   MeshPacket.hop_limit = field 9, varint               — NOT field 13
 //
-// MED-5: Stack buffer sizes in proto_encode_text are bounded by text_len <= 80:
+// MED-5: Stack buffer sizes in proto_encode_text_to are bounded by text_len <= 80:
 //   data_buf[96]:  portnum(2) + payload_hdr(2) + text(80) = 84 bytes max
 //   mesh_buf[160]: to(5) + decoded_hdr(2) + data(84) + hop_limit(2) = 93 bytes max
 //   radio_buf[256]: packet_hdr(2) + mesh(93) = 95 bytes max
@@ -549,7 +549,7 @@ static void on_rx_byte(uint8_t byte, void* ctx) {
                             char sender[8];
                             snprintf(sender, sizeof(sender), "%04lx",
                                      (unsigned long)(from_node & 0xFFFF));
-                            char text_buf[64];
+                            char text_buf[96]; // 96 (not 64): the compact /cfg line is ~74 chars
                             size_t copy = payload_len < sizeof(text_buf) - 1
                                               ? payload_len : sizeof(text_buf) - 1;
                             memcpy(text_buf, payload, copy);

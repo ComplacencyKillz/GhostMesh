@@ -279,31 +279,74 @@ static void draw_settings_screen(Canvas* canvas, const MainViewState* s) {
         return;
     }
 
-    char rows[5][24];
-    snprintf(rows[0], sizeof(rows[0]), "Proximity  %u cm", (unsigned)s->set_prox);
-    snprintf(rows[1], sizeof(rows[1]), "Light thr  %u", (unsigned)s->set_light);
-    snprintf(rows[2], sizeof(rows[2]), "LED        %s", s->set_led ? "on" : "off");
-    snprintf(rows[3], sizeof(rows[3]), "Buzzer     %s", s->set_buzz ? "on" : "off");
-    snprintf(rows[4], sizeof(rows[4]), "Vibration  %s", s->set_vib ? "on" : "off");
-
-    // Five fields, four visible rows — scroll so the selected field stays on screen.
+    // Data-driven from GM_SETTINGS[]. Many rows, four visible — scroll to keep the selected on screen.
     uint8_t top = (s->settings_selected >= VIS_ROWS) ? (uint8_t)(s->settings_selected - VIS_ROWS + 1) : 0;
     for(uint8_t i = 0; i < VIS_ROWS; i++) {
         uint8_t idx = (uint8_t)(top + i);
-        if(idx >= 5) break;
+        if(idx >= GM_SETTING_COUNT) break;
+        const GmSetting* g = &GM_SETTINGS[idx];
+        char row[24];
+        if(g->type == GM_HEADER) {
+            snprintf(row, sizeof(row), "%s", g->label);
+        } else if(g->type == GM_SLIDER) {
+            snprintf(row, sizeof(row), "%-8s %u%s", g->label, (unsigned)s->set_vals[idx], g->unit);
+        } else if(g->type == GM_STANCE) {
+            const char* v;
+            if(strcmp(g->key, "arm") == 0)
+                v = s->set_vals[idx] ? "ARMED" : "safe";
+            else if(strcmp(g->key, "silent") == 0)
+                v = s->set_vals[idx] ? "DARK" : "lit";
+            else // "mode"
+                v = GM_STANCE_MODES[s->set_vals[idx] < 3 ? s->set_vals[idx] : 0];
+            snprintf(row, sizeof(row), "%-8s %s", g->label, v);
+        } else { // GM_TOGGLE
+            snprintf(row, sizeof(row), "%-8s %s", g->label, s->set_vals[idx] ? "on" : "off");
+        }
         uint8_t row_y = (uint8_t)(LIST_Y + i * ROW_H);
-        bool sel = (idx == s->settings_selected);
+        bool sel = (idx == s->settings_selected); // selection never lands on a header
         if(sel) {
             canvas_set_color(canvas, ColorBlack);
             canvas_draw_box(canvas, 0, row_y, 127, ROW_H);
             canvas_set_color(canvas, ColorWhite);
-            canvas_draw_str(canvas, 4, (uint8_t)(row_y + ROW_H - 2), rows[idx]);
+            canvas_draw_str(canvas, 4, (uint8_t)(row_y + ROW_H - 2), row);
             canvas_set_color(canvas, ColorBlack);
         } else {
-            canvas_draw_str(canvas, 4, (uint8_t)(row_y + ROW_H - 2), rows[idx]);
+            // Headers indent less (x=2) so they read as dividers vs data rows (x=4).
+            canvas_draw_str(canvas, (g->type == GM_HEADER) ? 2 : 4, (uint8_t)(row_y + ROW_H - 2), row);
         }
     }
     draw_footer(canvas, "Up/Dn pick  Lt/Rt set", s);
+}
+
+// Payloads: a "/run @id <name>" mesh command (any node) or a local browse of what's already staged
+// on /ext/badusb/ — either way, OK here only STAGES the launch (checks armed + the file exists) and
+// hands off to Bad USB, which still needs its own OK press before anything actually fires.
+static void draw_payloads_screen(Canvas* canvas, const MainViewState* s) {
+    draw_header(canvas, "Payloads", s);
+    canvas_set_font(canvas, FontSecondary);
+
+    if(s->payload_run_pending) {
+        canvas_draw_str(canvas, 4, (uint8_t)(LIST_Y + ROW_H - 2), "RUN REQUEST:");
+        const char* name = marquee(s->payload_run_name, s->scroll_tick, LIST_CHARS);
+        canvas_draw_str(canvas, 4, (uint8_t)(LIST_Y + 2 * ROW_H - 2), name);
+        if(s->payload_status)
+            canvas_draw_str(canvas, 4, (uint8_t)(LIST_Y + 3 * ROW_H - 2), s->payload_status);
+        draw_footer(canvas, "OK:Launch  Lt:Dismiss", s);
+        return;
+    }
+
+    if(s->payload_count == 0) {
+        canvas_draw_str(canvas, 4, (uint8_t)(LIST_Y + ROW_H - 2), "No payloads staged.");
+        canvas_draw_str(canvas, 4, (uint8_t)(LIST_Y + 2 * ROW_H - 2), "Copy to /ext/badusb/");
+        if(s->payload_status)
+            canvas_draw_str(canvas, 4, (uint8_t)(LIST_Y + 3 * ROW_H - 2), s->payload_status);
+        draw_footer(canvas, "BACK:Menu", s);
+        return;
+    }
+
+    draw_list(canvas, s->payload_names, s->payload_count, s->payload_selected, s->payload_scroll,
+              true, s);
+    draw_footer(canvas, s->payload_status ? s->payload_status : "OK:Launch (armed)", s);
 }
 
 // ── ViewPort callbacks ─────────────────────────────────────────────────────────
@@ -322,6 +365,7 @@ static void draw_cb(Canvas* canvas, void* ctx) {
     case GhostMeshScreenControl:   draw_control_screen(canvas, &mv->state);    break;
     case GhostMeshScreenBackup:    draw_backup_screen(canvas, &mv->state);     break;
     case GhostMeshScreenSettings:  draw_settings_screen(canvas, &mv->state);   break;
+    case GhostMeshScreenPayloads:  draw_payloads_screen(canvas, &mv->state);   break;
     default:                       draw_menu_screen(canvas, &mv->state);       break;
     }
     furi_mutex_release(mv->mutex);

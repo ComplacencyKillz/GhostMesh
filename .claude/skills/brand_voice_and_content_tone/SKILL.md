@@ -1,3 +1,5 @@
+---
+---
 # VOICE — ServerMonk
 
 ## Identity
@@ -16,7 +18,7 @@ This is not cosplay. This is the frame through which real work is presented.
 
 ## Purpose
 
-Use this skill for all written content across both projects: complacencykillz.me and
+Use this skill for all written content across both projects -- complacencykillz.me and
 ghostmesh.info.
 
 This includes section text, project descriptions, labels, microcopy, tooltips, terminal
@@ -37,13 +39,13 @@ It should feel like a system speaking, not a person introducing themselves.
 
 ## Tone Characteristics
 
-**Primary tone:**
+**Primary tone** —
 - calm
 - confident
 - minimal
 - deliberate
 
-**Secondary layer:**
+**Secondary layer** —
 - quiet tension
 - subtle threat
 - curiosity
@@ -58,7 +60,7 @@ Prefer short sentences, fragments when intentional, and declarative statements.
 Avoid long paragraphs, filler, corporate phrasing, hype, slang, and overly friendly portfolio language.
 
 **Good examples:**
-```
+<pre><code>
 Access is not given.
 It is discovered.
 
@@ -69,14 +71,14 @@ Surface level is a lie.
 
 You are not browsing.
 You are navigating.
-```
+</code></pre>
 
 **Bad examples:**
-```
+<pre><code>
 Welcome to my portfolio! I'm excited to show you my work.
 I am a highly motivated and results-driven engineer.
 Take a look around and let me know what you think!
-```
+</code></pre>
 
 ---
 
@@ -97,7 +99,7 @@ It is not:
 ### 1. System Voice
 Use for menus, transitions, UI labels, and navigation.
 
-```
+<pre><code>
 LOADING SCENE
 ACCESSING FILE
 ENTRY POINT DETECTED
@@ -105,25 +107,25 @@ SIGNAL RECEIVED
 RETURN TO MENU
 OPEN LOG
 PLAY FILE
-```
+</code></pre>
 
 ### 2. Analytical Voice
 Use for project descriptions and technical explanations.
 
-```
+<pre><code>
 Automated pipeline for secure deployment.
 Removes residual secrets after execution.
 Reduces exposure surface.
-```
+</code></pre>
 
 ### 3. Narrative Fragment Voice
 Use sparingly for flavor.
 
-```
+<pre><code>
 The system worked.
 Until it didn't.
 That's where this started.
-```
+</code></pre>
 
 Do not overuse this mode.
 
@@ -155,10 +157,10 @@ Maintain composure.
 
 Minimal, dry, and subtle.
 
-```
+<pre><code>
 Expected behavior.
 It wasn't.
-```
+</code></pre>
 
 ---
 
@@ -175,7 +177,7 @@ Avoid emojis, excessive exclamation points, decorative symbols, and loud formatt
 ## Interaction Copy
 
 **Buttons and menu items — keep short:**
-```
+<pre><code>
 PLAY
 OPEN FILE
 VIEW SCENE
@@ -186,27 +188,27 @@ REWIND
 NEXT SCENE
 DECODE
 VIEW TRACE
-```
+</code></pre>
 
 **Hover / microcopy:**
-```
+<pre><code>
 Entry point available
 Signal weak
 Partial data recovered
 Trace detected
 Playback unstable
 File integrity unknown
-```
+</code></pre>
 
 **Error states:**
-```
+<pre><code>
 ACCESS DENIED
 INVALID PATH
 SIGNAL LOST
 FILE CORRUPTED
 NO TRACE FOUND
 PLAYBACK FAILED
-```
+</code></pre>
 
 ---
 
@@ -214,7 +216,7 @@ PLAYBACK FAILED
 
 Use this structure:
 
-```
+<pre><code>
 TITLE
 Classification: [type]
 Role: [your role]
@@ -225,10 +227,10 @@ Short, technical, direct.
 
 Signal:
 Why it matters.
-```
+</code></pre>
 
 **Example:**
-```
+<pre><code>
 CONJUR CLEANUP AUTOMATION
 Classification: Security Automation
 Role: Builder
@@ -240,7 +242,7 @@ Automates removal of generated secrets post-deployment.
 Signal:
 Reduces exposure window.
 Enforces operational discipline.
-```
+</code></pre>
 
 ---
 
@@ -266,7 +268,7 @@ In those cases, use clear, neutral language.
 
 The voice of these projects draws directly from the universe of *Tales from the Afternow*
 by Sean Kennedy (Rant Media, 2002). The full reference document is at
-`ghostmesh.info/docs/afternow-reference.md`. The critical elements for writing copy:
+<code>ghostmesh.info/docs/afternow-reference.md</code>. The critical elements for writing copy:
 
 ### Who ServerMonk Is in This Frame
 
@@ -296,21 +298,21 @@ the work is presented.
 ### The Librarian's Speech Patterns — Applied to Copy
 
 **Dry understatement for things that should be alarming:**
-```
+<pre><code>
 a tolerable job
 the appropriate amount of nutrition
 a standard education
-```
+</code></pre>
 Use this for ironic descriptions of the status quo — things that sound reasonable until
 you stop and hear what they're actually saying.
 
 **Flat declarative statements about atrocity:**
-```
+<pre><code>
 Unlicensed information is pornography.
 Sharing is theft.
 Books are banned.
 Even time itself is copyrighted.
-```
+</code></pre>
 No outrage. No exclamation. The horror is in the flatness.
 
 **Paradox of hope — weary but still transmitting:**
@@ -329,7 +331,7 @@ These are verbatim from the show and can be used directly on either site:
 **The sign-off / blessing:**
 > So light your candles, and may SERVER protect us all.
 
-Use as footer text, section closings, or hidden easter egg copy. `// so light your candles`
+Use as footer text, section closings, or hidden easter egg copy. <code>// so light your candles</code>
 works as a code comment style closing.
 
 **The Server Prayer (full or excerpted):**

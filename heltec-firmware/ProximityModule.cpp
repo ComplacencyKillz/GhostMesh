@@ -23,6 +23,7 @@ ProximityModule *proximityModule;
 #define PROX_ECHO_TIMEOUT_US  30000 // ~5 m; pulseIn gives up after this (no echo -> out of range)
 #define PROX_POLL_MS          1000  // ping once per second
 #define PROX_MIN_BROADCAST_MS 60000 // minimum interval between alerts (anti-spam)
+#define PROX_DISABLED_MS      3000  // when in_prox is off: idle poll — skips the blocking pulseIn (battery)
 
 ProximityModule::ProximityModule()
     : SinglePortModule("proximity", meshtastic_PortNum_TEXT_MESSAGE_APP), concurrency::OSThread("Proximity")
@@ -56,6 +57,8 @@ int32_t ProximityModule::runOnce()
         return PROX_POLL_MS;
     }
 
+    if (!ghostmesh_config.inProx) return PROX_DISABLED_MS; // disabled — skip the 30ms pulseIn (battery)
+
     long cm = measureCm();
     LOG_DEBUG("Proximity: %ld cm", cm); // watch this to tune the threshold (/set prox N)
 
@@ -82,6 +85,7 @@ int32_t ProximityModule::runOnce()
 
 void ProximityModule::broadcastPersonDetected(long cm)
 {
+    if (!ghostmesh_config.bcProx) return; // PERSON_DETECTED announce gated by bc_prox (default on)
     meshtastic_MeshPacket *p = allocDataPacket(); // portnum = TEXT_MESSAGE_APP
     p->want_ack = false;
     const char *msg = "PERSON_DETECTED";

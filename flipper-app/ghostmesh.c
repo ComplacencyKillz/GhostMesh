@@ -4,6 +4,7 @@
 #include <gui/view_holder.h>
 #include <gui/modules/text_input.h>
 #include <string.h>
+#include <strings.h> // strncasecmp — /run request matching
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -12,6 +13,7 @@
 #include "helpers/log_manager.h"
 #include "helpers/ir_tx.h"
 #include "helpers/gm_backup.h"
+#include "helpers/payload_run.h"
 #include "views/main_view.h"
 
 #define TAG             "GhostMesh"
@@ -33,6 +35,7 @@ static const MenuEntry MENU[] = {
     {"Control",    GhostMeshScreenControl},
     {"Status",     GhostMeshScreenStatus},
     {"Settings",   GhostMeshScreenSettings},
+    {"Payloads",   GhostMeshScreenPayloads},
     {"Backup",     GhostMeshScreenBackup},
 };
 #define MENU_COUNT ((uint8_t)(sizeof(MENU) / sizeof(MENU[0])))
@@ -48,7 +51,7 @@ typedef struct {
 
     // RX (written from UART ISR callback — volatile flag, no mutex; see proto_notes.md)
     char rx_sender[8];
-    char rx_text_buf[64];
+    char rx_text_buf[96]; // 96 (not 64): the compact /cfg bitmask line is ~74 chars — don't truncate
     int16_t rx_rssi;
     float rx_snr;
     volatile bool rx_updated;
@@ -104,11 +107,21 @@ typedef struct {
     bool request_backup;      // set from input; the main loop runs the modal passphrase + encrypt
     char backup_result[48];
 
-    // Settings state (live node config via /set + /cfg over the local link)
+    // Settings state (live node config via /set + /cfg over the local link) — data-driven, one
+    // value per GM_SETTINGS[] entry (see views/gm_settings.h).
     bool     settings_loaded; // a /cfg reply has populated the values
-    uint8_t  settings_sel;    // selected field 0..4
-    uint16_t set_prox, set_light;
-    bool     set_led, set_buzz, set_vib;
+    uint8_t  settings_sel;    // selected row (never a header)
+    uint16_t set_vals[GM_SETTINGS_MAX];
+
+    // Payloads state — /run request tracking + local /ext/badusb/ browse (see helpers/payload_run.h)
+    bool     payload_run_pending;
+    char     payload_run_name[40];
+    char     payload_status[40];
+    char     payload_names[PAYLOAD_MAX_FILES][40];
+    uint8_t  payload_count;
+    uint8_t  payload_sel;
+    uint8_t  payload_scroll;
+    bool     request_run_launch; // set from input; the main loop performs the actual loader_start
 
     // Send feedback
     char sent_display[24];
@@ -168,6 +181,31 @@ static void gm_local_id(GhostMeshApp* app, char* out, size_t sz) {
     snprintf(out, sz, "%04lx", (unsigned long)(id & 0xFFFF));
 }
 
+// Parse "/run @<id> <name>" from a raw RX line. The Heltec never executes anything itself (see
+// CommandModule::doRun) — it's this FAP, watching everything its own wired backpack processes, that
+// recognizes a request addressed to THAT backpack and offers to stage it. Case-insensitive on both
+// the command word and the id, matching the firmware's own leniency. Returns true + fills `name` iff
+// this line is a /run request AND the id matches this node's own last-4 hex — a request for some
+// OTHER backpack (relayed traffic this node merely overheard) is correctly ignored.
+static bool parse_run_request(GhostMeshApp* app, const char* text, char* name, size_t name_sz) {
+    if(strncasecmp(text, "/run @", 6) != 0) return false;
+    const char* p = text + 6;
+    char id[8];
+    gm_local_id(app, id, sizeof(id));
+    size_t idlen = strlen(id);
+    if(strncasecmp(p, id, idlen) != 0) return false;
+    p += idlen;
+    if(*p != ' ') return false; // must be a clean id boundary, not e.g. a longer id sharing a prefix
+    while(*p == ' ') p++;
+    if(!*p) return false;
+    strncpy(name, p, name_sz - 1);
+    name[name_sz - 1] = '\0';
+    // Trim any trailing whitespace the sender's line may carry.
+    size_t n = strlen(name);
+    while(n > 0 && (name[n - 1] == ' ' || name[n - 1] == '\r' || name[n - 1] == '\n')) name[--n] = '\0';
+    return n > 0;
+}
+
 // Ask the local node for its current config; the CFG reply repopulates the screen.
 static void settings_request(GhostMeshApp* app) {
     app->settings_loaded = false;
@@ -178,44 +216,108 @@ static void settings_request(GhostMeshApp* app) {
     proto_mode_send_local(app->proto, cmd);
 }
 
-// Change the selected field by dir (-1/+1 = down/off, up/on) and push it to the local node.
+// Move the selection by dir (-1/+1), skipping header rows and staying in bounds.
+static void settings_move(GhostMeshApp* app, int dir) {
+    int i = (int)app->settings_sel;
+    do {
+        i += dir;
+    } while(i >= 0 && i < (int)GM_SETTING_COUNT && GM_SETTINGS[i].type == GM_HEADER);
+    if(i >= 0 && i < (int)GM_SETTING_COUNT) app->settings_sel = (uint8_t)i;
+}
+
+// First selectable (non-header) row — used when entering the screen.
+static uint8_t settings_first(void) {
+    for(uint8_t i = 0; i < GM_SETTING_COUNT; i++)
+        if(GM_SETTINGS[i].type != GM_HEADER) return i;
+    return 0;
+}
+
+// Recompute the STANCE preset rows from the current granular set_vals, so the two views never drift
+// even if the reconcile /cfg is dropped (mirrors the web's refreshPresets). BLACKOUT = all outputs
+// off; HIBERNATE = inferred from gps + inputs. SENTINEL (arm) has no granular source — left as-is.
+static void settings_refresh_presets(GhostMeshApp* app) {
+    bool any_out = false, gps_on = false, in_all = true, in_any = false;
+    for(uint8_t i = 0; i < GM_SETTING_COUNT; i++) {
+        const GmSetting* g = &GM_SETTINGS[i];
+        if(g->type != GM_TOGGLE) continue;
+        bool on = app->set_vals[i] != 0;
+        if(g->mask == GM_MASK_OUT) {
+            if(on) any_out = true;
+        } else if(g->mask == GM_MASK_IN) {
+            if(on) in_any = true;
+            else in_all = false;
+        } else if(g->mask == GM_MASK_NONE && strcmp(g->key, "gps") == 0) {
+            gps_on = on;
+        }
+    }
+    bool in_none = !in_any;
+    for(uint8_t i = 0; i < GM_SETTING_COUNT; i++) {
+        const GmSetting* g = &GM_SETTINGS[i];
+        if(g->type != GM_STANCE) continue;
+        if(strcmp(g->key, "silent") == 0) {
+            app->set_vals[i] = any_out ? 0 : 1; // every output off ⇒ dark
+        } else if(strcmp(g->key, "mode") == 0) {
+            if(gps_on && in_all) app->set_vals[i] = 0;        // active
+            else if(!gps_on && in_all) app->set_vals[i] = 1;  // deployed
+            else if(!gps_on && in_none) app->set_vals[i] = 2; // dormant
+            // else: a custom mix — leave the last value
+        }
+    }
+}
+
+// Change the selected field by dir (-1/+1) and push it to the local node. Table-driven — one branch
+// for sliders, one for toggles, keyed off the GM_SETTINGS descriptor. STANCE presets also mirror
+// their effect onto the granular set_vals (and vice versa via settings_refresh_presets) so the
+// Settings screen stays self-consistent without waiting on a /cfg round-trip.
 static void settings_edit(GhostMeshApp* app, int dir) {
+    const GmSetting* g = &GM_SETTINGS[app->settings_sel];
+    if(g->type == GM_HEADER) return;
     char id[8];
     gm_local_id(app, id, sizeof(id));
     char cmd[40];
-    switch(app->settings_sel) {
-    case 0: {
-        int v = (int)app->set_prox + dir * 25;
-        if(v < 20) v = 20;
-        if(v > 400) v = 400;
-        app->set_prox = (uint16_t)v;
-        snprintf(cmd, sizeof(cmd), "/set @%s prox %u", id, (unsigned)v);
-        break;
-    }
-    case 1: {
-        int v = (int)app->set_light + dir * 100;
-        if(v < 0) v = 0;
-        if(v > 4095) v = 4095;
-        app->set_light = (uint16_t)v;
-        snprintf(cmd, sizeof(cmd), "/set @%s light %u", id, (unsigned)v);
-        break;
-    }
-    case 2:
-        app->set_led = (dir > 0);
-        snprintf(cmd, sizeof(cmd), "/set @%s led %s", id, app->set_led ? "on" : "off");
-        break;
-    case 3:
-        app->set_buzz = (dir > 0);
-        snprintf(cmd, sizeof(cmd), "/set @%s buzz %s", id, app->set_buzz ? "on" : "off");
-        break;
-    case 4:
-        app->set_vib = (dir > 0);
-        snprintf(cmd, sizeof(cmd), "/set @%s vib %s", id, app->set_vib ? "on" : "off");
-        break;
-    default:
-        return;
+    if(g->type == GM_SLIDER) {
+        int v = (int)app->set_vals[app->settings_sel] + dir * (int)g->step;
+        if(v < (int)g->min) v = (int)g->min;
+        if(v > (int)g->max) v = (int)g->max;
+        app->set_vals[app->settings_sel] = (uint16_t)v;
+        snprintf(cmd, sizeof(cmd), "/set @%s %s %u", id, g->key, (unsigned)v);
+    } else if(g->type == GM_STANCE) {
+        // Compound presets — Lt/Rt (dir -1/+1) drives them. Mirror each preset's effect onto the
+        // granular rows here; settings_refresh_presets (below) then re-derives the preset row from
+        // them, so presets and granular toggles stay in lockstep with no /cfg round-trip.
+        if(strcmp(g->key, "mode") == 0) {
+            int v = (int)app->set_vals[app->settings_sel] + dir;
+            if(v < 0) v = 0;
+            if(v > 2) v = 2;
+            bool gps_on = (v == 0), ins_on = (v != 2);          // active / (active|deployed)
+            uint16_t tel = (v == 0) ? 120 : (v == 1) ? 900 : 3600;
+            for(uint8_t i = 0; i < GM_SETTING_COUNT; i++) {
+                const GmSetting* s = &GM_SETTINGS[i];
+                if(s->type == GM_TOGGLE && s->mask == GM_MASK_IN)
+                    app->set_vals[i] = ins_on ? 1 : 0;
+                else if(s->type == GM_TOGGLE && s->mask == GM_MASK_NONE && strcmp(s->key, "gps") == 0)
+                    app->set_vals[i] = gps_on ? 1 : 0;
+                else if(s->type == GM_SLIDER && strcmp(s->key, "telint") == 0)
+                    app->set_vals[i] = tel;
+            }
+            snprintf(cmd, sizeof(cmd), "/set @%s mode %s", id, GM_STANCE_MODES[v]);
+        } else if(strcmp(g->key, "silent") == 0) {
+            bool out_on = (dir < 0); // silent on (dir>0) ⇒ every output off; silent off ⇒ on
+            for(uint8_t i = 0; i < GM_SETTING_COUNT; i++)
+                if(GM_SETTINGS[i].type == GM_TOGGLE && GM_SETTINGS[i].mask == GM_MASK_OUT)
+                    app->set_vals[i] = out_on ? 1 : 0;
+            snprintf(cmd, sizeof(cmd), "/set @%s silent %s", id, (dir > 0) ? "on" : "off");
+        } else { // "arm" → bare /arm or /disarm command (no granular equivalent)
+            app->set_vals[app->settings_sel] = (dir > 0);
+            snprintf(cmd, sizeof(cmd), "%s @%s", (dir > 0) ? "/arm" : "/disarm", id);
+        }
+    } else { // GM_TOGGLE
+        app->set_vals[app->settings_sel] = (dir > 0);
+        snprintf(cmd, sizeof(cmd), "/set @%s %s %s", id, g->key, (dir > 0) ? "on" : "off");
     }
     proto_mode_send_local(app->proto, cmd);
+    // Keep presets ↔ granular in lockstep after any toggle/preset change (no /cfg round-trip needed).
+    if(g->type == GM_TOGGLE || g->type == GM_STANCE) settings_refresh_presets(app);
 }
 
 // ── Input callback ────────────────────────────────────────────────────────
@@ -284,7 +386,7 @@ static void on_input(InputKey key, InputType type, void* ctx) {
             app->rx_history_scroll = 0;
             app->control_sel       = 0;
             app->wipe_confirm      = false;
-            app->settings_sel      = 0;
+            app->settings_sel      = settings_first(); // first non-header row
             app->screen            = MENU[app->menu_sel].screen;
             if(app->screen == GhostMeshScreenSettings) {
                 settings_request(app); // pull the node's current config into the screen
@@ -295,6 +397,14 @@ static void on_input(InputKey key, InputType type, void* ctx) {
                 strncpy(app->backup_result, "Enter passphrase...",
                         sizeof(app->backup_result) - 1);
                 app->backup_result[sizeof(app->backup_result) - 1] = '\0';
+            }
+            if(app->screen == GhostMeshScreenPayloads) {
+                // Refresh the local /ext/badusb/ listing every time — cheap, and it's the only way
+                // to notice a file staged since the last visit (no mesh round-trip involved).
+                app->payload_sel    = 0;
+                app->payload_scroll = 0;
+                app->payload_count  = payload_run_scan(app->payload_names, PAYLOAD_MAX_FILES);
+                if(!app->payload_run_pending) app->payload_status[0] = '\0';
             }
             break;
         case InputKeyBack:  // hub is the top level → exit the app
@@ -429,10 +539,10 @@ static void on_input(InputKey key, InputType type, void* ctx) {
     case GhostMeshScreenSettings:
         switch(key) {
         case InputKeyUp:
-            if(app->settings_sel > 0) app->settings_sel--;
+            settings_move(app, -1);
             break;
         case InputKeyDown:
-            if(app->settings_sel < 4) app->settings_sel++;
+            settings_move(app, +1);
             break;
         case InputKeyLeft:
             if(app->settings_loaded) settings_edit(app, -1);
@@ -443,6 +553,65 @@ static void on_input(InputKey key, InputType type, void* ctx) {
         case InputKeyOk:
             settings_request(app); // refresh from the node
             break;
+        case InputKeyBack:
+            app->screen = GhostMeshScreenMenu;
+            break;
+        default:
+            break;
+        }
+        break;
+
+    case GhostMeshScreenPayloads:
+        switch(key) {
+        case InputKeyUp:
+            if(!app->payload_run_pending && app->payload_sel > 0) {
+                app->payload_sel--;
+                if(app->payload_sel < app->payload_scroll) app->payload_scroll = app->payload_sel;
+            }
+            break;
+        case InputKeyDown:
+            if(!app->payload_run_pending && app->payload_count > 0 &&
+               app->payload_sel < app->payload_count - 1) {
+                app->payload_sel++;
+                if(app->payload_sel >= app->payload_scroll + VISIBLE_ROWS)
+                    app->payload_scroll = (uint8_t)(app->payload_sel - VISIBLE_ROWS + 1);
+            }
+            break;
+        case InputKeyLeft:
+            // Dismiss a pending run request without launching it — drop to the browse list.
+            if(app->payload_run_pending) {
+                app->payload_run_pending = false;
+                app->payload_status[0]   = '\0';
+            }
+            break;
+        case InputKeyOk: {
+            const char* target = NULL;
+            if(app->payload_run_pending) {
+                target = app->payload_run_name;
+            } else if(app->payload_count > 0) {
+                target = app->payload_names[app->payload_sel];
+                strncpy(app->payload_run_name, target, sizeof(app->payload_run_name) - 1);
+                app->payload_run_name[sizeof(app->payload_run_name) - 1] = '\0';
+            }
+            if(!target) break;
+            // Defense in depth, mirroring the Heltec's own gate on /run: even a locally-browsed
+            // launch requires this Flipper to have last seen the backpack ARMED.
+            if(!app->node_armed_known || !app->node_armed) {
+                strncpy(app->payload_status, "ARMED required", sizeof(app->payload_status) - 1);
+                app->payload_status[sizeof(app->payload_status) - 1] = '\0';
+                break;
+            }
+            if(!payload_run_exists(app->payload_run_name)) {
+                strncpy(app->payload_status, "Not staged on SD", sizeof(app->payload_status) - 1);
+                app->payload_status[sizeof(app->payload_status) - 1] = '\0';
+                break;
+            }
+            // Main loop performs the actual hand-off (same "input sets a flag" pattern as backup).
+            app->request_run_launch = true;
+            strncpy(app->payload_status, "Launching...", sizeof(app->payload_status) - 1);
+            app->payload_status[sizeof(app->payload_status) - 1] = '\0';
+            break;
+        }
         case InputKeyBack:
             app->screen = GhostMeshScreenMenu;
             break;
@@ -605,6 +774,7 @@ int32_t ghostmesh_app(void* p) {
     // history_ptrs must outlive each main_view_update call; declared here so
     // the draw callback never reads a dead stack frame.
     const char* history_ptrs[RX_HISTORY_MAX];
+    const char* payload_ptrs[PAYLOAD_MAX_FILES]; // same reasoning, for the Payloads browse list
     uint8_t scroll_tick = 0;
     uint8_t config_retry_tick = 0;
 
@@ -615,11 +785,19 @@ int32_t ghostmesh_app(void* p) {
     state.menu_names    = menu_names;
     state.menu_count    = MENU_COUNT;
     state.history_lines = history_ptrs;
+    state.payload_names = payload_ptrs;
 
     while(app->running) {
         if(app->request_backup) {
             app->request_backup = false;
             run_backup(app); // modal: swaps the viewport for the keyboard, then encrypts to SD
+        }
+        if(app->request_run_launch) {
+            // Hand off to Bad USB, then exit our own app normally — loader_start switches the
+            // foreground app once we return (see helpers/payload_run.c's top comment).
+            app->request_run_launch = false;
+            payload_run_launch(app->payload_run_name);
+            app->running = false;
         }
         state.scroll_tick      = scroll_tick++;
         state.screen           = app->screen;
@@ -657,11 +835,7 @@ int32_t ghostmesh_app(void* p) {
         state.backup_result         = app->backup_result;
         state.settings_loaded       = app->settings_loaded;
         state.settings_selected     = app->settings_sel;
-        state.set_prox              = app->set_prox;
-        state.set_light             = app->set_light;
-        state.set_led               = app->set_led;
-        state.set_buzz              = app->set_buzz;
-        state.set_vib               = app->set_vib;
+        memcpy(state.set_vals, app->set_vals, sizeof(app->set_vals));
 
         Profile* active      = &app->profiles[app->profile_sel];
         state.messages       = (const char**)active->messages;
@@ -676,8 +850,9 @@ int32_t ghostmesh_app(void* p) {
             DateTime dt;
             furi_hal_rtc_get_datetime(&dt);
 
-            // Status bar: sender + full message text (marquee scrolls it)
-            // rx_text_buf is char[64], max strlen 63; %.68s is capped by source.
+            // Status bar: sender + message text (marquee scrolls it). rx_text_buf is char[96];
+            // %.68s truncates a long line into last_rx[80] — cosmetic only (the /cfg parser reads
+            // the full rx_text_buf, not last_rx).
             snprintf(state.last_rx, sizeof(state.last_rx),
                      "%.7s: %.68s", app->rx_sender, app->rx_text_buf);
             state.last_rx[sizeof(state.last_rx) - 1] = '\0';
@@ -708,15 +883,61 @@ int32_t ghostmesh_app(void* p) {
             } else if(strcmp(app->rx_text_buf, "DISARMED") == 0) {
                 app->node_armed = false;
                 app->node_armed_known = true;
+            } else if(parse_run_request(app, app->rx_text_buf, app->payload_run_name,
+                                         sizeof(app->payload_run_name))) {
+                // A "/run @<us> <name>" line addressed to THIS backpack — see doRun in
+                // CommandModule.cpp and parse_run_request above. Just records it; the operator
+                // still has to open Payloads and press OK (armed-gated) to actually stage it.
+                app->payload_run_pending = true;
+                strncpy(app->payload_status, "Run request received", sizeof(app->payload_status) - 1);
+                app->payload_status[sizeof(app->payload_status) - 1] = '\0';
             } else if(strncmp(app->rx_text_buf, "CFG ", 4) == 0) {
-                // Node's /cfg reply → populate the Settings screen. Parse by key so field order
-                // doesn't matter: "CFG prox=150 light=2000 led=1 buzz=1 vib=1".
+                // Node's /cfg reply → populate the Settings screen. Compact bitmask form:
+                // "CFG prox=.. light=.. rep=<hex> out=<hex> in=<hex> gps=.. gpsint=.. telint=..".
+                // Decode the three hex masks once, then fan out over GM_SETTINGS (sliders read their
+                // own numeric token; toggles read a mask bit, or the standalone gps= token).
+                const char* buf = app->rx_text_buf;
                 const char* t;
-                if((t = strstr(app->rx_text_buf, "prox=")))  app->set_prox = (uint16_t)atoi(t + 5);
-                if((t = strstr(app->rx_text_buf, "light="))) app->set_light = (uint16_t)atoi(t + 6);
-                if((t = strstr(app->rx_text_buf, "led=")))   app->set_led = atoi(t + 4) != 0;
-                if((t = strstr(app->rx_text_buf, "buzz=")))  app->set_buzz = atoi(t + 5) != 0;
-                if((t = strstr(app->rx_text_buf, "vib=")))   app->set_vib = atoi(t + 4) != 0;
+                unsigned rep = 0, out = 0, in = 0, gps = 0, tel = 0, arm = 0;
+                if((t = strstr(buf, "rep="))) rep = (unsigned)strtoul(t + 4, NULL, 16);
+                if((t = strstr(buf, "out="))) out = (unsigned)strtoul(t + 4, NULL, 16);
+                if((t = strstr(buf, "in=")))  in = (unsigned)strtoul(t + 3, NULL, 16);
+                if((t = strstr(buf, "gps="))) gps = (unsigned)atoi(t + 4);
+                if((t = strstr(buf, "tel="))) tel = (unsigned)atoi(t + 4);
+                if((t = strstr(buf, "arm="))) arm = (unsigned)atoi(t + 4);
+                for(uint8_t i = 0; i < GM_SETTING_COUNT; i++) {
+                    const GmSetting* g = &GM_SETTINGS[i];
+                    if(g->type == GM_SLIDER) {
+                        char needle[12];
+                        snprintf(needle, sizeof(needle), "%s=", g->key);
+                        if((t = strstr(buf, needle)))
+                            app->set_vals[i] = (uint16_t)atoi(t + strlen(needle));
+                    } else if(g->type == GM_TOGGLE) {
+                        if(g->mask == GM_MASK_REP)
+                            app->set_vals[i] = (rep >> g->bit) & 1u;
+                        else if(g->mask == GM_MASK_OUT)
+                            app->set_vals[i] = (out >> g->bit) & 1u;
+                        else if(g->mask == GM_MASK_IN)
+                            app->set_vals[i] = (in >> g->bit) & 1u;
+                        else if(strcmp(g->key, "tel") == 0) // standalone tel token
+                            app->set_vals[i] = tel ? 1u : 0u;
+                        else // standalone gps token
+                            app->set_vals[i] = gps ? 1u : 0u;
+                    } else if(g->type == GM_STANCE) {
+                        // Reconcile the preset state from the same config the granular rows use.
+                        if(strcmp(g->key, "arm") == 0) {
+                            app->set_vals[i] = arm ? 1u : 0u;
+                        } else if(strcmp(g->key, "silent") == 0) {
+                            app->set_vals[i] = (out == 0) ? 1u : 0u; // every output off ⇒ dark
+                        } else { // "mode": infer 0 active / 1 deployed / 2 dormant from gps + inputs
+                            bool in_all = (in & 0x0fu) == 0x0fu, in_none = (in & 0x0fu) == 0u;
+                            if(gps && in_all) app->set_vals[i] = 0;
+                            else if(!gps && in_all) app->set_vals[i] = 1;
+                            else if(!gps && in_none) app->set_vals[i] = 2;
+                            // else: a custom mix — leave the last value
+                        }
+                    }
+                }
                 app->settings_loaded = true;
             }
             app->rx_updated = false;
@@ -727,6 +948,17 @@ int32_t ghostmesh_app(void* p) {
             history_ptrs[i] = app->rx_history_lines[i];
         state.history_count  = app->rx_history_count;
         state.history_scroll = app->rx_history_scroll;
+
+        // Rebuild payload pointer array; copy through the rest of the Payloads screen state.
+        for(uint8_t i = 0; i < app->payload_count; i++)
+            payload_ptrs[i] = app->payload_names[i];
+        state.payload_count       = app->payload_count;
+        state.payload_selected    = app->payload_sel;
+        state.payload_scroll      = app->payload_scroll;
+        state.payload_run_pending = app->payload_run_pending;
+        strncpy(state.payload_run_name, app->payload_run_name, sizeof(state.payload_run_name) - 1);
+        state.payload_run_name[sizeof(state.payload_run_name) - 1] = '\0';
+        state.payload_status = app->payload_status[0] ? app->payload_status : NULL;
 
         if(app->feedback_ticks > 0) {
             state.show_feedback = true;

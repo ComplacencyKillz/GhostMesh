@@ -1,37 +1,37 @@
-# payloads/ — lab-only sample payloads
+---
+---
+# payloads/ — sample payloads
 
-Sample, **benign** payloads for the Remote Payload Execution use case
-(`docs/red-team-lab-use-cases.md` §5, Phase 13). They exist to prove the delivery path
-end-to-end and to give the `/put` uploader something real to move — not to do anything to a
-machine.
+Sample payloads for the Remote Payload Execution use case
+(<code>docs/red-team-lab-use-cases.md</code> §5, Phase 13). They exist to prove the delivery *and launch* path
+end-to-end and to give the <code>/put</code>/<code>/get</code>/<code>/run</code> commands something real to move and fire.
 
 They are also the easiest way to **test the web configurator's PAYLOAD UPLOAD**: a small text file
-uploads in a second and is CRC-verified on arrival, so you see the whole `/put` round-trip
-(`ready → ok`) without waiting on a large transfer.
+uploads in a second and is CRC-verified on arrival, so you see the whole <code>/put</code> round-trip
+(<code>ready → ok</code>) without waiting on a large transfer.
 
 ## Files
 
 | File | What it is | Notes |
 |------|-----------|-------|
-| `lab_hello.txt` | Flipper BadUSB DuckyScript | Opens Notepad, types a banner, saves/installs nothing. Fully reversible — close without saving. |
+| <code>lab_hello.txt</code> | Flipper BadUSB DuckyScript | Opens Notepad, types a banner, saves/installs nothing. |
 
-## The non-negotiables (from the use-case doc)
+## Delivering and running one
 
-Every payload here obeys the design constraints, and any you add must too:
+Three steps — delivery, staging, and launch are kept deliberately separate:
 
-- **Benign + reversible only** — print to a terminal/editor, create a text file, blink an LED.
-  Nothing destructive, nothing persistent, no exfiltration, no network, no credentials.
-- **Selected by name** — the trigger names a stored file. There is no arbitrary code injection.
-- **ARMED + private channel** — the node must be armed and the trigger must arrive on the private
-  channel. These gates live in the firmware/FAP, not in the payload file.
-- **Lab / owned systems only.** See `docs/red-team-lab-use-cases.md` and the Scope & Authorization
-  section of `CLAUDE.md`.
+1. **Upload to the backpack** (<code>/put</code>) — ghostmesh.info/config → **PAYLOAD UPLOAD** → pick the file →
+   it lands in <code>/ghostmesh/</code> on the node's flash, CRC-verified. Works over USB (fast) or the mesh
+   (slower, same protocol).
+2. **Stage it on the Flipper's SD card** — either <code>/get</code> it down over the wired link (see
+   <code>docs/command-cli.md</code>), or copy it directly with qFlipper/an SD reader to <code>/ext/badusb/</code>. Only a
+   file that's physically on the Flipper's SD card can ever be launched — the Heltec's flash is not
+   enough on its own.
+3. **Launch it** (<code>/run @id <name></code>) — from anywhere on the mesh, or locally from the Flipper's
+   **Payloads** screen. The Heltec only checks armed and acks/denies; it never executes anything
+   itself. The FAP wired to <code>@id</code> is what offers to hand off to Bad USB — requiring armed *and* an OK
+   press there, and then Bad USB's own OK press before any keystroke actually fires. Three
+   independent gates between a mesh command and a keystroke.
 
-## Delivering one
-
-- **Over USB (fast):** ghostmesh.info/config → **PAYLOAD UPLOAD** → pick the file → it lands in
-  `/ghostmesh/` on the node, CRC-verified.
-- **Over the mesh (slower):** the same `/put` protocol — see `docs/command-cli.md`.
-
-The staged file is then invoked **by name** when an authorized trigger arrives — armed, on the
-private channel. Delivery and execution are deliberately separate steps.
+<code>/run</code> never carries bytes, only a name — matching the design constraint below (selected by name, no
+arbitrary code injection). See <code>docs/command-cli.md</code> for the full <code>/ls</code>/<code>/get</code>/<code>/run</code> reference.

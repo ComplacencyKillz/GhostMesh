@@ -28,6 +28,30 @@ import SubLayout from '../layouts/SubLayout.astro';
   </div>
 
   <div id="gm-panel" style="display:none;">
+    <h2>STANCE</h2>
+    <p style="margin-top:0.3rem; font-size:0.8rem; color:var(--text-dim); line-height:1.5;">
+      One-touch postures. Each is a single command — the granular controls below still tune everything
+      independently.
+    </p>
+    <div class="gm-stance">
+      <div class="gm-stance-row">
+        <div class="gm-stance-id"><span class="gm-stance-name">SENTINEL</span><span class="gm-stance-hint">tamper watch — arm / disarm</span></div>
+        <button class="gm-preset" id="gm-sentinel" data-on="0">DISARMED</button>
+      </div>
+      <div class="gm-stance-row">
+        <div class="gm-stance-id"><span class="gm-stance-name">BLACKOUT</span><span class="gm-stance-hint">all physical output dark</span></div>
+        <button class="gm-preset" id="gm-blackout" data-on="0">LIT</button>
+      </div>
+      <div class="gm-stance-row">
+        <div class="gm-stance-id"><span class="gm-stance-name">HIBERNATE</span><span class="gm-stance-hint">power &amp; sensing stance</span></div>
+        <div class="gm-seg" id="gm-hibernate">
+          <button data-mode="active">ACTIVE</button>
+          <button data-mode="deployed">DEPLOYED</button>
+          <button data-mode="dormant">DORMANT</button>
+        </div>
+      </div>
+    </div>
+
     <h2>SENSING</h2>
     <div class="gm-field">
       <label>Proximity trip</label>
@@ -44,18 +68,52 @@ import SubLayout from '../layouts/SubLayout.astro';
       </div>
     </div>
 
-    <h2>SIGNALS <span class="tag">GO DARK</span></h2>
+    <h2>MESH REPLIES <span class="tag">GO QUIET</span></h2>
+    <p style="margin-top:0.3rem; font-size:0.8rem; color:var(--text-dim); line-height:1.5;">
+      Every message the node can emit, each individually gateable. The top rows are event announcements;
+      the last four (help/status/error/unknown) are replies to a command. <strong>Replies only ride the
+      mesh when the command came over the mesh</strong> — commands from this configurator or a wired
+      Flipper are answered off-mesh, no airtime. Physical feedback (LED/buzzer/vibration) is a separate
+      axis below; turn these off to let the hardware be the only signal.
+    </p>
+    <div id="gm-rep"></div>
+
+    <h2>OUTPUTS <span class="tag">GO DARK</span></h2>
+    <p style="margin-top:0.3rem; font-size:0.8rem; color:var(--text-dim); line-height:1.5;">
+      The node's physical indicators. The <strong>BLACKOUT</strong> stance above kills all of these at
+      once; here you gate them one at a time. (GPS LED is best-effort.)
+    </p>
+    <div id="gm-out"></div>
+
+    <h2>SENSOR INPUTS <span class="tag">BATTERY</span></h2>
+    <p style="margin-top:0.3rem; font-size:0.8rem; color:var(--text-dim); line-height:1.5;">
+      Turn a sensor off to stop it polling and save battery. The <strong>HIBERNATE</strong> stance sets
+      these as a group (DORMANT stands them all down); here you gate them one at a time.
+    </p>
+    <div id="gm-in"></div>
+
+    <h2>GPS &amp; TELEMETRY <span class="tag">BATTERY</span></h2>
     <div class="gm-field gm-field--row">
-      <label>Status LED</label>
-      <button class="gm-toggle" id="gm-led" data-on="0">OFF</button>
+      <label>GPS</label>
+      <button class="gm-toggle" id="gm-gps" data-on="0">OFF</button>
+    </div>
+    <div class="gm-field">
+      <label>GPS update interval</label>
+      <div class="gm-ctl">
+        <input type="range" id="gm-gpsint" min="0" max="3600" step="30" />
+        <output id="gm-gpsint-out">— s</output>
+      </div>
     </div>
     <div class="gm-field gm-field--row">
-      <label>Buzzer</label>
-      <button class="gm-toggle" id="gm-buzz" data-on="0">OFF</button>
+      <label>Telemetry</label>
+      <button class="gm-toggle" id="gm-tel" data-on="0">OFF</button>
     </div>
-    <div class="gm-field gm-field--row">
-      <label>Vibration</label>
-      <button class="gm-toggle" id="gm-vib" data-on="0">OFF</button>
+    <div class="gm-field">
+      <label>Telemetry interval</label>
+      <div class="gm-ctl">
+        <input type="range" id="gm-telint" min="0" max="3600" step="30" />
+        <output id="gm-telint-out">— s</output>
+      </div>
     </div>
 
     <div class="scene-divider">
@@ -101,31 +159,101 @@ import SubLayout from '../layouts/SubLayout.astro';
 
 </SubLayout>
 
-<style>
+<style is:global>
+  /* is:global on purpose — the toggle rows, flasher and uploader controls are injected
+     by JS (innerHTML), so Astro's scoped styles never reach them. All selectors are
+     gm-/pu-/fl- prefixed so nothing leaks into the rest of the site. */
+
   .gm-note { border:1px solid var(--blue); padding:0.8rem 1rem; margin:1rem 0;
     font-size:0.85rem; line-height:1.5; }
   .gm-note--warn { border-color:#c96; color:#eca; }
-  #gm-connect-row { display:flex; align-items:center; gap:1rem; margin:1.2rem 0; flex-wrap:wrap; }
-  .gm-btn { background:transparent; border:1px solid var(--terminal); color:var(--terminal);
-    font-family:inherit; font-size:0.9rem; padding:0.55rem 1.1rem; cursor:pointer; letter-spacing:1px;
-    transition:background .15s,color .15s; }
-  .gm-btn:hover { background:var(--terminal); color:#000; }
-  .gm-btn--ghost { border-color:var(--text-dim); color:var(--text-dim); }
-  .gm-btn--ghost:hover { background:var(--text-dim); color:#000; }
-  .gm-status { font-size:0.8rem; color:var(--text-dim); letter-spacing:1px; }
-  .gm-status.on { color:var(--terminal); }
+  #gm-connect-row { display:flex; align-items:center; gap:1rem; margin:1.4rem 0; flex-wrap:wrap; }
+
+  /* ── Buttons: one system across the whole configurator ────── */
+  .gm-btn {
+    display:inline-block; background:transparent;
+    border:1px solid var(--text-dim); color:var(--text);
+    font-family:inherit; font-size:0.72rem; letter-spacing:0.2em; text-transform:uppercase;
+    padding:0.6rem 1.3rem; cursor:pointer;
+    transition:border-color .15s, color .15s, background .15s, box-shadow .15s, transform .05s; }
+  .gm-btn:hover { border-color:var(--blue); color:var(--blue); box-shadow:0 0 0 3px rgba(0,212,255,0.06); }
+  .gm-btn:active { transform:translateY(1px); }
+
+  /* Primary CTA — establish link */
+  #gm-connect { border-color:var(--terminal); color:var(--terminal); }
+  #gm-connect:hover { background:var(--terminal); color:#04120a; border-color:var(--terminal);
+    box-shadow:0 0 16px rgba(0,255,65,0.35); }
+
+  /* Secondary / master actions (SILENT, SENSORS OFF, QUERY NODE) */
+  .gm-btn--ghost { font-size:0.64rem; padding:0.45rem 0.95rem;
+    color:var(--text-dim); border-color:var(--text-ghost); }
+  .gm-btn--ghost:hover { border-color:var(--blue); color:var(--blue); }
+
+  .gm-status { font-size:0.72rem; color:var(--text-dim); letter-spacing:0.2em; text-transform:uppercase; }
+  .gm-status.on { color:var(--terminal); text-shadow:0 0 8px rgba(0,255,65,0.5); }
+
+  /* ── Fields ───────────────────────────────────────────────── */
   .gm-field { margin:0.9rem 0; }
-  .gm-field label { display:block; font-size:0.75rem; color:var(--text-dim);
-    letter-spacing:1.5px; text-transform:uppercase; margin-bottom:0.35rem; }
-  .gm-field--row { display:flex; align-items:center; justify-content:space-between; max-width:340px; }
-  .gm-field--row label { margin:0; }
-  .gm-ctl { display:flex; align-items:center; gap:0.9rem; max-width:420px; }
+  .gm-field > label { display:block; font-size:0.7rem; color:var(--text-dim);
+    letter-spacing:0.15em; text-transform:uppercase; margin-bottom:0.4rem; }
+  .gm-ctl { display:flex; align-items:center; gap:0.9rem; max-width:440px; }
   .gm-ctl input[type=range] { flex:1; accent-color:var(--terminal); }
-  .gm-ctl output { min-width:64px; color:var(--blue); font-size:0.9rem; text-align:right; }
-  .gm-toggle { background:transparent; border:1px solid var(--text-dim); color:var(--text-dim);
-    font-family:inherit; font-size:0.75rem; padding:0.3rem 0.9rem; cursor:pointer; letter-spacing:1px;
-    min-width:56px; }
-  .gm-toggle[data-on="1"] { border-color:var(--terminal); color:var(--terminal); }
+  .gm-ctl output { min-width:66px; color:var(--blue); font-size:0.85rem; text-align:right;
+    letter-spacing:0.03em; }
+
+  /* Toggle rows read as a ruled control panel: label left, switch right */
+  .gm-field--row { display:flex; align-items:center; justify-content:space-between; gap:1rem;
+    max-width:440px; margin:0; padding:0.6rem 0.1rem; border-bottom:1px solid var(--text-ghost); }
+  .gm-field--row:first-child { border-top:1px solid var(--text-ghost); }
+  .gm-field--row > label { margin:0; font-size:0.72rem; color:var(--text);
+    letter-spacing:0.06em; text-transform:none; }
+
+  /* ── Toggle: unmistakable two-state switch with a status LED ─ */
+  .gm-toggle { display:inline-flex; align-items:center; justify-content:center; gap:0.55rem;
+    min-width:84px; background:transparent; border:1px solid var(--text-ghost); color:var(--text-dim);
+    font-family:inherit; font-size:0.7rem; letter-spacing:0.18em; padding:0.4rem 0.9rem; cursor:pointer;
+    transition:border-color .15s, color .15s, background .15s, box-shadow .15s; }
+  .gm-toggle::before { content:''; width:7px; height:7px; border-radius:50%;
+    background:var(--text-ghost); transition:inherit; }
+  .gm-toggle:hover { border-color:var(--blue); color:var(--blue); }
+  .gm-toggle:hover::before { background:var(--blue); }
+  .gm-toggle[data-on="1"] { border-color:var(--terminal); color:var(--terminal);
+    background:rgba(0,255,65,0.08); text-shadow:0 0 6px rgba(0,255,65,0.35); }
+  .gm-toggle[data-on="1"]::before { background:var(--terminal); box-shadow:0 0 8px rgba(0,255,65,0.85); }
+
+  /* ── STANCE: one-touch posture presets ───────────────────── */
+  .gm-stance { max-width:520px; margin:0.6rem 0 1.2rem; }
+  .gm-stance-row { display:flex; align-items:center; justify-content:space-between; gap:1rem;
+    padding:0.75rem 0.1rem; border-bottom:1px solid var(--text-ghost); }
+  .gm-stance-row:first-child { border-top:1px solid var(--text-ghost); }
+  .gm-stance-name { display:block; font-size:0.82rem; letter-spacing:0.16em; color:var(--text); }
+  .gm-stance-hint { display:block; font-size:0.6rem; letter-spacing:0.1em; color:var(--text-dim);
+    text-transform:uppercase; margin-top:0.2rem; }
+
+  /* 2-state preset (SENTINEL, BLACKOUT) — the switch look, sized up. Green = engaged. */
+  .gm-preset { display:inline-flex; align-items:center; justify-content:center; gap:0.55rem;
+    min-width:120px; background:transparent; border:1px solid var(--text-ghost); color:var(--text-dim);
+    font-family:inherit; font-size:0.72rem; letter-spacing:0.16em; padding:0.5rem 1.1rem; cursor:pointer;
+    transition:border-color .15s, color .15s, background .15s, box-shadow .15s; }
+  .gm-preset::before { content:''; width:8px; height:8px; border-radius:50%;
+    background:var(--text-ghost); transition:inherit; }
+  .gm-preset:hover { border-color:var(--blue); color:var(--blue); }
+  .gm-preset:hover::before { background:var(--blue); }
+  .gm-preset[data-on="1"] { border-color:var(--terminal); color:var(--terminal);
+    background:rgba(0,255,65,0.08); text-shadow:0 0 6px rgba(0,255,65,0.35); }
+  .gm-preset[data-on="1"]::before { background:var(--terminal); box-shadow:0 0 9px rgba(0,255,65,0.85); }
+
+  /* 3-state segmented (HIBERNATE) — selected segment lit */
+  .gm-seg { display:inline-flex; border:1px solid var(--text-ghost); }
+  .gm-seg button { background:transparent; border:0; border-left:1px solid var(--text-ghost);
+    color:var(--text-dim); font-family:inherit; font-size:0.64rem; letter-spacing:0.12em;
+    padding:0.5rem 0.85rem; cursor:pointer; transition:color .15s, background .15s; }
+  .gm-seg button:first-child { border-left:0; }
+  .gm-seg button:hover { color:var(--blue); }
+  .gm-seg button.on { background:rgba(0,255,65,0.10); color:var(--terminal);
+    text-shadow:0 0 6px rgba(0,255,65,0.35); }
+
+  /* ── Trace log ────────────────────────────────────────────── */
   .gm-log { background:rgba(0,0,0,0.5); border:1px solid rgba(120,160,140,0.25);
     padding:0.7rem 0.9rem; font-size:0.78rem; line-height:1.6; height:150px; overflow-y:auto;
     white-space:pre-wrap; word-break:break-word; }
@@ -134,10 +262,7 @@ import SubLayout from '../layouts/SubLayout.astro';
   .gm-log .gm-rx { color:var(--terminal); }
   .gm-log .gm-err { color:#e88; }
 
-  /* Flasher & uploader container tweaks */
-  #gm-flasher, #gm-uploader {
-    margin: 1rem 0;
-  }
+  #gm-flasher, #gm-uploader { margin:1rem 0; }
 </style>
 
 <script is:inline type="module">
@@ -152,6 +277,17 @@ import SubLayout from '../layouts/SubLayout.astro';
   import { putUploaderInit } from '/lib/payload-uploader.js';
 
   const NONCE = 42;
+
+  // /cfg bitmask layout — array index == bit index. Single source of truth for decode + wiring.
+  // Each entry: [/set key, display label]. Must match the firmware's doCfg() bit order.
+  const REP_BITS = [['rep_arm', 'Arm/disarm'], ['rep_buzz', 'Buzz'], ['rep_vib', 'Vibrate'],
+    ['rep_led', 'LED/FX'], ['rep_wipe', 'Wipe'], ['bc_tilt', 'Tamper: tilt'],
+    ['bc_light', 'Tamper: light'], ['bc_prox', 'Person detected'],
+    ['rep_help', 'Help reply'], ['rep_status', 'Status reply'], ['rep_err', 'Error replies'],
+    ['rep_unknown', 'Unknown-cmd reply'], ['rep_run', 'Run accept/deny']];
+  const OUT_BITS = [['led', 'Status LED'], ['buzz', 'Buzzer'], ['vib', 'Vibration'],
+    ['screen', 'Screen'], ['hbled', 'Onboard LED'], ['gpsled', 'GPS LED']];
+  const IN_BITS = [['in_tilt', 'Tilt'], ['in_light', 'Light'], ['in_prox', 'Proximity'], ['in_ir', 'IR']];
 
   // ── protobuf helpers ──
   const enc = new TextEncoder();
@@ -211,8 +347,11 @@ import SubLayout from '../layouts/SubLayout.astro';
 
   function onText(t) {
     if (t.startsWith('CFG ')) {
-      const g = (k) => { const m = t.match(new RegExp(k + '=(\\d+)')); return m ? parseInt(m[1]) : null; };
-      applyCfg({ prox: g('prox'), light: g('light'), led: g('led'), buzz: g('buzz'), vib: g('vib') });
+      // decimal token: `k=<dec>`; hex token: `k=<hex>`. Anchor on a space/start so gps ⊄ gpsint etc.
+      const g = (k) => { const m = t.match(new RegExp('(?:^| )' + k + '=(\\d+)')); return m ? parseInt(m[1], 10) : null; };
+      const gh = (k) => { const m = t.match(new RegExp('(?:^| )' + k + '=([0-9a-fA-F]+)')); return m ? parseInt(m[1], 16) : null; };
+      applyCfg({ prox: g('prox'), light: g('light'), rep: gh('rep'), out: gh('out'), in: gh('in'),
+                 gps: g('gps'), tel: g('tel'), gpsint: g('gpsint'), telint: g('telint'), arm: g('arm') });
       log('< ' + t, 'gm-rx');
       $('gm-panel').style.display = 'block';
     } else if (t.startsWith('PUT ')) {
@@ -224,14 +363,54 @@ import SubLayout from '../layouts/SubLayout.astro';
   }
 
   function applyCfg(c) {
-    if (c.prox != null) { $('gm-prox').value = c.prox; $('gm-prox-out').textContent = c.prox + ' cm'; }
-    if (c.light != null) { $('gm-light').value = c.light; $('gm-light-out').textContent = c.light; }
-    setToggle('gm-led', c.led); setToggle('gm-buzz', c.buzz); setToggle('gm-vib', c.vib);
+    setSlider('gm-prox', c.prox, ' cm');
+    setSlider('gm-light', c.light, '');
+    setSlider('gm-gpsint', c.gpsint, ' s');
+    setSlider('gm-telint', c.telint, ' s');
+    setToggle('gm-gps', c.gps);
+    setToggle('gm-tel', c.tel);
+    applyMask(c.rep, REP_BITS);
+    applyMask(c.out, OUT_BITS);
+    applyMask(c.in, IN_BITS);
+    // ── STANCE presets ── SENTINEL (arm) has no granular row, so set it from the cfg token; BLACKOUT
+    // and HIBERNATE are derived from the granular toggles we just set (single source of truth).
+    if (c.arm != null) setPreset('gm-sentinel', c.arm, 'ARMED', 'DISARMED');
+    refreshPresets();
   }
-  function setToggle(id, on) { const b = $(id); if (on == null) return; b.dataset.on = on ? '1' : '0'; b.textContent = on ? 'ON' : 'OFF'; }
+  function applyMask(v, bits) { if (v == null) return; bits.forEach(([k], i) => setToggle('gm-' + k, (v >> i) & 1)); }
+  function setSlider(id, val, unit) { if (val == null) return; const el = $(id); if (!el) return; el.value = val; const o = $(id + '-out'); if (o) o.textContent = val + unit; }
+  function setToggle(id, on) { const b = $(id); if (!b || on == null) return; b.dataset.on = on ? '1' : '0'; b.textContent = on ? 'ON' : 'OFF'; }
+  function setPreset(id, on, onLabel, offLabel) { const b = $(id); if (!b) return; b.dataset.on = on ? '1' : '0'; b.textContent = on ? onLabel : offLabel; }
+  function setSeg(id, mode) { const c = $(id); if (!c) return; for (const b of c.querySelectorAll('button')) b.classList.toggle('on', b.dataset.mode === mode); }
+
+  // Derive the STANCE presets from the CURRENT granular toggle states in the DOM. Called after any
+  // change (preset OR individual toggle) so the two views never drift — independent of whether the
+  // reconcile /cfg re-query lands. BLACKOUT = all outputs off; HIBERNATE = inferred from gps + inputs.
+  function refreshPresets() {
+    const anyOut = OUT_BITS.some(([k]) => $('gm-' + k) && $('gm-' + k).dataset.on === '1');
+    setPreset('gm-blackout', anyOut ? 0 : 1, 'DARK', 'LIT');
+    const gpsOn = $('gm-gps') && $('gm-gps').dataset.on === '1';
+    const insOn = IN_BITS.map(([k]) => $('gm-' + k) && $('gm-' + k).dataset.on === '1');
+    const inAll = insOn.every(Boolean), inNone = insOn.every((v) => !v);
+    let mode = null;
+    if (gpsOn && inAll) mode = 'active';
+    else if (!gpsOn && inAll) mode = 'deployed';
+    else if (!gpsOn && inNone) mode = 'dormant';
+    setSeg('gm-hibernate', mode);
+  }
+
+  // Build the .gm-field--row toggle buttons for a section from its bit table (DRY — one row per bit).
+  function renderToggles(containerId, bits) {
+    const c = $(containerId);
+    if (!c) return;
+    c.innerHTML = bits.map(([k, label]) =>
+      `<div class="gm-field gm-field--row"><label>${label}</label>` +
+      `<button class="gm-toggle" id="gm-${k}" data-on="0">OFF</button></div>`).join('');
+  }
 
   async function requestCfg() { await send(encTextTo('/cfg @' + last4(), nodeNum), '/cfg @' + last4()); }
   async function setKey(key, val) { const cmd = '/set @' + last4() + ' ' + key + ' ' + val; await send(encTextTo(cmd, nodeNum), cmd); }
+  async function sendPlain(cmd) { const full = cmd + ' @' + last4(); await send(encTextTo(full, nodeNum), full); } // e.g. /arm
 
   // The /put payload uploader needs a live connection + node id, so it inits after handshake.
   // (The firmware flasher does NOT — it owns its own port and is mounted on page load; see init().)
@@ -286,12 +465,64 @@ import SubLayout from '../layouts/SubLayout.astro';
     if (!('serial' in navigator)) $('gm-unsupported').style.display = 'block';
     $('gm-connect').addEventListener('click', connect);
     $('gm-refresh').addEventListener('click', requestCfg);
-    $('gm-prox').addEventListener('change', (e) => { const v = e.target.value; $('gm-prox-out').textContent = v + ' cm'; setKey('prox', v); });
-    $('gm-prox').addEventListener('input', (e) => { $('gm-prox-out').textContent = e.target.value + ' cm'; });
-    $('gm-light').addEventListener('change', (e) => { const v = e.target.value; $('gm-light-out').textContent = v; setKey('light', v); });
-    $('gm-light').addEventListener('input', (e) => { $('gm-light-out').textContent = e.target.value; });
-    for (const [id, key] of [['gm-led', 'led'], ['gm-buzz', 'buzz'], ['gm-vib', 'vib']]) {
-      $(id).addEventListener('click', () => { const on = $(id).dataset.on === '1' ? 0 : 1; setToggle(id, on); setKey(key, on ? 'on' : 'off'); });
+
+    // Build the reply/output/input toggle rows from the bit tables, then wire them.
+    renderToggles('gm-rep', REP_BITS);
+    renderToggles('gm-out', OUT_BITS);
+    renderToggles('gm-in', IN_BITS);
+
+    // Sliders send on change, update the readout live on input.
+    const slider = (id, key, unit) => {
+      $(id).addEventListener('change', (e) => { const v = e.target.value; $(id + '-out').textContent = v + unit; setKey(key, v); });
+      $(id).addEventListener('input', (e) => { $(id + '-out').textContent = e.target.value + unit; });
+    };
+    slider('gm-prox', 'prox', ' cm');
+    slider('gm-light', 'light', '');
+    slider('gm-gpsint', 'gpsint', ' s');
+    slider('gm-telint', 'telint', ' s');
+
+    // Every toggle: flip data-on and send its /set key. Covers rep/out/in flags + the standalone gps.
+    const toggleKeys = [...REP_BITS, ...OUT_BITS, ...IN_BITS, ['gps'], ['tel']].map(([k]) => k);
+    for (const key of toggleKeys) {
+      const id = 'gm-' + key;
+      $(id).addEventListener('click', () => {
+        const on = $(id).dataset.on === '1' ? 0 : 1;
+        setToggle(id, on);
+        refreshPresets(); // an individual output/sensor change may flip BLACKOUT/HIBERNATE
+        setKey(key, on ? 'on' : 'off');
+      });
+    }
+
+    // ── STANCE presets: each is a single command; re-query after so the granular toggles snap. ──
+    // SENTINEL toggles arm/disarm (bare commands, not /set). BLACKOUT toggles the silent master.
+    $('gm-sentinel').addEventListener('click', async () => {
+      const nextArmed = $('gm-sentinel').dataset.on !== '1';       // flip from the CURRENT state
+      setPreset('gm-sentinel', nextArmed ? 1 : 0, 'ARMED', 'DISARMED'); // optimistic: toggle now
+      await sendPlain(nextArmed ? '/arm' : '/disarm');
+      setTimeout(requestCfg, 350);                                 // reconcile with the node's real state
+    });
+    $('gm-blackout').addEventListener('click', async () => {
+      const nextDark = $('gm-blackout').dataset.on !== '1';
+      // silent flips all six outputs together — mirror that on the granular toggles, then derive the
+      // preset from them, so the two views stay in lockstep even if the reconcile /cfg is dropped.
+      for (const [k] of OUT_BITS) setToggle('gm-' + k, nextDark ? 0 : 1);
+      refreshPresets();
+      await setKey('silent', nextDark ? 'on' : 'off');
+      setTimeout(requestCfg, 350);
+    });
+    // HIBERNATE: one composite command. Mirror its effect on the granular gps/inputs/telint so the
+    // individual rows match the chosen mode immediately (deployed/dormant map per the firmware).
+    for (const btn of document.querySelectorAll('#gm-hibernate button')) {
+      btn.addEventListener('click', async () => {
+        const mode = btn.dataset.mode;
+        const gpsOn = mode === 'active', insOn = mode !== 'dormant';
+        setToggle('gm-gps', gpsOn ? 1 : 0);
+        for (const [k] of IN_BITS) setToggle('gm-' + k, insOn ? 1 : 0);
+        setSlider('gm-telint', mode === 'active' ? 120 : mode === 'deployed' ? 900 : 3600, ' s');
+        refreshPresets();
+        await setKey('mode', mode);
+        setTimeout(requestCfg, 450);
+      });
     }
 
     // Firmware flasher is standalone (owns its own port) — mount it now, no connection required.

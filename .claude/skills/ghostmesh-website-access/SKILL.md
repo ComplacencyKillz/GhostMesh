@@ -1,36 +1,38 @@
+---
+---
 # SKILL — GhostMesh Website Deploy
 
 ## Purpose
 
 Use this skill when building, previewing, or deploying the **ghostmesh.info** website.
 
-The site lives in `ghostmesh.info/` inside the GhostMesh repo. It is a static Astro site
+The site lives in <code>ghostmesh.info/</code> inside the GhostMesh repo. It is a static Astro site
 deployed to IONOS shared hosting via SFTP using lftp.
 
 ---
 
 ## Credential File Location
 
-```
+<pre><code>
 ~/repos/ghostmesh/ghostmesh.info/parameters.ghostmeshinfo.yaml
-```
+</code></pre>
 
 This file is **gitignored** and contains real IONOS SFTP credentials. Never commit it.
 
 The template showing the expected structure is at:
 
-```
+<pre><code>
 ~/repos/ghostmesh/ghostmesh.info/parameters.template.yaml
-```
+</code></pre>
 
 ---
 
 ## Reading Credentials with yq
 
-Use `yq` to parse the parameters file and export as environment variables before any
+Use <code>yq</code> to parse the parameters file and export as environment variables before any
 deploy operation:
 
-```bash
+<pre><code>
 PARAMS=~/repos/ghostmesh/ghostmesh.info/parameters.ghostmeshinfo.yaml
 
 export SFTP_HOST=$(yq '.sftp_host' "$PARAMS")
@@ -38,58 +40,58 @@ export SFTP_USER=$(yq '.sftp_user' "$PARAMS")
 export SFTP_PASS=$(yq '.sftp_pass' "$PARAMS")
 export SFTP_PATH=$(yq '.sftp_remote_path' "$PARAMS")
 export SFTP_PORT=$(yq '.sftp_port' "$PARAMS")
-```
+</code></pre>
 
 Verify they loaded (never print the password):
 
-```bash
+<pre><code>
 echo "Host: $SFTP_HOST  User: $SFTP_USER  Port: $SFTP_PORT  Path: $SFTP_PATH"
-```
+</code></pre>
 
 ---
 
 ## Build
 
-```bash
+<pre><code>
 cd ~/repos/ghostmesh/ghostmesh.info
 npm run build
-```
+</code></pre>
 
-Output lands in `ghostmesh.info/dist/`.
+Output lands in <code>ghostmesh.info/dist/</code>.
 
 ---
 
 ## Deploy
 
-```bash
+<pre><code>
 cd ~/repos/ghostmesh/ghostmesh.info
 npm run deploy
-```
+</code></pre>
 
-The deploy script (`scripts/deploy.sh`) reads from `parameters.ghostmeshinfo.yaml`,
-runs the build, and mirrors `dist/` to the IONOS web root via lftp SFTP.
+The deploy script (<code>scripts/deploy.sh</code>) reads from <code>parameters.ghostmeshinfo.yaml</code>,
+runs the build, and mirrors <code>dist/</code> to the IONOS web root via lftp SFTP.
 
 Manual deploy if the script is unavailable:
 
-```bash
+<pre><code>
 lftp -u "$SFTP_USER","$SFTP_PASS" sftp://"$SFTP_HOST":"$SFTP_PORT" <<EOF
 set sftp:auto-confirm yes
 set net:max-retries 3
 mirror --reverse --delete --verbose dist/ $SFTP_PATH
 bye
 EOF
-```
+</code></pre>
 
 ---
 
 ## Dev Server
 
-```bash
+<pre><code>
 cd ~/repos/ghostmesh/ghostmesh.info
 npm run dev
-```
+</code></pre>
 
-Runs Astro dev server at `http://localhost:4321`.
+Runs Astro dev server at <code>http://localhost:4321</code>.
 
 ---
 
@@ -118,7 +120,7 @@ Runs Astro dev server at `http://localhost:4321`.
 
 ## File Structure (once initialized)
 
-```
+<pre><code>
 ghostmesh.info/
 ├── parameters.template.yaml    # tracked — placeholder values
 ├── parameters.ghostmeshinfo.yaml  # gitignored — real credentials
@@ -141,14 +143,14 @@ ghostmesh.info/
         ├── usecases.astro      # Grid-down, red team, SAR
         ├── docs.astro          # Links to GitHub documentation
         └── roadmap.astro       # Planned phases
-```
+</code></pre>
 
 ---
 
 ## .gitignore Entry Required
 
-Ensure `parameters.ghostmeshinfo.yaml` is gitignored:
+Ensure <code>parameters.ghostmeshinfo.yaml</code> is gitignored:
 
-```
+<pre><code>
 ghostmesh.info/parameters.ghostmeshinfo.yaml
-```
+</code></pre>

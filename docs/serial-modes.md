@@ -1,3 +1,5 @@
+---
+---
 # Meshtastic Serial Protocol — GhostMesh Implementation
 
 ## What GhostMesh Uses
@@ -16,19 +18,19 @@ This **requires** Serial-module config (*Module Config → Serial*: enabled, mod
 
 All packets use Meshtastic's binary framing:
 
-```
+<pre><code>
 [0x94] [0xC3] [len_hi] [len_lo] [protobuf payload]
-```
+</code></pre>
 
-- `0x94 0xC3` — magic start bytes
-- `len_hi len_lo` — 16-bit big-endian payload length
-- payload — a serialized `ToRadio` (host→node) or `FromRadio` (node→host) protobuf message
+- <code>0x94 0xC3</code> — magic start bytes
+- <code>len_hi len_lo</code> — 16-bit big-endian payload length
+- payload — a serialized <code>ToRadio</code> (host→node) or <code>FromRadio</code> (node→host) protobuf message
 
 ### Connection Handshake
 
-On startup the FAP sends a `ToRadio { want_config_id: 42 }` packet. The node responds with ~47 `FromRadio` configuration frames (node info, channels, config, module config, known nodes, file manifest) followed by `FromRadio { config_complete_id: 42 }`. Once that is received the connection is ready and text messages can be sent.
+On startup the FAP sends a <code>ToRadio { want_config_id: 42 }</code> packet. The node responds with ~47 <code>FromRadio</code> configuration frames (node info, channels, config, module config, known nodes, file manifest) followed by <code>FromRadio { config_complete_id: 42 }</code>. Once that is received the connection is ready and text messages can be sent.
 
-The Flipper title bar shows `...` during the handshake (the request re-sends every ~2 s until answered), `RDY` once connected, then the node's battery `%` (or `PWR` on external power) once the level is read from the config exchange.
+The Flipper title bar shows <code>...</code> during the handshake (the request re-sends every ~2 s until answered), <code>RDY</code> once connected, then the node's battery <code>%</code> (or <code>PWR</code> on external power) once the level is read from the config exchange.
 
 ---
 
@@ -40,43 +42,43 @@ Determined from the meshtastic Python library (v2.7.8) by serializing known mess
 
 | Field | Number | Wire type | Notes |
 |-------|--------|-----------|-------|
-| `want_config_id` | 3 | varint | sent on startup to trigger config exchange |
-| `packet` (MeshPacket) | 1 | bytes | used to send text messages |
+| <code>want_config_id</code> | 3 | varint | sent on startup to trigger config exchange |
+| <code>packet</code> (MeshPacket) | 1 | bytes | used to send text messages |
 
 ### FromRadio
 
 | Field | Number | Wire type | Notes |
 |-------|--------|-----------|-------|
-| `packet` (MeshPacket) | 2 | bytes | incoming mesh message |
-| `my_info` (MyNodeInfo) | 3 | bytes | `my_node_num` (field 1) = local node ID, for filtering |
-| `node_info` (NodeInfo) | 4 | bytes | local node's `device_metrics` (field 6) → battery `%` on connect |
-| `config_complete_id` | 7 | varint | signals handshake complete |
-| `rebooted` | 8 | varint (bool) | node just rebooted |
+| <code>packet</code> (MeshPacket) | 2 | bytes | incoming mesh message |
+| <code>my_info</code> (MyNodeInfo) | 3 | bytes | <code>my_node_num</code> (field 1) = local node ID, for filtering |
+| <code>node_info</code> (NodeInfo) | 4 | bytes | local node's <code>device_metrics</code> (field 6) → battery <code>%</code> on connect |
+| <code>config_complete_id</code> | 7 | varint | signals handshake complete |
+| <code>rebooted</code> | 8 | varint (bool) | node just rebooted |
 
 ### MeshPacket (send)
 
 | Field | Number | Wire type | Notes |
 |-------|--------|-----------|-------|
-| `from` | 1 | fixed32 | filled by node, not sent by host |
-| `to` | 2 | fixed32 | `0xFFFFFFFF` = broadcast |
-| `decoded` (Data) | 4 | bytes | contains portnum + payload |
-| `hop_limit` | 9 | varint | set to 3 |
+| <code>from</code> | 1 | fixed32 | filled by node, not sent by host |
+| <code>to</code> | 2 | fixed32 | <code>0xFFFFFFFF</code> = broadcast |
+| <code>decoded</code> (Data) | 4 | bytes | contains portnum + payload |
+| <code>hop_limit</code> | 9 | varint | set to 3 |
 
 ### MeshPacket (receive — decoded by GhostMesh)
 
 | Field | Number | Wire type | Notes |
 |-------|--------|-----------|-------|
-| `from` | 1 | fixed32 | source node ID; last 4 hex digits shown as sender |
-| `decoded` (Data) | 4 | bytes | text payload |
-| `rx_snr` | 8 | fixed32 (float) | SNR in dB; 0.0 if not a radio packet |
-| `rx_rssi` | 12 | varint (int32) | RSSI in dBm; 0 if not a radio packet |
+| <code>from</code> | 1 | fixed32 | source node ID; last 4 hex digits shown as sender |
+| <code>decoded</code> (Data) | 4 | bytes | text payload |
+| <code>rx_snr</code> | 8 | fixed32 (float) | SNR in dB; 0.0 if not a radio packet |
+| <code>rx_rssi</code> | 12 | varint (int32) | RSSI in dBm; 0 if not a radio packet |
 
 ### Data
 
 | Field | Number | Wire type | Notes |
 |-------|--------|-----------|-------|
-| `portnum` | 1 | varint | `1` = `TEXT_MESSAGE_APP` |
-| `payload` | 2 | bytes | UTF-8 message text |
+| <code>portnum</code> | 1 | varint | <code>1</code> = <code>TEXT_MESSAGE_APP</code> |
+| <code>payload</code> | 2 | bytes | UTF-8 message text |
 
 ---
 
@@ -92,6 +94,6 @@ The Meshtastic app's **Module Config → Serial** settings put a *SerialModule* 
 
 TEXTMSG serial mode was evaluated as an MVP option and briefly implemented. It was replaced by PROTO for two reasons:
 
-1. **RF noise** — TEXTMSG broadcasts any bytes that arrive on the serial RX pin. Electromagnetic interference from the nearby SX1262 LoRa antenna occasionally induced false UART frames, which Meshtastic broadcast as garbage mesh messages. PROTO's `0x94 0xC3` framing means random noise almost never produces a valid packet.
+1. **RF noise** — TEXTMSG broadcasts any bytes that arrive on the serial RX pin. Electromagnetic interference from the nearby SX1262 LoRa antenna occasionally induced false UART frames, which Meshtastic broadcast as garbage mesh messages. PROTO's <code>0x94 0xC3</code> framing means random noise almost never produces a valid packet.
 
 2. **No metadata** — TEXTMSG provides only raw text. PROTO delivers sender node ID, RSSI, SNR, hop count, and access to the full Meshtastic packet graph.

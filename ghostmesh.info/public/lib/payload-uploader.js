@@ -37,15 +37,21 @@ export function putUploaderInit({ sendCmd, nodeIdHex, log }) {
   const style = document.createElement('style');
   style.textContent = `
     .pu-pick { display:flex; align-items:center; gap:0.8rem; cursor:pointer; margin:0.4rem 0; flex-wrap:wrap; }
-    .pu-choose { color:var(--blue); letter-spacing:1px; font-size:0.85rem; }
-    .pu-name { color:var(--text-dim); font-size:0.8rem; }
-    .pu-bar { height:6px; background:rgba(120,160,140,0.18); margin:0.7rem 0; overflow:hidden; }
+    .pu-choose { display:inline-block; border:1px solid var(--text-dim); color:var(--text);
+      font-family:inherit; letter-spacing:0.15em; text-transform:uppercase; font-size:0.64rem;
+      padding:0.45rem 0.95rem; transition:border-color .15s, color .15s; }
+    .pu-pick:hover .pu-choose { border-color:var(--blue); color:var(--blue); }
+    .pu-name { color:var(--text-dim); font-size:0.78rem; letter-spacing:0.03em; }
+    .pu-bar { height:6px; background:rgba(120,160,140,0.18); margin:0.7rem 0; overflow:hidden;
+      border:1px solid var(--text-ghost); }
     .pu-fill { height:100%; width:0%; background:linear-gradient(90deg,var(--blue),var(--terminal)); transition:width .1s; }
     .pu-status { font-size:0.78rem; color:var(--text-dim); letter-spacing:0.5px; min-height:1.1em; margin:0.4rem 0; }
     .pu-status.ok { color:var(--terminal); }
     .pu-status.err { color:#e88; }
     .pu-send { background:transparent; border:1px solid var(--terminal); color:var(--terminal);
-      font-family:inherit; font-size:0.85rem; padding:0.45rem 1rem; cursor:pointer; letter-spacing:1px; }
+      font-family:inherit; font-size:0.7rem; letter-spacing:0.2em; text-transform:uppercase;
+      padding:0.55rem 1.2rem; cursor:pointer; transition:background .15s, color .15s, box-shadow .15s; }
+    .pu-send:hover:not(:disabled) { background:var(--terminal); color:#04120a; box-shadow:0 0 14px rgba(0,255,65,0.3); }
     .pu-send:disabled { border-color:var(--text-dim); color:var(--text-dim); cursor:not-allowed; opacity:0.6; }
   `;
   el.appendChild(style);

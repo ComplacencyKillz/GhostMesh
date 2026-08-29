@@ -1,5 +1,6 @@
 #include "TiltModule.h"
 #include "GhostMeshArming.h"
+#include "GhostMeshConfig.h"
 #include "MeshService.h"
 #include "configuration.h"
 #include "main.h"
@@ -14,6 +15,7 @@ TiltModule *tiltModule;
 #define TILT_PIN            2
 #define TILT_POLL_MS        100   // fast poll to catch a movement edge
 #define TILT_MIN_BROADCAST_MS 30000 // anti-spam: at most one TAMPER per 30 s
+#define TILT_DISABLED_MS    3000  // when in_tilt is off: idle poll so a re-enable is still noticed
 
 TiltModule::TiltModule()
     : SinglePortModule("tilt", meshtastic_PortNum_TEXT_MESSAGE_APP), concurrency::OSThread("Tilt")
@@ -26,9 +28,12 @@ int32_t TiltModule::runOnce()
         firstTime = false;
         pinMode(TILT_PIN, INPUT);
         lastState = digitalRead(TILT_PIN);
+        ghostmesh_config_ensure_loaded();
         LOG_INFO("Tilt: init on GPIO%d", TILT_PIN);
         return TILT_POLL_MS;
     }
+
+    if (!ghostmesh_config.inTilt) return TILT_DISABLED_MS; // sensor disabled — skip the read (battery)
 
     bool state = digitalRead(TILT_PIN);
     if (state != lastState) { // movement (either edge)
@@ -46,6 +51,7 @@ int32_t TiltModule::runOnce()
 
 void TiltModule::broadcastTamper()
 {
+    if (!ghostmesh_config.bcTilt) return; // TAMPER announce gated by bc_tilt (default on)
     meshtastic_MeshPacket *p = allocDataPacket(); // portnum = TEXT_MESSAGE_APP
     p->want_ack = false;
     const char *msg = "TAMPER";

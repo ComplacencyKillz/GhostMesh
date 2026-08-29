@@ -8,6 +8,7 @@ const docs = [
   { label: 'DEVELOPER GUIDE',    path: 'docs/developer-guide.md',     sub: 'Architecture and contribution guide' },
   { label: 'HARDWARE REFERENCE', path: 'docs/hardware.md',            sub: 'Full BOM, GPIO allocation'           },
   { label: 'WIRING GUIDE',       path: 'docs/wiring.md',              sub: 'Pinout, connections, sensor wiring'  },
+  { label: 'COMMAND CLI',        path: 'docs/command-cli.md',         sub: 'Mesh commands, /set /cfg, /put, configurator' },
   { label: 'MESHTASTIC SETUP',   path: 'docs/meshtastic-setup.md',    sub: 'Node config, channels, sensors'      },
   { label: 'FLIPPER SETUP',      path: 'docs/flipper-setup.md',       sub: 'ufbt build, deploy, troubleshoot'    },
   { label: 'OPSEC GUIDE',        path: 'docs/opsec.md',               sub: 'Encryption, stealth, nuke protocol'  },
@@ -46,16 +47,16 @@ const docs = [
 
 License:  MIT
 Status:   Active development
-Current:  v0.5 — PROTO mode full client</pre></div>
+Current:  v0.8 — env telemetry + GPS + config layer</pre></div>
 
   <h2>LOG FORMAT</h2>
   <p>Every received message is logged to the Flipper SD card:</p>
   <div class="code-block"><pre>SD:/apps_data/ghostmesh/log_YYYYMMDD.csv
 
-Columns: timestamp, node_id, message, rssi, snr
+Columns: timestamp, node_id, message, lat, lon, rssi, snr
 
-2026-05-07T09:15:44,f69c,CHECKIN OK,-85,7.5
-2026-05-07T09:22:11,2f74,IN POSITION,-92,4.2</pre></div>
+2026-05-07T09:15:44,f69c,CHECKIN OK,40.7128,-74.0060,-85,7.5
+2026-05-07T09:22:11,2f74,IN POSITION,,,-92,4.2</pre></div>
 
   <h2>KML EXPORT</h2>
   <div class="code-block"><pre>python tools/log_to_kml.py log_20260507.csv

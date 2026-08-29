@@ -9,11 +9,11 @@ const phases = [
   { num:'04', label:'Node Logging + KML Export',           status:'complete', note:'CSV log, RSSI/SNR, RX history, marquee scroll'      },
   { num:'05', label:'PROTO Mode Full Client',              status:'complete', note:'Hand-coded protobuf, handshake, TX + RX confirmed'  },
   { num:'06', label:'Security Baseline',                   status:'next',     note:'Nuke button, private channel keygen, stealth mode'  },
-  { num:'07', label:'Environmental Telemetry',             status:'planned',  note:'BME280 temp/humidity/pressure, RF ducting indicator'},
-  { num:'08', label:'GPS + Wardriving',                    status:'planned',  note:'BN-220 GPS, position logging, KML heatmap'          },
-  { num:'09', label:'Battery Intelligence',                status:'planned',  note:'MAX17048 fuel gauge, persistent % in UI'            },
-  { num:'10', label:'Physical Controls & Alerting',        status:'planned',  note:'Tamper sensors, dead-drop arm/disarm'               },
-  { num:'11', label:'Dead-Drop Surveillance',              status:'planned',  note:'HC-SR04 proximity, autonomous alerts'               },
+  { num:'07', label:'Environmental Telemetry',             status:'complete', note:'BME280 temp/humidity/pressure on the Sensors screen'},
+  { num:'08', label:'GPS + Wardriving',                    status:'complete', note:'BN-220 GPS, position logging (wardriving heatmap pending)'},
+  { num:'09', label:'Battery Intelligence',                status:'complete', note:'battery % in the title bar (MAX17048 fuel-gauge read deferred)'},
+  { num:'10', label:'Physical Controls & Alerting',        status:'complete', note:'tamper, arming, buzzer/vibration/RGB LED, IR, wipe + the config/silent layer'},
+  { num:'11', label:'Dead-Drop Surveillance',              status:'complete', note:'RCWL-1601 proximity, autonomous alerts'             },
   { num:'12', label:'SIGINT & Advanced Sensing',           status:'planned',  note:'Jammer detection, advanced wardriving'              },
   { num:'13', label:'Remote Payload Execution',            status:'planned',  note:'BadUSB over mesh, NFC orchestration, Sub-GHz relay' },
   { num:'14', label:'UART Encryption',                     status:'planned',  note:'ChaCha20-Poly1305, key management'                 },
@@ -33,7 +33,7 @@ const label: Record<string, string> = {
 ---
 
 <SubLayout title="ROADMAP" section="ROADMAP"
-  classification="CLASSIFICATION: DEVELOPMENT SIGNAL / CURRENT: v0.5"
+  classification="CLASSIFICATION: DEVELOPMENT SIGNAL / CURRENT: v0.8"
   introLines={[
     "What has been built.",
     "What will be built.",
@@ -58,16 +58,23 @@ const label: Record<string, string> = {
     </tbody>
   </table>
 
-  <h2>CURRENT STATE — v0.5</h2>
-  <p>GhostMesh is a working mesh radio terminal. It sends and receives text
-  messages over Meshtastic LoRa mesh using the full PROTO protocol. Received
-  messages are logged to SD card with RSSI and SNR. Confirmed end-to-end:
-  Flipper → remote node → back to Flipper.</p>
+  <h2>CURRENT STATE — v0.8</h2>
+  <p>GhostMesh is a working mesh radio terminal <em>and</em> a configurable dead-drop
+  backpack. It sends and receives text over the Meshtastic LoRa mesh (full PROTO
+  protocol, logged to SD with RSSI/SNR), reads environmental + GPS telemetry, and
+  runs the custom backpack: tamper (tilt/light/proximity), arming, IR control, and
+  the buzzer/vibration/RGB-LED indicators. Config is live over three surfaces — the
+  web configurator, the FAP Settings screen, and the mesh CLI: per-command mesh-reply
+  gates, a <strong>silent</strong> stealth mode (screen + LEDs + sound off), per-sensor
+  battery gating, GPS/telemetry rate control, browser firmware flashing, and
+  <code>/put</code> file upload to a node.</p>
 
   <h2>NEXT — Phase 6</h2>
-  <p>Nuke button, private channel key generation from Flipper hardware RNG,
-  and stealth mode (node goes dark — ROUTER role, no GPS, no telemetry,
-  OLED off). Software only, no new hardware required.</p>
+  <p>Nuke button and private channel key generation from Flipper hardware RNG. Stealth
+  is largely here already — per-element output silencing, GPS/telemetry control, and a
+  <code>silent</code> master all ship in the config layer; Phase 6 folds them into a
+  single one-press Stealth toggle that also flips the node to ROUTER role. Software
+  only, no new hardware required.</p>
 
   <h2>THE BACKPACK GOAL</h2>
   <p>Phases 10–11 complete the autonomous dead-drop backpack: a Heltec node
